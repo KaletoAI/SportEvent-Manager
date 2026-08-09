@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Gastbuchung — {{ event.date|date_de }}{% endblock %}
+{% block nav_title %}Gastbuchung{% endblock %}
+{% block content %}
+{% if cancelled %}
+<div class="card narrow mt-1">
+    <h2>Termin abgesagt</h2>
+    <p>Dieser Termin wurde leider abgesagt.</p>
+</div>
+{% elif expired %}
+<div class="card narrow mt-1">
+    <h2>Termin vorbei</h2>
+    <p>Der Termin am {{ event.date|date_de }} liegt in der Vergangenheit — eine Buchung ist nicht mehr möglich.</p>
+</div>
+{% else %}
+<div class="stat-grid">
+    <div class="stat-card"><div class="value">{{ event.date|date_de }}</div><div class="label">Datum</div></div>
+    <div class="stat-card"><div class="value">{{ event.start_time|time_de }} – {{ event.end_time|time_de }}</div><div class="label">Uhrzeit</div></div>
+    <div class="stat-card"><div class="value">{{ available }} / {{ event.max_participants }}</div><div class="label">Freie Plätze</div></div>
+    <div class="stat-card">
+        <div class="value">max. {{ tiers[0].guest|euro }}</div>
+        <div class="label">Preis pro Person</div>
+    </div>
+</div>
+<p class="muted small">Der Termin findet ab {{ event.min_participants }} Teilnehmern statt. Der endgültige Preis wird nach dem Termin ermittelt: Terminkosten ÷ Teilnehmerzahl — je mehr mitmachen, desto günstiger als der angezeigte Maximalpreis.</p>
+
+<div class="card narrow">
+    <h2>{{ subscription.name }} — jetzt buchen</h2>
+    {% if available > 0 %}
+    <form method="post" action="/g/{{ event.public_token }}/book">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="form-group">
+            <label for="name">Dein Name</label>
+            <input type="text" id="name" name="name" required>
+        </div>
+        <div class="form-group">
+            <label for="email">E-Mail</label>
+            <input type="email" id="email" name="email" required>
+        </div>
+        <div class="form-group">
+            <label for="count">Anzahl Personen</label>
+            <input type="number" id="count" name="count" min="1" max="{{ available }}" value="1" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Verbindlich buchen</button>
+    </form>
+    {% else %}
+    <p class="muted">Dieser Termin ist leider ausgebucht.</p>
+    {% endif %}
+</div>
+<p class="muted small center">Wie das Ganze funktioniert, steht in der
+<a href="/hilfe/kurzreferenz">Kurzreferenz</a>.</p>
+{% endif %}
+{% endblock %}

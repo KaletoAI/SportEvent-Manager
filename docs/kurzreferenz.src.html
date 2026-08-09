@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SportAbo Manager — Kurzreferenz</title>
+<style>
+:root {
+  --ink: #1e293b;
+  --muted: #64748b;
+  --line: #e2e8f0;
+  --accent: #2563eb;
+  --bg-soft: #f8fafc;
+  --warn-bg: #fffbeb;
+  --warn-line: #fcd34d;
+}
+* { box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+               "Helvetica Neue", Arial, sans-serif;
+  color: var(--ink);
+  line-height: 1.45;
+  max-width: 52rem;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 3rem;
+  font-size: 15px;
+  background: #fff;
+}
+h1 { font-size: 1.6rem; margin: 0 0 .1rem; }
+h2 {
+  font-size: 1.1rem;
+  margin: 1.3rem 0 .4rem;
+  padding-bottom: .2rem;
+  border-bottom: 2px solid var(--line);
+}
+h3 { font-size: .95rem; margin: .8rem 0 .2rem; }
+p, li { margin: .3rem 0; }
+ul { margin: .3rem 0; padding-left: 1.1rem; }
+.subtitle { color: var(--muted); margin: 0 0 1rem; font-size: .95rem; }
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: .5rem 0;
+  font-size: .87rem;
+}
+th, td {
+  border: 1px solid var(--line);
+  padding: .3rem .45rem;
+  text-align: left;
+  vertical-align: top;
+}
+th { background: var(--bg-soft); font-weight: 600; }
+td.nowrap { white-space: nowrap; }
+code { background: var(--bg-soft); padding: .05em .3em; border-radius: 3px; }
+
+.tip, .warn {
+  padding: .5rem .7rem;
+  margin: .6rem 0;
+  border-radius: 0 5px 5px 0;
+  font-size: .88rem;
+}
+.tip { background: var(--bg-soft); border-left: 3px solid var(--accent); }
+.warn { background: var(--warn-bg); border-left: 3px solid var(--warn-line); }
+.tip > strong:first-child,
+.warn > strong:first-child { display: block; }
+
+.cols { display: flex; gap: 1.2rem; flex-wrap: wrap; align-items: flex-start; }
+.cols > div { flex: 1 1 15rem; }
+
+.figrow { display: flex; gap: 1rem; justify-content: center; margin: .6rem 0; }
+figure { margin: 0; text-align: center; break-inside: avoid; }
+figure img {
+  max-width: 150px;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+}
+figcaption { color: var(--muted); font-size: .75rem; margin-top: .2rem; }
+
+.super { color: #b45309; font-weight: 600; }
+footer { color: var(--muted); font-size: .78rem; margin-top: 1.2rem;
+         border-top: 1px solid var(--line); padding-top: .4rem; }
+
+@media print {
+  body { max-width: none; padding: 0; font-size: 9.4pt; line-height: 1.35; }
+  h1 { font-size: 15pt; }
+  h2 { font-size: 11pt; margin: .8rem 0 .3rem; }
+  h3 { font-size: 9.6pt; }
+  table { font-size: 8.3pt; }
+  .tip, .warn { font-size: 8.4pt; }
+  figure img { max-width: 34mm; }
+  h2, h3 { page-break-after: avoid; }
+  table, .tip, .warn, .figrow { page-break-inside: avoid; }
+  a { color: inherit; text-decoration: none; }
+}
+</style>
+</head>
+<body>
+
+<h1>SportAbo Manager — Kurzreferenz</h1>
+<p class="subtitle">Für Mitglieder und Gäste. Ausführlich steht alles im
+Handbuch.</p>
+
+<h2>Was die App macht</h2>
+<p>Die Kosten eines Abos werden geteilt, nicht pauschal berechnet. Der
+<strong>Gesamtpreis der Saison</strong> verteilt sich auf die Termine, das
+<strong>Termin-Budget</strong> auf die Leute, die da waren. Deshalb siehst du
+vorher nur einen <strong>Maximalpreis</strong> — je mehr mitmachen, desto
+günstiger wird es. Ein Termin findet erst ab der
+<strong>Mindestteilnehmerzahl</strong> statt.</p>
+<p>Jedes Mitglied hat ein <strong>Guthabenkonto</strong>: Einzahlungen erhöhen
+es, abgerechnete Termine belasten es.</p>
+
+<h2>Anmelden</h2>
+<div class="cols">
+<div>
+<p>Kein Passwort. E-Mail-Adresse eingeben, dann entweder den
+<strong>Link</strong> aus der Mail anklicken oder den
+<strong>6-stelligen Code</strong> eintippen. Beides gilt 15 Minuten. Danach
+bleibst du dauerhaft angemeldet.</p>
+
+<h3>Als App auf den Startbildschirm</h3>
+<ul>
+  <li><strong>Android:</strong> Chrome-Menü ⋮ → <em>App installieren</em>
+      (oder <em>Zum Startbildschirm hinzufügen</em>).</li>
+  <li><strong>iPhone/iPad:</strong> in <strong>Safari</strong> öffnen →
+      Teilen-Symbol → <em>Zum Home-Bildschirm</em>. In Chrome oder Firefox
+      geht das auf dem iPhone nicht.</li>
+</ul>
+<p>Auf dem iPhone hat die App einen eigenen Speicher — dort einmal neu
+anmelden. Ein Login-Link aus der Mail landet immer im Browser; nimm in der
+App stattdessen den Code.</p>
+</div>
+<div>
+<div class="figrow">
+  <figure>
+    <img src="screenshots/06b-member-code.png" alt="Code-Eingabe beim Login">
+    <figcaption>Anmelden per Code</figcaption>
+  </figure>
+  <figure>
+    <img src="screenshots/07-member-termine-1.png" alt="Terminliste">
+    <figcaption>Termine an- und abmelden</figcaption>
+  </figure>
+</div>
+</div>
+</div>
+
+<h2>Termine</h2>
+
+<h3>Anmelden und Gäste mitbringen</h3>
+<p>Im Bereich <strong>📅 Termine</strong> auf <em>Anmelden</em> tippen. Willst
+du jemanden mitbringen, vorher die Zahl im Feld <strong>Gäste</strong>
+eintragen — deren Anteil wird <strong>dir</strong> berechnet. Eine Terminkarte
+antippen zeigt die Teilnehmerliste.</p>
+
+<h3>Abmelden — drei Fristen</h3>
+<table>
+<thead><tr><th>Zeitpunkt</th><th>Was geht</th></tr></thead>
+<tbody>
+<tr><td class="nowrap">Früh genug</td><td><strong>Abmelden</strong> — sofort und ohne Kosten. Der Platz wird frei.</td></tr>
+<tr><td class="nowrap">Kurzfristig</td><td><strong>Abmeldung anfragen</strong> — ein Super-Mitglied gibt frei oder lehnt ab.</td></tr>
+<tr><td class="nowrap">Zu spät</td><td>Keine Abmeldung mehr. Der Termin wird dir berechnet, auch wenn du nicht kommst.</td></tr>
+</tbody>
+</table>
+<p>Die genauen Stunden stehen als Hinweis unter der Terminliste.</p>
+
+<h3>Warteliste</h3>
+<p>Ausgebuchter Termin? Auf die Warteliste setzen. Wird ein Platz frei, rückst
+du <strong>automatisch</strong> nach und bekommst eine Mail. Gäste lassen sich
+über die Warteliste nicht mitanmelden.</p>
+
+<h3>Markierungen</h3>
+<table>
+<thead><tr><th>Markierung</th><th>Bedeutung</th><th>Markierung</th><th>Bedeutung</th></tr></thead>
+<tbody>
+<tr><td class="nowrap">Findet statt</td><td>Mindestzahl erreicht</td><td class="nowrap">Ausgebucht</td><td>voll — Warteliste möglich</td></tr>
+<tr><td class="nowrap">Noch N bis Mindestzahl</td><td>N Anmeldungen fehlen</td><td class="nowrap">Zusatz</td><td>Extra-Termin, eigene Kosten</td></tr>
+<tr><td class="nowrap">Angemeldet</td><td>du bist dabei</td><td class="nowrap">Storno angefragt</td><td>wartet auf Freigabe</td></tr>
+</tbody>
+</table>
+
+<h2>Konto und Geld</h2>
+<p>Unter <strong>💶 Konto</strong> stehen Guthaben, Ausgaben und der
+Kontoauszug mit jeder Buchung.</p>
+<ul>
+  <li><strong>Guthaben im Minus?</strong> Oben erscheint ein Hinweis mit der
+      PayPal-Adresse, an die du zahlst. Name und Termin in den
+      Verwendungszweck.</li>
+  <li><strong>Geld bekommen?</strong> Unter <em>Zahlungseingang bestätigen</em>
+      den Zahler und den Betrag eintragen. Sein Guthaben steigt, deins sinkt.
+      Bestätigt wird immer vom Empfänger — deshalb kann sich niemand eine
+      Zahlung selbst gutschreiben.</li>
+  <li><strong>Mehrere Abos?</strong> Oben auf dem Dashboard steht ein
+      Umschalter.</li>
+</ul>
+
+<h2>Zusätzlich als Super-Mitglied <span class="super">⭐</span></h2>
+<p>Super-Mitglieder haben den Bereich <strong>⚙️ Verwaltung</strong> — alles
+davon gilt nur für das eigene Abo:</p>
+<ul>
+  <li><strong>Storno-Anfragen</strong> freigeben oder ablehnen.</li>
+  <li><strong>Termine abrechnen.</strong> Der Anteil wird allen vom Guthaben
+      abgezogen und per Mail mitgeteilt.</li>
+  <li><strong>Termine absagen</strong> — mit der Wahl:
+      <em>Preis reduzieren</em> (Gesamtpreis sinkt, übrige Termine bleiben
+      gleich) oder <em>umlegen</em> (Gesamtpreis bleibt, übrige Termine werden
+      teurer).</li>
+  <li><strong>Zusatztermine anlegen</strong> — eigenes Budget außerhalb des
+      Abo-Preises, alle zahlen gleich viel.</li>
+  <li><strong>Gastzahlungen abhaken</strong>, sobald das Geld da ist.</li>
+  <li>Statt des Maximalpreises die <strong>volle Preisstaffel</strong> sehen.</li>
+</ul>
+<div class="warn"><strong>Abrechnungen sind endgültig.</strong>
+Vorher die Teilnehmerliste prüfen. Unterhalb der Mindestteilnehmerzahl lässt
+sich gar nicht abrechnen — dann den Termin absagen. Termine nach ihrem Datum
+rechnet die App ohnehin von selbst ab; liegen bleiben nur die mit einem
+Hindernis.</div>
+
+<h2>Als Gast — ohne Konto</h2>
+<div class="cols">
+<div>
+<ol>
+  <li>Den Link öffnen, den dir jemand geschickt hat. Er gilt für
+      <strong>einen</strong> Termin.</li>
+  <li>Name, E-Mail und Anzahl Personen eintragen — du zählst mit.</li>
+  <li>Die Bestätigung nennt den Höchstbetrag und die PayPal-Adresse.</li>
+  <li>Nach dem Termin kommt eine Mail mit dem endgültigen Betrag. Der kann nur
+      niedriger sein. Name und Termin in den Verwendungszweck.</li>
+</ol>
+<div class="warn"><strong>Abmelden geht nur persönlich.</strong>
+Als Gast kannst du deine Buchung nicht online zurücknehmen — sag der Person
+Bescheid, die dir den Link geschickt hat.</div>
+</div>
+<div>
+<div class="figrow">
+  <figure>
+    <img src="screenshots/17-gast-buchung.png" alt="Gastbuchungsseite">
+    <figcaption>Gastseite</figcaption>
+  </figure>
+  <figure>
+    <img src="screenshots/18-gast-bestaetigung.png" alt="Bestätigung der Gastbuchung">
+    <figcaption>Bestätigung</figcaption>
+  </figure>
+</div>
+</div>
+</div>
+
+<h2>E-Mails</h2>
+<table>
+<thead><tr><th>Mail</th><th>Wann</th><th>Was tun</th></tr></thead>
+<tbody>
+<tr><td class="nowrap">Dein Anmelde-Link</td><td>nach Eingabe deiner Adresse</td><td>Link klicken oder Code eingeben (15 Min. gültig)</td></tr>
+<tr><td class="nowrap">Erinnerung: Abmeldefrist</td><td>1 Tag vor Ende der freien Abmeldung</td><td>nur wenn du <em>nicht</em> kannst: jetzt abmelden</td></tr>
+<tr><td class="nowrap">Erinnerung: Termin <em>(Gast)</em></td><td>zum selben Zeitpunkt</td><td>wenn du nicht kannst: dem Organisator Bescheid geben</td></tr>
+<tr><td class="nowrap">Nachgerückt</td><td>Platz auf einem vollen Termin frei geworden</td><td>nichts — du bist fest angemeldet</td></tr>
+<tr><td class="nowrap">Storno-Anfrage <span class="super">⭐</span></td><td>jemand will sich nach Fristablauf abmelden</td><td>freigeben oder ablehnen</td></tr>
+<tr><td class="nowrap">Abrechnung</td><td>Termin wurde abgerechnet</td><td>bei negativem Guthaben zahlen</td></tr>
+<tr><td class="nowrap">Abrechnung <em>(Gast)</em></td><td>Termin wurde abgerechnet</td><td>Betrag per PayPal zahlen</td></tr>
+</tbody>
+</table>
+
+<h2>Ich will …</h2>
+<table>
+<thead><tr><th>…</th><th>wo</th></tr></thead>
+<tbody>
+<tr><td>mich anmelden</td><td>📅 Termine → <em>Anmelden</em></td></tr>
+<tr><td>Gäste mitbringen</td><td>📅 Termine → Feld <em>Gäste</em>, dann <em>Anmelden</em></td></tr>
+<tr><td>mich abmelden</td><td>📅 Termine → <em>Abmelden</em> / <em>Abmeldung anfragen</em></td></tr>
+<tr><td>auf die Warteliste</td><td>📅 Termine → <em>Auf die Warteliste</em></td></tr>
+<tr><td>sehen, wer dabei ist</td><td>Terminkarte antippen</td></tr>
+<tr><td>meine Anmeldungen sehen</td><td>✅ Meine</td></tr>
+<tr><td>mein Guthaben prüfen</td><td>💶 Konto</td></tr>
+<tr><td>eine erhaltene Zahlung bestätigen</td><td>💶 Konto → <em>Zahlungseingang bestätigen</em></td></tr>
+<tr><td>das Abo wechseln</td><td>Umschalter oben auf dem Dashboard</td></tr>
+<tr><td>die App aufs Handy legen</td><td>Android: Chrome ⋮ → <em>App installieren</em> · iPhone: Safari → Teilen → <em>Zum Home-Bildschirm</em></td></tr>
+<tr><td>einen Termin abrechnen <span class="super">⭐</span></td><td>⚙️ Verwaltung → <em>Abrechnen</em></td></tr>
+<tr><td>eine Storno-Anfrage bearbeiten <span class="super">⭐</span></td><td>⚙️ Verwaltung → <em>Freigeben</em> / <em>Ablehnen</em></td></tr>
+<tr><td>einen Zusatztermin anlegen <span class="super">⭐</span></td><td>⚙️ Verwaltung → <em>Zusatztermin anlegen</em></td></tr>
+<tr><td>eine Gastzahlung abhaken <span class="super">⭐</span></td><td>Terminkarte antippen → Gästeliste → <em>Bezahlt</em></td></tr>
+</tbody>
+</table>
+
+<footer><span class="super">⭐</span> = nur für Super-Mitglieder.
+Screenshots aus einer Demo-Installation mit erfundenen Daten.</footer>
+
+</body>
+</html>

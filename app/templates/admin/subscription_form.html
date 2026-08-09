@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}{% if subscription %}Abo bearbeiten{% else %}Neues Abo{% endif %} — SportAbo{% endblock %}
+{% block nav_title %}{% if subscription %}Bearbeiten: {{ subscription.name }}{% else %}Neues Abo{% endif %}{% endblock %}
+{% block nav_links %}
+<a href="/admin/dashboard">Übersicht</a>
+<a href="/admin/logout">Abmelden</a>
+{% endblock %}
+{% block content %}
+<div class="card">
+    <form method="post" action="{% if subscription %}/admin/subscription/{{ subscription.id }}/edit{% else %}/admin/subscription/new{% endif %}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="form-group">
+            <label for="name">Name</label>
+            <input type="text" id="name" name="name" value="{{ subscription.name if subscription else '' }}" required>
+        </div>
+        <div class="form-group">
+            <label for="description">Beschreibung</label>
+            <textarea id="description" name="description">{{ subscription.description if subscription else '' }}</textarea>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="weekday">Wochentag</label>
+                <select id="weekday" name="weekday" required>
+                    {% for day in weekdays_de %}
+                    <option value="{{ loop.index0 }}" {% if subscription and subscription.weekday == loop.index0 %}selected{% endif %}>{{ day }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="start_hour">Beginn (Stunde)</label>
+                <input type="number" id="start_hour" name="start_hour" min="0" max="23" value="{{ subscription.start_time.hour if subscription else 18 }}" required>
+            </div>
+            <div class="form-group">
+                <label for="start_minute">Beginn (Minute)</label>
+                <input type="number" id="start_minute" name="start_minute" min="0" max="59" value="{{ subscription.start_time.minute if subscription else 0 }}" required>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="duration_minutes">Dauer (Minuten)</label>
+                <input type="number" id="duration_minutes" name="duration_minutes" min="30" value="{{ subscription.duration_minutes if subscription else 120 }}" required>
+            </div>
+            <div class="form-group">
+                <label for="min_participants">Min. Teilnehmer</label>
+                <input type="number" id="min_participants" name="min_participants" min="1" value="{{ subscription.min_participants if subscription else 4 }}" required>
+            </div>
+            <div class="form-group">
+                <label for="max_participants">Max. Teilnehmer</label>
+                <input type="number" id="max_participants" name="max_participants" min="1" value="{{ subscription.max_participants if subscription else 12 }}" required>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="start_date">Erster Termin ab</label>
+                <input type="date" id="start_date" name="start_date" value="{{ subscription.start_date if subscription else '' }}" required>
+            </div>
+            <div class="form-group">
+                <label for="end_date">Letzter Termin bis</label>
+                <input type="date" id="end_date" name="end_date" value="{{ subscription.end_date if subscription else '' }}" required>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="abo_price">Abo-Preis gesamt (€)</label>
+                <input type="number" id="abo_price" name="abo_price" min="0" step="0.50" value="{{ subscription.abo_price if subscription else 100.00 }}" required>
+            </div>
+            <div class="form-group">
+                <label for="default_price">Normalpreis gesamt (€)</label>
+                <input type="number" id="default_price" name="default_price" min="0" step="0.50" value="{{ subscription.default_price if subscription else 130.00 }}" required>
+            </div>
+        </div>
+        <p class="muted small">Jeder Termin bekommt sein Budget: Gesamtpreis ÷ Anzahl Termine. Das Budget teilen sich die Teilnehmer — Mitglieder über den Abo-Preis, Gäste über den Normalpreis. Ein Termin findet erst ab der Mindestteilnehmerzahl statt.</p>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="cancel_hours_free">Abmelden ohne Freigabe (Stunden vor Beginn)</label>
+                <input type="number" id="cancel_hours_free" name="cancel_hours_free" min="0" value="{{ subscription.cancel_hours_free if subscription else 48 }}" required>
+            </div>
+            <div class="form-group">
+                <label for="cancel_hours_approval">Abmelden mit Super-Freigabe (Stunden vor Beginn)</label>
+                <input type="number" id="cancel_hours_approval" name="cancel_hours_approval" min="0" value="{{ subscription.cancel_hours_approval if subscription else 0 }}" required>
+            </div>
+        </div>
+        <p class="muted small">Beispiel: 48 / 0 = bis 48 Stunden vor Beginn frei abmeldbar, danach bis zum Beginn nur mit Freigabe durch ein Super-Mitglied.</p>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="payout_mode">Zahlungen gehen an</label>
+                <select id="payout_mode" name="payout_mode">
+                    <option value="central" {% if not subscription or subscription.payout_mode == 'central' %}selected{% endif %}>Zentrale PayPal-Adresse (unten)</option>
+                    <option value="member" {% if subscription and subscription.payout_mode == 'member' %}selected{% endif %}>Mitglied mit höchstem Guthaben (Vorstrecker)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="paypal_address">Zentrale PayPal-Adresse</label>
+                <input type="text" id="paypal_address" name="paypal_address" value="{{ subscription.paypal_address if subscription else '' }}" placeholder="paypal@example.com">
+            </div>
+        </div>
+        <p class="muted small">„Vorstrecker“-Modus: Zahlungsaufforderungen (Abrechnungsmail, Gastbestätigung) nennen das Mitglied mit dem höchsten Guthaben und dessen PayPal-Adresse. Eingehende Zahlungen erfasst du beim zahlenden Mitglied unter „Zahlung an Mitglied erfassen“ — dabei sinkt das Guthaben des Empfängers entsprechend.</p>
+        <button type="submit" class="btn btn-primary btn-block">
+            {% if subscription %}Speichern{% else %}Abo anlegen{% endif %}
+        </button>
+    </form>
+</div>
+
+{% if subscription %}
+<div class="card">
+    <h2>Abo löschen</h2>
+    <p class="muted small">Löscht das Abo <strong>endgültig</strong> — inklusive aller Termine, Anmeldungen, Gastbuchungen, Mitglieder und deren Kontoauszüge. Die Nutzerablage bleibt erhalten. Zur Bestätigung den Abo-Namen eintippen:</p>
+    <form method="post" action="/admin/subscription/{{ subscription.id }}/delete" class="form-inline mt-1"
+          onsubmit="return confirm('Wirklich ALLES zu „{{ subscription.name }}“ unwiderruflich löschen?')">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="form-group">
+            <label for="confirm_name">Abo-Name</label>
+            <input type="text" id="confirm_name" name="confirm_name" placeholder="{{ subscription.name }}" required>
+        </div>
+        <button type="submit" class="btn btn-danger">Endgültig löschen</button>
+    </form>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% block title %}{% if member %}Mitglied bearbeiten{% else %}Neues Mitglied{% endif %} — SportAbo{% endblock %}
+{% block nav_title %}{% if member %}Bearbeiten: {{ member.name }}{% else %}Neues Mitglied{% endif %}{% endblock %}
+{% block nav_links %}
+<a href="/admin/subscription/{{ subscription.id }}">Zurück</a>
+<a href="/admin/dashboard">Übersicht</a>
+<a href="/admin/logout">Abmelden</a>
+{% endblock %}
+{% block content %}
+{% if not member and persons_available %}
+<div class="card narrow">
+    <h2>Aus Nutzerablage übernehmen</h2>
+    <p class="muted small">Bereits bekannte Personen (aus anderen Abos) direkt übernehmen — Name, E-Mail und PayPal werden kopiert.</p>
+    <form method="post" action="/admin/subscription/{{ subscription.id }}/members/add-existing" class="mt-1">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="form-row">
+            <div class="form-group">
+                <label for="person_id">Person</label>
+                <select id="person_id" name="person_id" required>
+                    {% for p in persons_available %}
+                    <option value="{{ p.id }}">{{ p.name }} ({{ p.email }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="p_credit">Startguthaben (€)</label>
+                <input type="number" id="p_credit" name="credit" step="0.50" value="0.00">
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Übernehmen</button>
+    </form>
+</div>
+{% endif %}
+
+<div class="card narrow">
+    <h2>{% if member %}Stammdaten{% else %}Neues Mitglied{% if persons_available %} (neue Person){% endif %}{% endif %}</h2>
+    <form method="post" action="{% if member %}/admin/member/{{ member.id }}/edit{% else %}/admin/subscription/{{ subscription.id }}/members/new{% endif %}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="form-group">
+            <label for="name">Name</label>
+            <input type="text" id="name" name="name" value="{{ member.name if member else '' }}" required>
+        </div>
+        <div class="form-group">
+            <label for="email">E-Mail</label>
+            <input type="email" id="email" name="email" value="{{ member.email if member else '' }}" required>
+        </div>
+        <div class="form-group">
+            <label for="paypal_address">PayPal-Adresse (für „Vorstrecker“-Zahlungsmodus)</label>
+            <input type="text" id="paypal_address" name="paypal_address" value="{{ member.paypal_address if member else '' }}" placeholder="paypal@example.com">
+        </div>
+        <p class="muted small">Kein Passwort nötig — Mitglieder melden sich per Login-Link an ihre E-Mail-Adresse an.</p>
+        {% if not member %}
+        <div class="form-group">
+            <label for="credit">Startguthaben (€)</label>
+            <input type="number" id="credit" name="credit" step="0.50" value="0.00">
+        </div>
+        {% endif %}
+        {% if member %}
+        <div class="form-group">
+            <label>
+                <input type="checkbox" name="is_active" value="true" {% if member.is_active %}checked{% endif %}>
+                Aktiv
+            </label>
+        </div>
+        <div class="form-group">
+            <label>
+                <input type="checkbox" name="is_super" value="true" {% if member.is_super %}checked{% endif %}>
+                Super-Mitglied (darf Termine absagen, Zusatztermine anlegen, abrechnen und Teilnehmer sehen)
+            </label>
+        </div>
+        {% endif %}
+        <button type="submit" class="btn btn-primary btn-block">
+            {% if member %}Speichern{% else %}Mitglied anlegen{% endif %}
+        </button>
+    </form>
+    {% if member %}
+    {% if deletable %}
+    <form method="post" action="/admin/member/{{ member.id }}/delete" class="mt-1"
+          onsubmit="return confirm('Mitglied „{{ member.name }}“ endgültig aus diesem Abo löschen? Der Eintrag in der Nutzerablage bleibt erhalten.')">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="btn btn-danger btn-block">Mitglied löschen</button>
+    </form>
+    {% else %}
+    <p class="muted small mt-1">Löschen nicht möglich: Es existieren Anmeldungen oder Kontobewegungen. Stattdessen den Haken „Aktiv“ entfernen.</p>
+    {% endif %}
+    {% endif %}
+</div>
+
+{% if member %}
+<div class="card narrow">
+    <h2>Guthaben buchen</h2>
+    <p class="muted small">Aktuelles Guthaben: <strong>{{ member.credit|euro }}</strong>. Negativer Betrag = Korrektur/Auszahlung.</p>
+    <form method="post" action="/admin/member/{{ member.id }}/add-credit" class="mt-1">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="form-row">
+            <div class="form-group">
+                <label for="amount">Betrag (€)</label>
+                <input type="number" id="amount" name="amount" step="0.50" required>
+            </div>
+            <div class="form-group">
+                <label for="note">Notiz</label>
+                <input type="text" id="note" name="note" placeholder="z. B. Überweisung 01.07.">
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Buchen</button>
+    </form>
+</div>
+
+{% if other_members %}
+<div class="card narrow">
+    <h2>Zahlung an Mitglied erfassen</h2>
+    <p class="muted small">{{ member.name }} hat einem anderen Mitglied Geld gezahlt (z. B. an den Vorstrecker): Guthaben von {{ member.name }} steigt, das des Empfängers sinkt.</p>
+    <form method="post" action="/admin/member/{{ member.id }}/transfer" class="mt-1">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="form-row">
+            <div class="form-group">
+                <label for="payee_id">Empfänger</label>
+                <select id="payee_id" name="payee_id" required>
+                    {% for m in other_members %}
+                    <option value="{{ m.id }}">{{ m.name }} ({{ m.credit|euro }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="t_amount">Betrag (€)</label>
+                <input type="number" id="t_amount" name="amount" min="0.50" step="0.50" required>
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="t_note">Notiz</label>
+            <input type="text" id="t_note" name="note" placeholder="z. B. PayPal 04.07.">
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Zahlung erfassen</button>
+    </form>
+</div>
+{% endif %}
+
+<div class="card">
+    <h2>Kontoauszug</h2>
+    {% if payments %}
+    <div class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>Datum</th>
+                <th>Art</th>
+                <th>Notiz</th>
+                <th class="num">Betrag</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in payments %}
+            <tr>
+                <td>{{ p.created_at|date_de }}</td>
+                <td>{% if p.type == 'charge' %}<span class="badge badge-warning">Teilnahme</span>{% else %}<span class="badge badge-success">Einzahlung</span>{% endif %}</td>
+                <td>{{ p.note }}</td>
+                <td class="num">{{ p.amount|euro }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% else %}
+    <p class="muted">Noch keine Buchungen.</p>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

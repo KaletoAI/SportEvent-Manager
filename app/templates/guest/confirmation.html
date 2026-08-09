@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Buchung bestätigt{% endblock %}
+{% block nav_title %}Buchung bestätigt{% endblock %}
+{% block content %}
+<div class="card narrow mt-1 center">
+    <div class="emoji-big">✅</div>
+    <h2>Danke, {{ name }}!</h2>
+    <p>Deine Buchung für <strong>{{ event.date|date_de }}, {{ event.start_time|time_de }} Uhr</strong> ist bestätigt.</p>
+    <p class="mt-1">
+        <strong>{{ count }} Person{% if count > 1 %}en{% endif %}</strong> gebucht.<br>
+        <strong>Maximal: {{ total_price|euro }}</strong>
+    </p>
+    <p class="muted small">Der endgültige Betrag steht nach dem Termin fest (Terminkosten ÷ Teilnehmerzahl) und kann nur günstiger werden — der angezeigte Betrag gilt bei der Mindestteilnehmerzahl.</p>
+    {% if paypal %}
+    <div class="card card-sub mt-1">
+        <h3>Bezahlung</h3>
+        <p>Bitte sende den Betrag nach dem Termin per PayPal an{% if payee_name %} {{ payee_name }}{% endif %}:</p>
+        <p class="highlight">{{ paypal }}</p>
+        <p class="muted small">Bitte Name und Termindatum im Verwendungszweck angeben.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

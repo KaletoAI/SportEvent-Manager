@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Admin-Übersicht — SportAbo{% endblock %}
+{% block nav_title %}SportAbo Admin{% endblock %}
+{% block nav_links %}
+<a href="/admin/logout">Abmelden</a>
+{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="flex-between">
+        <h2>Abos</h2>
+        <a href="/admin/subscription/new" class="btn btn-primary">+ Neues Abo</a>
+    </div>
+    {% if subscriptions %}
+    <div class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Zeitraum</th>
+                <th class="num">Abo-Preis (gesamt)</th>
+                <th class="num">Normalpreis (gesamt)</th>
+                <th>Aktionen</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for sub in subscriptions %}
+            <tr>
+                <td><a href="/admin/subscription/{{ sub.id }}">{{ sub.name }}</a></td>
+                <td>{{ sub.start_date|date_de }} – {{ sub.end_date|date_de }}</td>
+                <td class="num">{{ sub.abo_price|euro }}</td>
+                <td class="num">{{ sub.default_price|euro }}</td>
+                <td>
+                    <div class="actions">
+                        <a href="/admin/subscription/{{ sub.id }}/edit" class="btn btn-outline btn-sm">Bearbeiten</a>
+                        <a href="/admin/subscription/{{ sub.id }}/stats" class="btn btn-outline btn-sm">Auswertung</a>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% else %}
+    <p class="muted">Noch keine Abos. Lege eines an, um zu starten.</p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h2>Test-Datum (Debug)</h2>
+    <p class="muted small">Überschreibt temporär das Systemdatum — z. B. um die Abrechnung zukünftiger Termine zu testen. Gilt für alle Datumsprüfungen (Buchen, Stornieren, Abrechnen, „kommende Termine“). Nach dem Test zurücksetzen!</p>
+    <p class="mt-1">Aktuelles Systemdatum: <strong>{{ today|date_de }}</strong>{% if date_override %} <span class="badge badge-danger">Override aktiv</span>{% else %} <span class="badge badge-success">echtes Datum</span>{% endif %}</p>
+    <form method="post" action="/admin/test-date" class="form-inline mt-1">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="form-group">
+            <label for="test_date">Datum</label>
+            <input type="date" id="test_date" name="test_date" value="{{ date_override or '' }}">
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">Setzen</button>
+    </form>
+    {% if date_override %}
+    <form method="post" action="/admin/test-date" class="mt-1">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="test_date" value="">
+        <button type="submit" class="btn btn-danger btn-sm">Zurücksetzen (echtes Datum)</button>
+    </form>
+    {% endif %}
+</div>
+{% endblock %}

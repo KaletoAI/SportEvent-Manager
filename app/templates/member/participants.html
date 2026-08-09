@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+{% block title %}Teilnehmer {{ event.date|date_de }} — SportAbo{% endblock %}
+{% block nav_title %}Teilnehmer: {{ event.date|date_de }}{% if event.is_extra %} (Zusatz){% endif %}{% endblock %}
+{% block nav_links %}
+<a href="/member/dashboard">← Zurück</a>
+{% endblock %}
+{% block content %}
+<div class="stat-grid">
+    <div class="stat-card"><div class="value">{{ total_booked }} / {{ event.max_participants }}</div><div class="label">Belegt (min. {{ event.min_participants }})</div></div>
+    <div class="stat-card"><div class="value">{{ event.abo_budget|euro }}</div><div class="label">Budget (Abo)</div></div>
+    <div class="stat-card"><div class="value">{{ shares.member_share|euro }}</div><div class="label">Mitglieder-Anteil{% if not event.settled_at %} (aktuell){% endif %}</div></div>
+    {% if my_charge %}
+    <div class="stat-card"><div class="value">{{ (-my_charge.amount)|euro }}</div><div class="label">Dein Anteil (abgerechnet)</div></div>
+    {% endif %}
+</div>
+{% set member_spots = bookings|sum(attribute='guest_count') + bookings|length %}
+<p class="muted small">Belegung: {{ member_spots }} über Mitglieder-Anmeldungen (inkl. deren Gäste) + {{ total_booked - member_spots }} über Gastlink = <strong>{{ total_booked }} Teilnehmer</strong>.</p>
+{% if event.settled_at %}
+<p class="muted small">Abgerechnet am {{ event.settled_at|date_de }} mit {{ shares.participants }} Teilnehmern.</p>
+{% endif %}
+
+{% if member.is_super and not event.is_cancelled and not event.settled_at and not is_past %}
+<div class="card">
+    <h2>Termin stornieren</h2>
+    {% if event.is_extra %}
+    <form method="post" action="/member/event/{{ event.id }}/cancel" class="inline"
+          onsubmit="return confirm('Zusatztermin wirklich stornieren?')">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="btn btn-danger">Zusatztermin stornieren</button>
+    </form>
+    {% else %}
+    <p class="muted small">Fällt der Termin aus? Zwei Möglichkeiten: Abo-Gesamtpreis um das Termin-Budget ({{ event.abo_budget|euro }}) senken, oder das Budget auf die restlichen Termine umlegen (die werden dann teurer).</p>
+    <div class="actions mt-1">
+        <form method="post" action="/member/event/{{ event.id }}/cancel" class="inline"
+              onsubmit="return confirm('Termin stornieren und Gesamtpreis um {{ event.abo_budget|euro }} reduzieren?')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="reduce_price" value="yes">
+            <button type="submit" class="btn btn-danger">Stornieren − Preis reduzieren</button>
+        </form>
+        <form method="post" action="/member/event/{{ event.id }}/cancel" class="inline"
+              onsubmit="return confirm('Termin stornieren und Budget auf die restlichen Termine umlegen?')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="reduce_price" value="no">
+            <button type="submit" class="btn btn-danger">Stornieren + umlegen</button>
+        </form>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+{% if guest_link and not event.is_cancelled and not is_past and not event.settled_at %}
+<div class="card">
+    <h2>Gastlink</h2>
+    <p class="muted small">Diesen Link kannst du an Gäste weitergeben — Buchung ohne Konto:</p>
+    <div class="copy-row mt-1">
+        <input type="text" id="guest-link" value="{{ guest_link }}" readonly onclick="this.select()">
+        <button type="button" class="btn btn-outline btn-sm"
+                onclick="navigator.clipboard.writeText(document.getElementById('guest-link').value).then(() => { this.textContent = 'Kopiert ✓'; setTimeout(() => this.textContent = 'Kopieren', 2000); })">Kopieren</button>
+    </div>
+</div>
+{% endif %}
+
+{% if event.settled_at %}
+<div class="card">
+    <h2>Preis</h2>
+    <p>Abgerechnet mit <strong>{{ shares.participants }}</strong> Teilnehmern:
+       Mitglieder <strong>{{ shares.member_share|euro }}</strong>{% if not event.is_extra %}, Gäste <strong>{{ shares.guest_share|euro }}</strong>{% endif %} pro Person.</p>
+</div>
+{% elif is_past %}
+<div class="card">
+    <h2>Preis</h2>
+    <p>Der Termin ist vorbei, die Abrechnung steht noch aus. Bei {{ total_booked }} Teilnehmern:
+       Mitglieder <strong>{{ shares.member_share|euro }}</strong>{% if not event.is_extra %}, Gäste <strong>{{ shares.guest_share|euro }}</strong>{% endif %} pro Person.</p>
+</div>
+{% elif member.is_super %}
+<div class="card">
+    <h2>Preisstaffel</h2>
+    <div class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th class="num">Teilnehmer</th>
+                <th class="num">Mitglied zahlt</th>
+                {% if not event.is_extra %}<th class="num">Gast zahlt</th>{% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for t in tiers %}
+            <tr{% if t.n == total_booked %} class="total"{% endif %}>
+                <td class="num">{{ t.n }}{% if t.n == total_booked %} (aktuell){% endif %}</td>
+                <td class="num">{{ t.member|euro }}</td>
+                {% if not event.is_extra %}<td class="num">{{ t.guest|euro }}</td>{% endif %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <h2>Preis</h2>
+    <p>Maximal <strong>{{ tiers[0].member|euro }}</strong> pro Person (bei Mindestteilnehmerzahl) — je mehr mitmachen, desto günstiger. Der endgültige Preis steht bei der Abrechnung fest.</p>
+</div>
+{% endif %}
+
+<div class="card">
+    <h2>Mitglieder</h2>
+    {% if bookings %}
+    <div class="table-wrap">
+    <table>
+        <thead>
+            <tr><th>Name</th><th class="num">Gäste</th><th class="num">Plätze</th></tr>
+        </thead>
+        <tbody>
+            {% for b in bookings %}
+            <tr>
+                <td>{{ b.member.name }}</td>
+                <td class="num">{{ b.guest_count }}</td>
+                <td class="num">{{ b.guest_count + 1 }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% else %}
+    <p class="muted">Keine Anmeldungen.</p>
+    {% endif %}
+</div>
+
+{% if waitlist %}
+<div class="card">
+    <h2>Warteliste</h2>
+    <div class="table-wrap">
+    <table>
+        <thead>
+            <tr><th class="num">Platz</th><th>Name</th></tr>
+        </thead>
+        <tbody>
+            {% for w in waitlist %}
+            <tr>
+                <td class="num">{{ loop.index }}</td>
+                <td>{{ w.member.name }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    <p class="muted small">Wird ein Platz frei, rückt Platz 1 automatisch nach und wird per E-Mail informiert.</p>
+</div>
+{% endif %}
+
+<div class="card">
+    <h2>Gäste (über Gastlink)</h2>
+    {% if guest_bookings %}
+    <div class="table-wrap">
+    <table>
+        <thead>
+            <tr><th>Name</th>{% if member.is_super %}<th>E-Mail</th>{% endif %}<th class="num">Personen</th>{% if member.is_super %}<th class="num">Anteil</th><th>Bezahlt</th>{% endif %}</tr>
+        </thead>
+        <tbody>
+            {% for g in guest_bookings %}
+            <tr>
+                <td>{{ g.name }}</td>
+                {% if member.is_super %}<td>{{ g.email }}</td>{% endif %}
+                <td class="num">{{ g.count }}</td>
+                {% if member.is_super %}
+                <td class="num">{{ (g.count * shares.guest_share)|euro }}</td>
+                <td>
+                    {% if g.paid_at %}
+                    <div class="paid-form">
+                        <span class="badge badge-success">✓ {{ g.paid_amount|euro }}</span>
+                        <form method="post" action="/member/guest-booking/{{ g.id }}/unpaid" class="inline"
+                              onsubmit="return confirm('Bezahlt-Markierung von {{ g.name }} stornieren?{% if g.paid_member_id %} Die Gegenbuchung wird rückgebucht.{% endif %}')">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                            <button type="submit" class="btn btn-outline btn-sm">Storno</button>
+                        </form>
+                    </div>
+                    {% else %}
+                    <form method="post" action="/member/guest-booking/{{ g.id }}/paid" class="paid-form"
+                          onsubmit="return confirm('Zahlung von {{ g.name }} als erhalten verbuchen?')">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <input type="number" name="amount" min="0.01" step="0.01"
+                               value="{{ '%.2f'|format(g.count * shares.guest_share) }}" title="Erhaltener Betrag in Euro">
+                        <button type="submit" class="btn btn-primary btn-sm">Bezahlt ✓</button>
+                    </form>
+                    {% endif %}
+                </td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% if member.is_super %}
+    <p class="muted small">Anteil per PayPal einsammeln und hier abhaken. Im Vorstreck-Modell sinkt dabei das Guthaben des Zahlungsempfängers um den erhaltenen Betrag (Gegenbuchung).</p>
+    {% endif %}
+    {% else %}
+    <p class="muted">Keine Gastbuchungen.</p>
+    {% endif %}
+</div>
+{% endblock %}

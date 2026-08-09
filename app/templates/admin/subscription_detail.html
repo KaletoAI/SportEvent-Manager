@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}{{ subscription.name }} — SportAbo{% endblock %}
+{% block nav_title %}{{ subscription.name }}{% endblock %}
+{% block nav_links %}
+<a href="/admin/dashboard">Übersicht</a>
+<a href="/admin/logout">Abmelden</a>
+{% endblock %}
+{% block content %}
+<div class="stat-grid">
+    <div class="stat-card"><div class="value">{{ events|length }}</div><div class="label">Termine</div></div>
+    <div class="stat-card"><div class="value">{{ members|length }}</div><div class="label">Mitglieder</div></div>
+    <div class="stat-card"><div class="value">{{ subscription.abo_price|euro }}</div><div class="label">Abo-Preis gesamt</div></div>
+    <div class="stat-card"><div class="value">{{ subscription.default_price|euro }}</div><div class="label">Normalpreis gesamt</div></div>
+    <div class="stat-card"><div class="value">{{ subscription.min_participants }}–{{ subscription.max_participants }}</div><div class="label">Teilnehmer (min–max)</div></div>
+</div>
+
+<div class="tabs" data-tabs>
+    <button type="button" class="tab-btn active" data-tab="termine">📅 Termine</button>
+    <button type="button" class="tab-btn" data-tab="zusatz">➕ Zusatztermin</button>
+    <button type="button" class="tab-btn" data-tab="mitglieder">👥 Mitglieder</button>
+</div>
+
+<section class="tab-panel active" id="tab-termine">
+<div class="card">
+    <div class="flex-between">
+        <h2>Termine</h2>
+        <div class="actions">
+            <form method="post" action="/admin/subscription/{{ subscription.id }}/generate-events" class="inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button type="submit" class="btn btn-primary btn-sm">Termine generieren</button>
+            </form>
+            <a href="/admin/subscription/{{ subscription.id }}/edit" class="btn btn-outline btn-sm">Bearbeiten</a>
+            <a href="/admin/subscription/{{ subscription.id }}/stats" class="btn btn-outline btn-sm">Auswertung</a>
+        </div>
+    </div>
+    {% if events %}
+    <div class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>Datum</th>
+                <th>Uhrzeit</th>
+                <th class="num">Belegt</th>
+                <th class="num">Budget</th>
+                <th>Status</th>
+                <th>Aktionen</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for event in events %}
+            <tr>
+                <td>{{ event.date|date_de }}{% if event.is_extra %} <span class="badge badge-warning">Zusatz</span>{% endif %}</td>
+                <td>{{ event.start_time|time_de }} – {{ event.end_time|time_de }}</td>
+                <td class="num">{{ booked_by_event[event.id] }} / {{ event.max_participants }}</td>
+                <td class="num">{{ event.abo_budget|euro }}</td>
+                <td>
+                    {% if event.is_cancelled %}<span class="badge badge-danger">Abgesagt</span>
+                    {% elif event.settled_at %}<span class="badge badge-muted">Abgerechnet</span>
+                    {% elif event.date < today %}<span class="badge badge-warning">Offen</span>
+                    {% elif booked_by_event[event.id] < event.min_participants %}<span class="badge badge-warning">Noch {{ event.min_participants - booked_by_event[event.id] }} bis Mindestzahl</span>
+                    {% else %}<span class="badge badge-success">Findet statt</span>{% endif %}
+                </td>
+                <td><a href="/admin/event/{{ event.id }}" class="btn btn-outline btn-sm">Details</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% else %}
+    <p class="muted">Noch keine Termine. Klicke auf „Termine generieren“.</p>
+    {% endif %}
+</div>
+</section>
+
+<section class="tab-panel" id="tab-zusatz">
+<div class="card">
+    <h2>Zusatztermin anlegen</h2>
+    <p class="muted small">Zusatztermine fallen nicht in den Abo-Gesamtpreis: Sie haben ein eigenes Budget, das sich alle Teilnehmer (Mitglieder wie Gäste) gleich teilen.</p>
+    <form method="post" action="/admin/subscription/{{ subscription.id }}/extra-event" class="mt-1">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="form-row">
+            <div class="form-group">
+                <label for="event_date">Datum</label>
+                <input type="date" id="event_date" name="event_date" required>
+            </div>
+            <div class="form-group">
+                <label for="x_start_hour">Beginn (Std.)</label>
+                <input type="number" id="x_start_hour" name="start_hour" min="0" max="23" value="{{ subscription.start_time.hour }}" required>
+            </div>
+            <div class="form-group">
+                <label for="x_start_minute">Beginn (Min.)</label>
+                <input type="number" id="x_start_minute" name="start_minute" min="0" max="59" value="{{ subscription.start_time.minute }}" required>
+            </div>
+            <div class="form-group">
+                <label for="x_duration">Dauer (Min.)</label>
+                <input type="number" id="x_duration" name="duration_minutes" min="1" value="{{ subscription.duration_minutes }}" required>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="x_budget">Terminkosten gesamt (€)</label>
+                <input type="number" id="x_budget" name="budget" min="0" step="0.50" required>
+            </div>
+            <div class="form-group">
+                <label for="x_min">Min. Teilnehmer</label>
+                <input type="number" id="x_min" name="min_participants" min="1" value="{{ subscription.min_participants }}" required>
+            </div>
+            <div class="form-group">
+                <label for="x_max">Max. Teilnehmer</label>
+                <input type="number" id="x_max" name="max_participants" min="1" value="{{ subscription.max_participants }}" required>
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Zusatztermin anlegen</button>
+    </form>
+</div>
+</section>
+
+<section class="tab-panel" id="tab-mitglieder">
+<div class="card">
+    <div class="flex-between">
+        <h2>Mitglieder</h2>
+        <a href="/admin/subscription/{{ subscription.id }}/members/new" class="btn btn-primary btn-sm">+ Mitglied</a>
+    </div>
+    {% if members %}
+    <div class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>E-Mail</th>
+                <th class="num">Guthaben</th>
+                <th>Status</th>
+                <th>Aktionen</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for member in members %}
+            <tr>
+                <td>{{ member.name }}</td>
+                <td>{{ member.email }}</td>
+                <td class="num">{{ member.credit|euro }}</td>
+                <td>{% if member.is_active %}<span class="badge badge-success">Aktiv</span>{% else %}<span class="badge badge-danger">Inaktiv</span>{% endif %}</td>
+                <td><a href="/admin/member/{{ member.id }}/edit" class="btn btn-outline btn-sm">Bearbeiten</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% else %}
+    <p class="muted">Noch keine Mitglieder.</p>
+    {% endif %}
+</div>
+</section>
+
+<div class="tab-spacer"></div>
+{% endblock %}

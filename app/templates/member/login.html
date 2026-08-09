@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Login — SportAbo{% endblock %}
+{% block nav_title %}Mitglieder-Login{% endblock %}
+{% block content %}
+<div class="hero">
+    <img src="/static/hero.png" alt="SportAbo — Termine, Teilnehmer, Abrechnung">
+</div>
+<div class="card narrow mt-1">
+    <h2>Anmelden</h2>
+    <p class="muted small">Gib deine E-Mail-Adresse ein — du bekommst einen Login-Link zugeschickt (kein Passwort nötig).</p>
+    <form method="post" class="mt-1">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="form-group">
+            <label for="email">E-Mail</label>
+            <input type="email" id="email" name="email" required autofocus>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Login-Link anfordern</button>
+    </form>
+</div>
+{% if code_email %}
+<div class="card narrow">
+    <h2>Code eingeben</h2>
+    <p class="muted small">Gib den 6-stelligen Code aus der E-Mail an <strong>{{ code_email }}</strong> ein:</p>
+    <form method="post" action="/member/login/code" id="code-form" class="mt-1">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="email" value="{{ code_email }}">
+        <input type="hidden" name="code" id="otp-code">
+        <div class="otp-row" id="otp">
+            {% for i in range(6) %}
+            <input class="otp-input" type="text" inputmode="numeric" autocomplete="{% if loop.first %}one-time-code{% else %}off{% endif %}" maxlength="1" aria-label="Ziffer {{ loop.index }}">
+            {% endfor %}
+        </div>
+    </form>
+    <script>
+    (function () {
+        const inputs = Array.from(document.querySelectorAll('.otp-input'));
+        const hidden = document.getElementById('otp-code');
+        const form = document.getElementById('code-form');
+        function sync() {
+            hidden.value = inputs.map(i => i.value).join('');
+            if (hidden.value.length === 6) form.submit();
+        }
+        inputs.forEach((inp, idx) => {
+            inp.addEventListener('input', () => {
+                inp.value = inp.value.replace(/\D/g, '').slice(-1);
+                if (inp.value && idx < 5) inputs[idx + 1].focus();
+                sync();
+            });
+            inp.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace' && !inp.value && idx > 0) inputs[idx - 1].focus();
+            });
+            inp.addEventListener('paste', (e) => {
+                e.preventDefault();
+                const digits = (e.clipboardData.getData('text') || '').replace(/\D/g, '').slice(0, 6);
+                digits.split('').forEach((ch, i) => { if (inputs[i]) inputs[i].value = ch; });
+                if (digits.length) inputs[Math.min(digits.length - 1, 5)].focus();
+                sync();
+            });
+        });
+        inputs[0].focus();
+    })();
+    </script>
+</div>
+{% endif %}
+{% if dev_links %}
+<div class="card narrow">
+    <h2>Dev-Modus: Login-Links</h2>
+    <p class="muted small">Kein SMTP konfiguriert — Links und Code werden nur im Dev-Modus direkt angezeigt:</p>
+    {% for l in dev_links %}
+    <p><a href="{{ l.url }}">{{ l.member.subscription.name }} — {{ l.member.name }}</a></p>
+    {% endfor %}
+    {% if dev_code %}<p>Code: <strong>{{ dev_code }}</strong></p>{% endif %}
+</div>
+{% endif %}
+{% endblock %}

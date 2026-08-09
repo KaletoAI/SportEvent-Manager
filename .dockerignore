@@ -1,0 +1,12 @@
+.env
+.venv
+data/
+tests/
+migrations/
+__pycache__/
+**/__pycache__/
+*.pyc
+.dockerignore
+Dockerfile
+docker-compose.yml
+CLAUDE.md

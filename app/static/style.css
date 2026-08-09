@@ -1,0 +1,395 @@
+/* SportAbo Manager — zentrales Stylesheet.
+   Regeln für die Weiterentwicklung: siehe CLAUDE.md (keine Inline-Styles,
+   nur Klassen/Tokens aus dieser Datei erweitern). */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+    --bg: #f8fafc;
+    --card: #ffffff;
+    --border: #e2e8f0;
+    --text: #1e293b;
+    --text-muted: #64748b;
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+    --danger: #dc2626;
+    --danger-bg: #fee2e2;
+    --success: #16a34a;
+    --success-bg: #dcfce7;
+    --warning: #d97706;
+    --warning-bg: #fef3c7;
+    --radius: 8px;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+}
+
+.container { max-width: 960px; margin: 0 auto; padding: 1rem; }
+.narrow { max-width: 420px; margin-left: auto; margin-right: auto; }
+
+/* ── Cards ─────────────────────────────────────────────────────────── */
+.card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+}
+.card h2 { margin-bottom: 1rem; font-size: 1.2rem; }
+.card-sub { background: var(--bg); }
+
+/* ── Buttons ───────────────────────────────────────────────────────── */
+.btn {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius);
+    border: none;
+    cursor: pointer;
+    font-size: 0.95rem;
+    text-decoration: none;
+    transition: background 0.15s;
+    color: var(--text);
+}
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-hover); }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-success { background: var(--success); color: #fff; }
+.btn-warning { background: var(--warning); color: #fff; }
+.btn-outline { background: transparent; border: 1px solid var(--border); }
+.btn-sm { padding: 0.3rem 0.6rem; font-size: 0.85rem; }
+.btn-block { display: block; width: 100%; text-align: center; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Forms ─────────────────────────────────────────────────────────── */
+input, select, textarea {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 0.95rem;
+    background: var(--card);
+    color: var(--text);
+}
+input[type="checkbox"] { width: auto; }
+label {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+.form-group { margin-bottom: 1rem; }
+.form-row { display: flex; gap: 0.75rem; }
+.form-row .form-group { flex: 1; }
+.form-inline { display: flex; gap: 0.5rem; align-items: flex-end; flex-wrap: wrap; }
+.form-inline .form-group { margin-bottom: 0; }
+
+/* ── Flash messages ────────────────────────────────────────────────── */
+.msg { padding: 0.75rem; border-radius: var(--radius); margin-bottom: 1rem; }
+.msg-success { background: var(--success-bg); color: #166534; border: 1px solid #bbf7d0; }
+.msg-error { background: var(--danger-bg); color: #991b1b; border: 1px solid #fecaca; }
+
+/* ── Tables ────────────────────────────────────────────────────────── */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: 0.5rem; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+th { font-weight: 600; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; }
+td.num, th.num { text-align: right; }
+tr.total td { font-weight: 700; border-top: 2px solid var(--border); }
+
+/* ── Badges ────────────────────────────────────────────────────────── */
+.badge {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+.badge-success { background: var(--success-bg); color: #166534; }
+.badge-danger { background: var(--danger-bg); color: #991b1b; }
+.badge-warning { background: var(--warning-bg); color: #92400e; }
+.badge-muted { background: var(--border); color: var(--text-muted); }
+
+/* ── Navigation ────────────────────────────────────────────────────── */
+nav {
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    padding: 0.6rem 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+nav a {
+    text-decoration: none;
+    color: var(--text);
+    font-weight: 600;
+    margin-left: 0.35rem;
+    padding: 0.45rem 0.8rem;
+    display: inline-block;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--bg);
+}
+nav a:hover { color: var(--primary); border-color: var(--primary); }
+
+/* ── Stat tiles ────────────────────────────────────────────────────── */
+.stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+.stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem;
+    text-align: center;
+}
+.stat-card .value { font-size: 1.4rem; font-weight: 700; }
+.stat-card .value.small { font-size: 0.95rem; }
+.stat-card .value.neg { color: var(--danger); }
+.stat-card .label { font-size: 0.8rem; color: var(--text-muted); }
+
+/* ── Event cards (Member, mobile-first) ────────────────────────────── */
+.event-list { display: flex; flex-direction: column; gap: 0.75rem; }
+.event-item {
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.75rem 1rem;
+}
+.event-item .when { font-weight: 600; }
+.event-item .meta { font-size: 0.85rem; color: var(--text-muted); }
+.event-item .actions { margin-left: auto; justify-content: flex-end; }
+.event-item .book-form { display: flex; gap: 0.5rem; align-items: center; }
+.event-item .book-form input[type="number"] { width: 4.5rem; }
+
+/* Antippbare Karten (data-href): ganze Karte öffnet die Detailseite.
+   Der Chevron-Button rechts ist rein visuell (Kreis in Primärfarbe,
+   vertikal zentriert) — Tippfläche bleibt die gesamte Karte. */
+[data-href] { cursor: pointer; }
+.event-item[data-href]:hover { border-color: var(--primary); }
+.event-item[data-href] { padding-right: 3rem; }
+.event-item[data-href]::after {
+    content: "›";
+    position: absolute;
+    top: 50%;
+    right: 0.7rem;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.7rem;
+    height: 1.7rem;
+    border: 1.5px solid var(--primary);
+    border-radius: 50%;
+    color: var(--primary);
+    font-size: 1.2rem;
+    line-height: 1;
+    padding-bottom: 0.15rem;
+}
+
+/* ── Utilities ─────────────────────────────────────────────────────── */
+.flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
+.actions { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+.muted { color: var(--text-muted); }
+.small { font-size: 0.85rem; }
+.mt-1 { margin-top: 1rem; }
+.mb-0 { margin-bottom: 0; }
+.inline { display: inline; }
+.copy-row { display: flex; gap: 0.5rem; align-items: center; }
+.paid-form { display: flex; gap: 0.35rem; align-items: center; flex-wrap: nowrap; }
+.paid-form input[type="number"] { width: 5.5rem; }
+.center { text-align: center; }
+details > summary { cursor: pointer; }
+details > summary strong { color: var(--primary); }
+details > summary::marker { color: var(--primary); }
+
+.otp-row { display: flex; flex-wrap: nowrap; gap: 0.5rem; justify-content: center; }
+.otp-input {
+    flex: 0 0 auto;
+    width: 2.6rem;
+    height: 3.2rem;
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+    padding: 0;
+    margin: 0;
+}
+.emoji-big { font-size: 3rem; margin-bottom: 1rem; }
+.highlight { font-size: 1.2rem; font-weight: 700; color: var(--primary); }
+.copy-row input { flex: 1; font-size: 0.85rem; color: var(--text-muted); }
+
+/* ── Tabs: Desktop = Reiter oben, Mobil = Bottom-Bar ───────────────── */
+.tabs {
+    display: flex;
+    gap: 0.25rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.25rem;
+    margin-bottom: 1rem;
+    overflow-x: auto;
+}
+.tab-btn {
+    flex: 1;
+    padding: 0.6rem 0.75rem;
+    border: none;
+    background: transparent;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    color: var(--text-muted);
+}
+.tab-btn.active { background: var(--primary); color: #fff; }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+.tab-spacer { display: none; }
+
+@media (max-width: 640px) {
+    .container { padding: 0.5rem; }
+    .card { padding: 1rem; }
+    .form-row { flex-direction: column; gap: 0; }
+
+    /* Touch-Ziele: alle Buttons mindestens so groß wie "Abmelden" (44px) */
+    .btn, .btn-sm {
+        min-height: 44px;
+        padding: 0.6rem 0.9rem;
+        font-size: 0.95rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+    input, select, textarea { min-height: 44px; }
+
+    .tabs {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 50;
+        margin: 0;
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+        border-bottom: none;
+        box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
+        padding: 0.5rem 0.5rem calc(0.5rem + env(safe-area-inset-bottom));
+        gap: 0.35rem;
+    }
+    .tab-btn {
+        font-size: 0.95rem;
+        padding: 0.9rem 0.25rem;
+        min-height: 52px;
+    }
+    .tab-spacer { display: block; height: 6rem; }
+}
+
+/* ── Dark Theme ──────────────────────────────────────────────────────
+   Gesteuert über <html data-theme="dark|light">: ein Inline-Skript im
+   <head> setzt beim Laden die Systemvorgabe, der 🌙-Button in der Nav
+   überschreibt sie pro Gerät (localStorage). */
+:root[data-theme="dark"] {
+    --bg: #0b1220;
+    --card: #131c30;
+    --border: #24304d;
+    --text: #e6ecf7;
+    --text-muted: #93a4c3;
+    --primary: #4f8cff;
+    --primary-hover: #74a6ff;
+    --danger: #f87171;
+    --danger-bg: #3a1b1e;
+    --success: #34d399;
+    --success-bg: #123326;
+    --warning: #fbbf24;
+    --warning-bg: #38290e;
+}
+[data-theme="dark"] body {
+    background:
+        radial-gradient(1000px 500px at 85% -10%, rgba(79, 140, 255, 0.14), transparent 60%),
+        radial-gradient(700px 400px at -10% 100%, rgba(52, 211, 153, 0.07), transparent 60%),
+        var(--bg);
+    background-attachment: fixed;
+}
+[data-theme="dark"] .card,
+[data-theme="dark"] .stat-card {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+    border-color: var(--border);
+}
+[data-theme="dark"] nav { box-shadow: 0 1px 6px rgba(0, 0, 0, 0.5); }
+[data-theme="dark"] .tabs { box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.5); }
+[data-theme="dark"] .msg-success { background: var(--success-bg); color: #7ee7bb; border-color: #1d4d38; }
+[data-theme="dark"] .msg-error { background: var(--danger-bg); color: #fca5a5; border-color: #5b2a2e; }
+[data-theme="dark"] .badge-success { background: var(--success-bg); color: #6ee7b7; }
+[data-theme="dark"] .badge-danger { background: var(--danger-bg); color: #fca5a5; }
+[data-theme="dark"] .badge-warning { background: var(--warning-bg); color: #fcd34d; }
+[data-theme="dark"] .badge-muted { background: #223050; color: var(--text-muted); }
+[data-theme="dark"] .btn-outline { border-color: var(--border); color: var(--text); }
+[data-theme="dark"] .btn-outline:hover { border-color: var(--primary); }
+[data-theme="dark"] .card-sub { background: #0e1626; }
+[data-theme="dark"] a { color: var(--primary); }
+[data-theme="dark"] nav a { color: var(--text); }
+/* Link-Buttons: die a-Regel oben würde .btn-* übersteuern (höhere Spezifität) */
+[data-theme="dark"] a.btn { color: var(--text); }
+[data-theme="dark"] a.btn-primary,
+[data-theme="dark"] a.btn-danger,
+[data-theme="dark"] a.btn-success,
+[data-theme="dark"] a.btn-warning { color: #fff; }
+
+/* Umschalter in der Nav */
+.theme-toggle {
+    border: 1px solid var(--border);
+    background: var(--bg);
+    border-radius: var(--radius);
+    padding: 0.45rem 0.7rem;
+    font-size: 1rem;
+    cursor: pointer;
+    margin-left: 0.35rem;
+}
+
+/* Der Hilfe-Link in der Nav teilt sich das Aussehen mit dem Theme-Button */
+a.theme-toggle {
+    display: inline-block;
+    text-decoration: none;
+    color: inherit;
+}
+
+/* Hilfe-Seite: die Dokumente untereinander mit Trennlinie */
+.help-doc { margin-top: 1.25rem; }
+.help-doc + .help-doc {
+    margin-top: 1.25rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--border);
+}
+.help-doc h3 { margin-bottom: 0.25rem; }
+.help-doc .btn { margin-top: 0.6rem; }
+
+/* ── Login-Hero ─────────────────────────────────────────────────────── */
+.hero {
+    max-width: 420px;
+    margin: 1rem auto 0;
+}
+.hero img {
+    width: 100%;
+    display: block;
+    border-radius: 14px;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.25);
+}

@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Hilfe — SportAbo Manager{% endblock %}
+{% block nav_title %}Hilfe{% endblock %}
+{% block content %}
+<div class="card narrow">
+    <h2>Anleitungen</h2>
+    <p class="muted small">Beide Seiten lassen sich im Browser über
+    „Drucken → Als PDF sichern“ als PDF speichern oder ausdrucken.</p>
+
+    {% if has_quickref %}
+    <div class="help-doc">
+        <h3>📄 Kurzreferenz</h3>
+        <p class="muted small">Drei Seiten mit allem, was du im Alltag
+        brauchst: an- und abmelden, Gäste mitbringen, Fristen, Warteliste,
+        Guthaben und die Buchung als Gast.</p>
+        <a href="/hilfe/kurzreferenz" class="btn btn-primary">Kurzreferenz öffnen</a>
+    </div>
+    {% endif %}
+
+    {% if has_manual %}
+    <div class="help-doc">
+        <h3>📘 Handbuch</h3>
+        {% if logged_in %}
+        <p class="muted small">Die ausführliche Fassung — zusätzlich mit dem
+        Kapitel zum Anlegen eines Abos, den Rechten der Super-Mitglieder und
+        allen E-Mails, die das System verschickt.</p>
+        <a href="/hilfe/handbuch" class="btn btn-primary">Handbuch öffnen</a>
+        {% else %}
+        <p class="muted small">Die ausführliche Fassung ist nur für
+        angemeldete Mitglieder zugänglich.</p>
+        <a href="/member/login" class="btn btn-outline">Anmelden</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

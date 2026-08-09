@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SportAbo Manager — Handbuch</title>
+<style>
+:root {
+  --ink: #1e293b;
+  --muted: #64748b;
+  --line: #e2e8f0;
+  --accent: #2563eb;
+  --bg-soft: #f8fafc;
+  --warn-bg: #fffbeb;
+  --warn-line: #fcd34d;
+}
+* { box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+               "Helvetica Neue", Arial, sans-serif;
+  color: var(--ink);
+  line-height: 1.65;
+  max-width: 52rem;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 4rem;
+  font-size: 16px;
+  background: #fff;
+}
+h1, h2, h3 { line-height: 1.25; }
+h1 { font-size: 2.1rem; margin: 0 0 .3rem; }
+h2 {
+  font-size: 1.5rem;
+  margin: 3rem 0 1rem;
+  padding-bottom: .4rem;
+  border-bottom: 2px solid var(--line);
+}
+h3 { font-size: 1.15rem; margin: 2rem 0 .6rem; }
+h4 { font-size: 1rem; margin: 1.4rem 0 .4rem; }
+p, li { margin: .6rem 0; }
+code {
+  background: var(--bg-soft);
+  padding: .1em .35em;
+  border-radius: 4px;
+  font-size: .9em;
+}
+a { color: var(--accent); }
+
+.subtitle { color: var(--muted); font-size: 1.05rem; margin: 0 0 2rem; }
+.lead { font-size: 1.05rem; }
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1rem 0;
+  font-size: .92rem;
+}
+th, td {
+  border: 1px solid var(--line);
+  padding: .5rem .6rem;
+  text-align: left;
+  vertical-align: top;
+}
+th { background: var(--bg-soft); font-weight: 600; }
+td.nowrap { white-space: nowrap; }
+
+.note, .tip {
+  background: var(--bg-soft);
+  border-left: 4px solid var(--accent);
+  padding: .8rem 1rem;
+  margin: 1.2rem 0;
+  border-radius: 0 6px 6px 0;
+}
+/* Nur die Kastenüberschrift steht auf einer eigenen Zeile — Hervorhebungen
+   im Fließtext darunter bleiben inline. */
+.note > strong:first-child,
+.tip > strong:first-child { display: block; margin-bottom: .2rem; }
+.warn {
+  background: var(--warn-bg);
+  border-left: 4px solid var(--warn-line);
+  padding: .8rem 1rem;
+  margin: 1.2rem 0;
+  border-radius: 0 6px 6px 0;
+}
+
+/* Screenshots: schmale Hochkant-Bilder, Text daneben */
+figure {
+  margin: 1.5rem 0;
+  text-align: center;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+figure img {
+  max-width: 300px;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, .09);
+}
+figure.wide img { max-width: 420px; }
+figcaption {
+  color: var(--muted);
+  font-size: .85rem;
+  margin-top: .5rem;
+  font-style: italic;
+}
+.figrow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  justify-content: center;
+  margin: 1.5rem 0;
+}
+.figrow figure { flex: 1 1 240px; max-width: 300px; margin: 0; }
+
+.toc { background: var(--bg-soft); border-radius: 8px; padding: 1rem 1.5rem; }
+.toc ol { margin: .4rem 0; padding-left: 1.2rem; }
+.toc a { text-decoration: none; }
+.toc a:hover { text-decoration: underline; }
+
+.role-badge {
+  display: inline-block;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 999px;
+  padding: .1rem .6rem;
+  font-size: .78rem;
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+hr { border: none; border-top: 1px solid var(--line); margin: 2.5rem 0; }
+footer { color: var(--muted); font-size: .85rem; margin-top: 3rem; }
+
+@media print {
+  body { max-width: none; padding: 0; font-size: 11pt; }
+  h2 { page-break-before: always; }
+  h2#ueberblick { page-break-before: avoid; }
+  h2, h3, h4 { page-break-after: avoid; }
+  figure img { max-width: 70mm; box-shadow: none; }
+  figure.wide img { max-width: 95mm; }
+  .figrow figure { max-width: 70mm; }
+  .figrow { gap: 8mm; }
+  table, .note, .tip, .warn { page-break-inside: avoid; }
+  a { color: inherit; text-decoration: none; }
+  .toc { page-break-after: always; }
+}
+</style>
+</head>
+<body>
+
+<h1>SportAbo Manager</h1>
+<p class="subtitle">Handbuch für Mitglieder, Super-Mitglieder und Gäste</p>
+
+<p class="lead">Der SportAbo Manager verwaltet wiederkehrende Sporttermine —
+zum Beispiel einen Beachvolleyballplatz, der für eine ganze Saison gebucht
+ist. Die App beantwortet zwei Fragen: <strong>Wer kommt zu welchem Termin?</strong>
+und <strong>Wer schuldet wem wie viel Geld?</strong></p>
+
+<div class="toc">
+<strong>Inhalt</strong>
+<ol>
+  <li><a href="#ueberblick">So funktioniert die Kostenteilung</a></li>
+  <li><a href="#abo">Ein Abo anlegen lassen — was der Admin braucht</a></li>
+  <li><a href="#mitglied">Die App als Mitglied benutzen</a></li>
+  <li><a href="#super">Besonderheiten für Super-Mitglieder</a></li>
+  <li><a href="#gast">Als Gast buchen — ohne Konto</a></li>
+  <li><a href="#mails">Welche E-Mails du bekommst</a></li>
+</ol>
+</div>
+
+<h2 id="ueberblick">1. So funktioniert die Kostenteilung</h2>
+
+<p>Die App rechnet nicht mit einem festen Preis pro Termin, sondern
+<strong>teilt tatsächliche Kosten</strong>. Das läuft in zwei Schritten:</p>
+
+<h3>Schritt 1: Gesamtpreis → Termin-Budget</h3>
+<p>Beim Anlegen des Abos wird ein <strong>Gesamtpreis für die ganze
+Laufzeit</strong> hinterlegt — also das, was die Platzmiete für die komplette
+Saison kostet. Dieser Betrag wird gleichmäßig auf alle noch offenen Termine
+verteilt. Bei 480 € Saisonmiete und 8 Terminen trägt jeder Termin ein Budget
+von 60 €.</p>
+
+<h3>Schritt 2: Termin-Budget → dein Anteil</h3>
+<p>Nach dem Termin wird das Budget durch die Zahl der <strong>tatsächlichen
+Teilnehmer</strong> geteilt. Bei 60 € Budget und 6 Leuten zahlt jeder 10 €;
+kommen 8 Leute, sind es nur noch 7,50 €.</p>
+
+<div class="note">
+<strong>Je mehr mitmachen, desto günstiger für alle.</strong>
+Deshalb zeigt die App vor dem Termin nur einen <em>Maximalpreis</em> an —
+den Anteil, der bei der Mindestteilnehmerzahl fällig wäre. Günstiger kann
+es werden, teurer nicht.
+</div>
+
+<h3>Zwei Preistöpfe: Mitglieder und Gäste</h3>
+<p>Ein Abo hat zwei Gesamtpreise: den <strong>Abo-Preis</strong> für
+Mitglieder und den höheren <strong>Normalpreis</strong> für Gäste. Beide
+werden auf dieselbe Weise auf die Termine und die Teilnehmer verteilt.
+Mitglieder zahlen also den Anteil am Abo-Preis, Gäste den Anteil am
+Normalpreis — beide geteilt durch dieselbe Teilnehmerzahl.</p>
+
+<h3>Mindestteilnehmerzahl</h3>
+<p>Jedes Abo hat eine Mindestteilnehmerzahl. Wird sie nicht erreicht,
+<strong>findet der Termin nicht statt</strong> und kann auch nicht
+abgerechnet werden — statt einer teuren Abrechnung auf wenige Schultern
+wird der Termin abgesagt.</p>
+
+<h3>Guthaben statt Einzelzahlungen</h3>
+<p>Jedes Mitglied hat ein Guthabenkonto. Einzahlungen erhöhen es, abgerechnete
+Termine belasten es. Rutscht dein Guthaben ins Minus, zeigt die App dir
+oben einen Hinweis mit der PayPal-Adresse, an die du zahlen sollst.</p>
+
+<h2 id="abo">2. Ein Abo anlegen lassen — was der Admin braucht</h2>
+
+<p>Abos legt der Administrator an. Damit er das kann, braucht er von dir die
+folgenden Angaben. Am besten schickst du sie ihm als komplette Liste.</p>
+
+<div class="figrow">
+  <figure>
+    <img src="screenshots/02-admin-abo-formular-1.png" alt="Abo-Formular, oberer Teil">
+    <figcaption>Das Abo-Formular: Name, Rhythmus und Teilnehmerzahlen</figcaption>
+  </figure>
+  <figure>
+    <img src="screenshots/02-admin-abo-formular-2.png" alt="Abo-Formular, unterer Teil">
+    <figcaption>Preise, Abmeldefristen und Zahlungsziel</figcaption>
+  </figure>
+</div>
+
+<h3>Die Felder im Einzelnen</h3>
+
+<table>
+<thead>
+<tr><th>Feld</th><th>Was du melden musst</th><th>Beispiel</th></tr>
+</thead>
+<tbody>
+<tr><td class="nowrap">Name</td><td>Wie das Abo in der App und in allen E-Mails heißen soll.</td><td>Beachvolleyball Dienstag</td></tr>
+<tr><td class="nowrap">Beschreibung</td><td>Optional. Platz, Ort, Besonderheiten — steht auf der Abo-Seite.</td><td>Platz 3, Sommersaison</td></tr>
+<tr><td class="nowrap">Wochentag</td><td>An welchem Wochentag die Termine liegen. Ein Abo hat genau einen Wochentag.</td><td>Dienstag</td></tr>
+<tr><td class="nowrap">Beginn</td><td>Uhrzeit als Stunde und Minute.</td><td>18:30</td></tr>
+<tr><td class="nowrap">Dauer</td><td>Länge eines Termins in Minuten. Daraus errechnet die App das Ende.</td><td>120</td></tr>
+<tr><td class="nowrap">Min. Teilnehmer</td><td>Ab wie vielen Leuten der Termin stattfindet. Darunter wird abgesagt statt abgerechnet.</td><td>4</td></tr>
+<tr><td class="nowrap">Max. Teilnehmer</td><td>Wie viele Plätze es gibt. Mitglieder <em>und</em> deren Gäste <em>und</em> Link-Gäste zählen mit.</td><td>8</td></tr>
+<tr><td class="nowrap">Erster Termin ab</td><td>Startdatum des Zeitraums. Die App erzeugt alle Termine dieses Wochentags darin.</td><td>07.04.2026</td></tr>
+<tr><td class="nowrap">Letzter Termin bis</td><td>Enddatum des Zeitraums.</td><td>29.09.2026</td></tr>
+<tr><td class="nowrap">Abo-Preis gesamt</td><td><strong>Gesamtkosten für die ganze Laufzeit</strong>, die Mitglieder tragen — nicht pro Termin!</td><td>480,00 €</td></tr>
+<tr><td class="nowrap">Normalpreis gesamt</td><td>Dasselbe für Gäste, üblicherweise höher.</td><td>624,00 €</td></tr>
+<tr><td class="nowrap">Abmelden ohne Freigabe</td><td>Bis wie viele <strong>Stunden</strong> vor Beginn man sich frei abmelden darf.</td><td>48</td></tr>
+<tr><td class="nowrap">Abmelden mit Freigabe</td><td>Bis wie viele Stunden vorher eine Abmeldung noch möglich ist, aber ein Super-Mitglied zustimmen muss. <code>0</code> = bis zum Beginn.</td><td>12</td></tr>
+<tr><td class="nowrap">Zahlungen gehen an</td><td>Entweder eine zentrale Kasse oder das Mitglied, das das Geld ausgelegt hat („Vorstrecker“, siehe unten).</td><td>Vorstrecker</td></tr>
+<tr><td class="nowrap">PayPal-Adresse</td><td>Die zentrale Adresse. Wird auch als Rückfallebene benutzt, wenn im Vorstrecker-Modus kein Mitglied infrage kommt.</td><td>kasse@example.com</td></tr>
+</tbody>
+</table>
+
+<h3>Zentrale Kasse oder Vorstrecker?</h3>
+<p>Das Feld „Zahlungen gehen an“ entscheidet, wen die App als Zahlungsziel
+nennt — in Abrechnungsmails, auf der Gastbestätigung und im Minus-Hinweis:</p>
+<ul>
+  <li><strong>Zentrale Kasse:</strong> Immer die PayPal-Adresse des Abos.</li>
+  <li><strong>Vorstrecker-Modus:</strong> Die App nennt automatisch das aktive
+      Mitglied mit dem <em>höchsten Guthaben</em>, das eine PayPal-Adresse
+      hinterlegt hat — also die Person, die gerade am meisten ausgelegt hat.
+      Sobald sie ihr Geld zurückbekommen hat, wandert das Zahlungsziel
+      automatisch weiter.</li>
+</ul>
+
+<h3>Termine erzeugen und Mitglieder eintragen</h3>
+<p>Nach dem Anlegen erzeugt der Admin mit einem Klick alle Termine des
+Zeitraums. Danach trägt er die Mitglieder ein.</p>
+
+<div class="figrow">
+  <figure>
+    <img src="screenshots/03-admin-abo-detail-1.png" alt="Abo-Detailseite mit Terminliste">
+    <figcaption>Die Abo-Seite mit den erzeugten Terminen</figcaption>
+  </figure>
+  <figure>
+    <img src="screenshots/04-admin-mitglied-formular.png" alt="Formular für ein neues Mitglied">
+    <figcaption>Ein Mitglied anlegen</figcaption>
+  </figure>
+</div>
+
+<p>Pro Mitglied braucht der Admin: <strong>Name</strong>,
+<strong>E-Mail</strong> (das ist gleichzeitig der Login), optional eine
+<strong>PayPal-Adresse</strong> (nötig, wenn diese Person als Vorstrecker
+infrage kommen soll), ein <strong>Startguthaben</strong> und die Angabe, ob
+die Person <strong>Super-Mitglied</strong> sein soll.</p>
+
+<div class="tip">
+<strong>Personen-Verzeichnis</strong>
+Wer schon in einem anderen Abo Mitglied ist, muss nicht neu erfasst werden —
+der Admin wählt die Person aus dem Verzeichnis aus. Name, E-Mail und PayPal
+werden übernommen.
+</div>
+
+<h3>Die Termin-Detailseite</h3>
+<p>Auf ihr sieht der Admin die vollständige Preisstaffel, den Gastlink zum
+Weitergeben und alle Anmeldungen.</p>
+
+<div class="figrow">
+  <figure>
+    <img src="screenshots/05-admin-termin-detail-1.png" alt="Termin-Detailseite mit Preisstaffel und Gastlink">
+    <figcaption>Preisstaffel und Gastlink</figcaption>
+  </figure>
+  <figure>
+    <img src="screenshots/05-admin-termin-detail-2.png" alt="Termin-Detailseite mit Anmeldungen">
+    <figcaption>Anmeldungen und Gastbuchungen</figcaption>
+  </figure>
+</div>
+
+<h2 id="mitglied">3. Die App als Mitglied benutzen</h2>
+
+<h3>Anmelden — ohne Passwort</h3>
+<p>Der SportAbo Manager hat keine Passwörter. Du gibst deine E-Mail-Adresse
+ein und bekommst eine Mail mit einem <strong>Anmelde-Link</strong> und einem
+<strong>6-stelligen Code</strong>. Beides ist 15 Minuten gültig. Der Link
+funktioniert per Klick; den Code kannst du eintippen, wenn du die Mail auf
+einem anderen Gerät liest.</p>
+
+<div class="figrow">
+  <figure>
+    <img src="screenshots/06-member-login.png" alt="Login-Seite">
+    <figcaption>E-Mail-Adresse eingeben</figcaption>
+  </figure>
+  <figure>
+    <img src="screenshots/06b-member-code.png" alt="Eingabefeld für den 6-stelligen Code">
+    <figcaption>Danach kannst du den Code aus der Mail eintippen</figcaption>
+  </figure>
+</div>
+
+<p>Du bleibst dauerhaft angemeldet, solange du das Gerät regelmäßig
+benutzt — du musst dir also nicht bei jedem Besuch einen neuen Link
+schicken lassen.</p>
+
+<h3>Als App auf den Startbildschirm legen</h3>
+
+<p>Der SportAbo Manager lässt sich wie eine richtige App auf dem
+Startbildschirm ablegen. Sie startet dann im Vollbild mit eigenem Symbol,
+ohne Adressleiste und Browser-Tabs. Es wird nichts installiert und nichts
+aus einem App-Store geladen — es ist dieselbe Seite, nur ohne Drumherum.</p>
+
+<h4>Android (Chrome)</h4>
+<ol>
+  <li>Die Seite in <strong>Chrome</strong> öffnen und anmelden.</li>
+  <li>Oben rechts auf das <strong>Dreipunkt-Menü ⋮</strong> tippen.</li>
+  <li><strong>„App installieren“</strong> wählen — je nach Chrome-Version
+      heißt der Eintrag <strong>„Zum Startbildschirm hinzufügen“</strong>.</li>
+  <li>Mit <strong>Installieren</strong> bestätigen. Das Symbol liegt
+      anschließend auf dem Startbildschirm und im App-Menü.</li>
+</ol>
+<p>Oft blendet Chrome von selbst einen Streifen mit dem Vorschlag
+„App installieren“ ein — ein Tipp darauf genügt dann.</p>
+
+<h4>iPhone und iPad (Safari)</h4>
+<ol>
+  <li>Die Seite in <strong>Safari</strong> öffnen.</li>
+  <li>Unten in der Mitte auf das <strong>Teilen-Symbol</strong> tippen
+      (Quadrat mit Pfeil nach oben).</li>
+  <li>Im Menü nach unten scrollen zu
+      <strong>„Zum Home-Bildschirm“</strong>.</li>
+  <li>Den Namen bestätigen (voreingestellt ist „SportAbo“) und oben rechts
+      auf <strong>Hinzufügen</strong> tippen.</li>
+</ol>
+
+<div class="warn">
+<strong>Auf dem iPhone geht das nur in Safari.</strong>
+In Chrome oder Firefox fehlt der Eintrag „Zum Home-Bildschirm“ oder er legt
+nur ein Lesezeichen an. Öffne die Seite also in Safari, bevor du sie
+hinzufügst.
+</div>
+
+<div class="tip">
+<strong>Einmal neu anmelden nach dem Hinzufügen</strong>
+Die App vom Startbildschirm hat auf dem iPhone einen eigenen Speicher und
+weiß deshalb nichts von deiner Anmeldung im Browser. Melde dich beim ersten
+Start einfach noch einmal an — danach bleibst du dauerhaft eingeloggt.
+</div>
+
+<div class="tip">
+<strong>Der Login-Link öffnet den Browser statt der App?</strong>
+Das ist normal: Ein Link aus dem Mail-Programm landet immer im Browser.
+Nimm in diesem Fall den <strong>6-stelligen Code</strong>: App vom
+Startbildschirm starten, E-Mail-Adresse eingeben, dann den Code aus der Mail
+eintippen. So meldest du dich direkt in der App an.
+</div>
+
+<h3>Das Dashboard</h3>
+<p>Nach dem Anmelden landest du auf deinem Dashboard. Unten am Bildschirmrand
+liegt die Navigation mit drei Bereichen: <strong>📅 Termine</strong>,
+<strong>✅ Meine</strong> und <strong>💶 Konto</strong>.</p>
+
+<h4>📅 Termine — an- und abmelden</h4>
+<p>Hier stehen alle kommenden Termine. Jede Karte zeigt Datum, Uhrzeit, freie
+Plätze, den Maximalpreis pro Person und deinen Status.</p>
+
+<div class="figrow">
+  <figure>
+    <img src="screenshots/07-member-termine-1.png" alt="Terminliste, oberer Teil">
+    <figcaption>Kommende Termine mit Status und Preis</figcaption>
+  </figure>
+  <figure>
+    <img src="screenshots/07-member-termine-2.png" alt="Terminliste, unterer Teil">
+    <figcaption>Weitere Termine und die Preis-Erklärung</figcaption>
+  </figure>
+</div>
+
+<p>Die farbigen Markierungen bedeuten:</p>
+<table>
+<thead><tr><th>Markierung</th><th>Bedeutung</th></tr></thead>
+<tbody>
+<tr><td class="nowrap">Findet statt</td><td>Die Mindestteilnehmerzahl ist erreicht.</td></tr>
+<tr><td class="nowrap">Noch N bis Mindestzahl</td><td>Es fehlen noch N Anmeldungen, damit der Termin stattfindet.</td></tr>
+<tr><td class="nowrap">Angemeldet</td><td>Du bist dabei.</td></tr>
+<tr><td class="nowrap">Ausgebucht</td><td>Keine Plätze mehr frei — du kannst auf die Warteliste.</td></tr>
+<tr><td class="nowrap">Zusatz</td><td>Ein Zusatztermin außerhalb des Abo-Preises (eigene Kosten, alle zahlen gleich viel).</td></tr>
+<tr><td class="nowrap">Storno angefragt</td><td>Deine Abmeldung wartet auf Freigabe durch ein Super-Mitglied.</td></tr>
+</tbody>
+</table>
+
+<h4>Gäste mitbringen</h4>
+<p>Im Feld <strong>Gäste</strong> neben dem Anmelde-Button trägst du ein, wie
+viele Leute du mitbringst. Sie belegen zusätzliche Plätze, und ihr Anteil
+wird <strong>dir</strong> in Rechnung gestellt — du bekommst also die Kosten
+für dich plus deine Gäste abgezogen. Gäste zahlen dabei den (höheren)
+Gast-Anteil.</p>
+
+<h4>Abmelden — die drei Fristen</h4>
+<p>Wie du dich abmelden kannst, hängt davon ab, wie nah der Termin ist:</p>
+<table>
+<thead><tr><th>Zeitpunkt</th><th>Was passiert</th></tr></thead>
+<tbody>
+<tr><td class="nowrap">Früh genug</td><td>Button <strong>Abmelden</strong> — du meldest dich sofort selbst ab. Ein Platz wird frei und rückt ggf. jemanden von der Warteliste nach.</td></tr>
+<tr><td class="nowrap">Kurzfristig</td><td>Button <strong>Abmeldung anfragen</strong> — es wird eine Anfrage erstellt, die ein Super-Mitglied freigeben oder ablehnen muss. Die Super-Mitglieder bekommen sofort eine Mail.</td></tr>
+<tr><td class="nowrap">Zu spät</td><td>Keine Abmeldung mehr möglich. Der Termin wird dir berechnet, auch wenn du nicht kommst.</td></tr>
+</tbody>
+</table>
+<p>Die konkreten Stundenwerte legt der Admin pro Abo fest; sie stehen als
+Hinweistext unter der Terminliste.</p>
+
+<h4>Warteliste</h4>
+<p>Ist ein Termin ausgebucht, kannst du dich auf die Warteliste setzen. Sie
+funktioniert nach dem Prinzip „wer zuerst kommt“: Wird ein Platz frei, rückst
+du <strong>automatisch</strong> nach, wirst fest angemeldet und bekommst eine
+E-Mail. Wenn du dann doch nicht kannst, musst du dich normal wieder abmelden.
+Gäste kannst du über die Warteliste nicht mitanmelden.</p>
+
+<figure>
+  <img src="screenshots/12-member-minus-banner.png" alt="Dashboard mit Minus-Hinweis und Warteliste">
+  <figcaption>Oben der Hinweis bei negativem Guthaben, darunter eine Karte
+  mit Wartelistenplatz</figcaption>
+</figure>
+
+<h4>✅ Meine — Anmeldungen und vergangene Termine</h4>
+<p>Eine Übersicht aller deiner Anmeldungen mit Status sowie die vergangenen
+Termine mit deinem jeweiligen Anteil.</p>
+
+<figure>
+  <img src="screenshots/08-member-meine.png" alt="Tab Meine mit Anmeldungen und vergangenen Terminen">
+  <figcaption>Deine Anmeldungen und die bereits gelaufenen Termine</figcaption>
+</figure>
+
+<h4>💶 Konto — Guthaben und Kontoauszug</h4>
+<p>Oben stehen dein aktuelles Guthaben, die Summe deiner bisherigen Ausgaben
+und die Zahl deiner Anmeldungen. Darunter der Kontoauszug mit jeder einzelnen
+Buchung.</p>
+
+<div class="figrow">
+  <figure>
+    <img src="screenshots/09-member-konto.png" alt="Konto-Tab mit Guthaben und Kontoauszug">
+    <figcaption>Guthaben, Ausgaben und Kontoauszug</figcaption>
+  </figure>
+  <figure class="wide">
+    <img src="screenshots/09b-member-kontoauszug.png" alt="Kontoauszug mit Beträgen">
+    <figcaption>Der Kontoauszug lässt sich seitlich schieben — rechts stehen
+    die Beträge</figcaption>
+  </figure>
+</div>
+
+<h4>Zahlungseingang bestätigen</h4>
+<p>Hat dir jemand Geld gegeben — per PayPal, bar, überwiesen —, bestätigst du
+den Eingang selbst: Zahler auswählen, Betrag eintragen, fertig. Das Guthaben
+des Zahlers steigt, deines sinkt um denselben Betrag.</p>
+
+<div class="warn">
+<strong>Warum bestätigt der Empfänger und nicht der Zahler?</strong>
+Weil nur so niemand behaupten kann, gezahlt zu haben, ohne es getan zu haben.
+Wer bestätigt, senkt sein eigenes Guthaben — das macht man nicht versehentlich
+zum eigenen Nachteil.
+</div>
+
+<figure>
+  <img src="screenshots/10-member-zahlungseingang.png" alt="Formular zum Bestätigen eines Zahlungseingangs">
+  <figcaption>Zahlungseingang bestätigen</figcaption>
+</figure>
+
+<h4>Teilnehmerliste</h4>
+<p>Tippst du eine Terminkarte an, siehst du, wer sonst noch dabei ist,
+wie viele Plätze belegt sind und — nach der Abrechnung — deinen Anteil.</p>
+
+<figure>
+  <img src="screenshots/11-member-teilnehmer.png" alt="Teilnehmerliste eines Termins">
+  <figcaption>Teilnehmer eines Termins</figcaption>
+</figure>
+
+<h4>Mehrere Abos</h4>
+<p>Bist du mit derselben E-Mail-Adresse in mehreren Abos Mitglied, erscheint
+oben auf dem Dashboard ein Umschalter. Ein Klick wechselt das Abo, ohne dass
+du dich neu anmelden musst.</p>
+
+<h2 id="super">4. Besonderheiten für Super-Mitglieder <span class="role-badge">⭐ Super</span></h2>
+
+<p>Super-Mitglieder sind normale Mitglieder mit Zusatzrechten — gedacht für
+die Person, die die Gruppe organisiert. Sie erkennst du am ⭐ neben deinem
+Namen und am zusätzlichen Bereich <strong>⚙️ Verwaltung</strong> in der
+Navigation. Alle Rechte gelten <strong>nur für das eigene Abo</strong>.</p>
+
+<h3>Volle Preisstaffel statt Maximalpreis</h3>
+<p>Während normale Mitglieder nur den Maximalpreis sehen, zeigt die App
+Super-Mitgliedern die komplette Staffel: was der Termin bei 4, 5, 6 …
+Teilnehmern pro Person kostet.</p>
+
+<figure class="wide">
+  <img src="screenshots/13-super-preisstaffel.png" alt="Terminkarte mit voller Preisstaffel">
+  <figcaption>Für Super-Mitglieder: der Preis bei jeder Teilnehmerzahl</figcaption>
+</figure>
+
+<h3>Der Verwaltungsbereich</h3>
+
+<div class="figrow">
+  <figure>
+    <img src="screenshots/14-super-verwaltung-1.png" alt="Verwaltungstab mit Storno-Anfragen und abzurechnenden Terminen">
+    <figcaption>Storno-Anfragen und abzurechnende Termine</figcaption>
+  </figure>
+  <figure>
+    <img src="screenshots/14-super-verwaltung-2.png" alt="Formular für einen Zusatztermin">
+    <figcaption>Zusatztermin anlegen</figcaption>
+  </figure>
+</div>
+
+<h4>Storno-Anfragen freigeben oder ablehnen</h4>
+<p>Meldet sich jemand nach Ablauf der freien Frist ab, landet die Anfrage
+hier — und du bekommst eine E-Mail. <strong>Freigeben</strong> löscht die
+Anmeldung (und rückt jemanden von der Warteliste nach),
+<strong>Ablehnen</strong> lässt sie bestehen; die Person zahlt dann mit.</p>
+
+<h4>Termine abrechnen</h4>
+<p>Nach dem Termin klickst du <strong>Abrechnen</strong>. Damit wird der
+Anteil für alle festgeschrieben: Jedem angemeldeten Mitglied wird sein Anteil
+(plus der seiner Gäste) vom Guthaben abgezogen, und alle Beteiligten bekommen
+eine Abrechnungsmail.</p>
+
+<div class="warn">
+<strong>Abrechnungen sind endgültig.</strong>
+Eine Abrechnung lässt sich nicht rückgängig machen. Prüfe die Teilnehmerliste,
+bevor du abrechnest. Ein Termin unterhalb der Mindestteilnehmerzahl lässt
+sich gar nicht abrechnen — dort steht stattdessen der Grund und die
+Möglichkeit, den Termin abzusagen.
+</div>
+
+<div class="tip">
+<strong>Automatik</strong>
+Du musst nicht manuell abrechnen: Die App rechnet Termine nach ihrem Datum
+von selbst ab. Nur Termine mit einem Hindernis — typischerweise zu wenige
+Teilnehmer — bleiben offen und warten auf dich.
+</div>
+
+<h4>Termine absagen — und die Preisfrage</h4>
+<p>Beim Absagen eines regulären Termins musst du entscheiden, was mit dem
+Geld passiert:</p>
+<table>
+<thead><tr><th>Option</th><th>Wirkung</th><th>Wann sinnvoll</th></tr></thead>
+<tbody>
+<tr>
+  <td class="nowrap">Absagen + Preis reduzieren</td>
+  <td>Der Gesamtpreis des Abos sinkt um das Budget dieses Termins. Die übrigen Termine bleiben gleich teuer.</td>
+  <td>Wenn der Termin ersatzlos ausfällt und ihr dafür auch nichts zahlen müsst.</td>
+</tr>
+<tr>
+  <td class="nowrap">Absagen + umlegen</td>
+  <td>Der Gesamtpreis bleibt, das Budget verteilt sich auf die verbleibenden Termine — die werden also teurer.</td>
+  <td>Wenn die Platzmiete trotzdem fällig wird, z. B. bei kurzfristiger Absage wegen Wetter.</td>
+</tr>
+</tbody>
+</table>
+
+<h4>Zusatztermine anlegen</h4>
+<p>Ein Zusatztermin liegt <strong>außerhalb</strong> des Abo-Gesamtpreises: Er
+bekommt sein eigenes Budget, und alle Teilnehmer zahlen denselben Anteil —
+auch Gäste. Du gibst Datum, Uhrzeit, Dauer, die Gesamtkosten des Termins und
+die Teilnehmergrenzen an. Praktisch für ein spontanes Zusatzspiel oder ein
+Turnier.</p>
+
+<h4>Teilnehmerlisten und Gastzahlungen</h4>
+<p>Super-Mitglieder sehen zu jedem Termin die volle Teilnehmerliste — inklusive
+der Gäste, die über den öffentlichen Link gebucht haben.</p>
+
+<figure>
+  <img src="screenshots/15-super-teilnehmer.png" alt="Teilnehmerliste aus Sicht eines Super-Mitglieds">
+  <figcaption>Teilnehmerliste eines abgerechneten Termins</figcaption>
+</figure>
+
+<p>Link-Gäste haben kein Guthabenkonto — ihr Anteil wird nicht verrechnet,
+sondern per PayPal eingesammelt. Sobald das Geld da ist, hakst du den Gast
+in der Liste ab. Im Vorstrecker-Modus sinkt dabei automatisch das Guthaben
+der Person, die das Geld bekommen hat.</p>
+
+<figure class="wide">
+  <img src="screenshots/16-super-gast-bezahlt.png" alt="Gastbuchung als bezahlt markiert">
+  <figcaption>Eine bezahlte Gastbuchung — die Markierung lässt sich stornieren</figcaption>
+</figure>
+
+<h2 id="gast">5. Als Gast buchen — ohne Konto</h2>
+
+<p>Gäste brauchen weder Konto noch Anmeldung. Ein Mitglied schickt dir einen
+Link zu einem bestimmten Termin — den öffnest du und buchst direkt.</p>
+
+<div class="figrow">
+  <figure>
+    <img src="screenshots/17-gast-buchung.png" alt="Öffentliche Gastbuchungsseite">
+    <figcaption>Die Gastseite: Datum, freie Plätze, Maximalpreis</figcaption>
+  </figure>
+  <figure>
+    <img src="screenshots/18-gast-bestaetigung.png" alt="Bestätigung nach der Gastbuchung">
+    <figcaption>Bestätigung mit Betrag und Zahlungsziel</figcaption>
+  </figure>
+</div>
+
+<h3>So läuft es ab</h3>
+<ol>
+  <li><strong>Link öffnen.</strong> Du siehst Datum, Uhrzeit, wie viele Plätze
+      noch frei sind und den maximalen Preis pro Person.</li>
+  <li><strong>Formular ausfüllen.</strong> Name, E-Mail und die Zahl der
+      Personen, die du mitbringst — du selbst zählst mit.</li>
+  <li><strong>Bestätigung lesen.</strong> Sie nennt den Höchstbetrag und die
+      PayPal-Adresse, an die du nach dem Termin zahlst.</li>
+  <li><strong>Nach dem Termin zahlen.</strong> Du bekommst eine E-Mail mit dem
+      endgültigen Betrag — der kann nur niedriger sein als der angezeigte
+      Maximalbetrag. Bitte gib Name und Termindatum im Verwendungszweck an.</li>
+</ol>
+
+<div class="warn">
+<strong>Abmelden geht nur persönlich.</strong>
+Als Gast kannst du deine Buchung nicht online zurücknehmen. Wenn du doch
+nicht kommen kannst, sag bitte der Person Bescheid, die dir den Link geschickt
+hat — sonst bleibt dein Platz blockiert und fehlt der Gruppe.
+</div>
+
+<div class="note">
+<strong>Der Link ist ein Schlüssel.</strong>
+Jeder, der ihn hat, kann für diesen Termin buchen. Er gilt immer nur für
+einen einzigen Termin — gib ihn nur an Leute weiter, die auch wirklich
+mitspielen sollen.
+</div>
+
+<h2 id="mails">6. Welche E-Mails du bekommst</h2>
+
+<p>Der SportAbo Manager verschickt sieben verschiedene E-Mails. Alle kommen
+vom selben Absender und nennen im Betreff das Abo und das Datum.</p>
+
+<table>
+<thead>
+<tr><th>E-Mail</th><th>Wann</th><th>An wen</th><th>Was du tun musst</th></tr>
+</thead>
+<tbody>
+<tr>
+  <td class="nowrap"><strong>Dein Anmelde-Link</strong></td>
+  <td>Sofort, wenn du auf der Login-Seite deine E-Mail eingibst.</td>
+  <td>Mitglied</td>
+  <td>Link anklicken oder den 6-stelligen Code eingeben. Beides ist 15 Minuten gültig.</td>
+</tr>
+<tr>
+  <td class="nowrap"><strong>Erinnerung: Abmeldefrist</strong></td>
+  <td>Einen Tag bevor die kostenlose Abmeldung endet.</td>
+  <td>Angemeldete Mitglieder</td>
+  <td>Nur handeln, wenn du <em>nicht</em> kommen kannst — dann jetzt abmelden, solange es noch frei geht.</td>
+</tr>
+<tr>
+  <td class="nowrap"><strong>Erinnerung: Termin</strong></td>
+  <td>Zum selben Zeitpunkt.</td>
+  <td>Gäste mit E-Mail-Adresse</td>
+  <td>Wenn du nicht kannst: dem Organisator Bescheid geben (online geht es nicht).</td>
+</tr>
+<tr>
+  <td class="nowrap"><strong>Nachgerückt</strong></td>
+  <td>Sobald auf einem ausgebuchten Termin ein Platz frei wird und du oben auf der Warteliste stehst.</td>
+  <td>Mitglied auf der Warteliste</td>
+  <td>Nichts — du bist automatisch fest angemeldet. Wenn du doch nicht kannst, melde dich ab.</td>
+</tr>
+<tr>
+  <td class="nowrap"><strong>Storno-Anfrage</strong></td>
+  <td>Wenn sich jemand nach Ablauf der freien Frist abmelden will.</td>
+  <td>Super-Mitglieder</td>
+  <td>Im Verwaltungsbereich freigeben oder ablehnen.</td>
+</tr>
+<tr>
+  <td class="nowrap"><strong>Abrechnung</strong></td>
+  <td>Wenn ein Termin abgerechnet wurde.</td>
+  <td>Angemeldete Mitglieder</td>
+  <td>Enthält deinen Anteil und dein neues Guthaben. Bei negativem Guthaben an die genannte Adresse zahlen.</td>
+</tr>
+<tr>
+  <td class="nowrap"><strong>Abrechnung (Gast)</strong></td>
+  <td>Ebenfalls bei der Abrechnung.</td>
+  <td>Gäste mit E-Mail, die noch nicht bezahlt haben</td>
+  <td>Den genannten Betrag per PayPal zahlen, Name und Termin im Verwendungszweck.</td>
+</tr>
+</tbody>
+</table>
+
+<div class="tip">
+<strong>Keine Mail bekommen?</strong>
+Schau zuerst im Spam-Ordner nach. Kommt weiterhin nichts an, prüfe mit dem
+Admin, ob deine Adresse richtig hinterlegt ist. Aus Sicherheitsgründen sagt
+die Login-Seite absichtlich <em>nicht</em>, ob es zu einer Adresse ein Konto
+gibt — sie bestätigt nur, dass eine Mail verschickt wurde, falls die Adresse
+bekannt ist.
+</div>
+
+<hr>
+
+<h3>Kurzreferenz</h3>
+<table>
+<thead><tr><th>Ich will …</th><th>Wo</th></tr></thead>
+<tbody>
+<tr><td>mich für einen Termin anmelden</td><td>📅 Termine → <em>Anmelden</em></td></tr>
+<tr><td>Gäste mitbringen</td><td>📅 Termine → Feld <em>Gäste</em> vor dem Anmelden ausfüllen</td></tr>
+<tr><td>mich abmelden</td><td>📅 Termine → <em>Abmelden</em> bzw. <em>Abmeldung anfragen</em></td></tr>
+<tr><td>auf die Warteliste</td><td>📅 Termine → <em>Auf die Warteliste</em> bei ausgebuchten Terminen</td></tr>
+<tr><td>sehen, wer dabei ist</td><td>Terminkarte antippen</td></tr>
+<tr><td>mein Guthaben prüfen</td><td>💶 Konto</td></tr>
+<tr><td>die App auf den Startbildschirm legen</td><td>Android: Chrome-Menü ⋮ → <em>App installieren</em> · iPhone: Safari → Teilen-Symbol → <em>Zum Home-Bildschirm</em></td></tr>
+<tr><td>eine erhaltene Zahlung bestätigen</td><td>💶 Konto → <em>Zahlungseingang bestätigen</em></td></tr>
+<tr><td>einen Termin abrechnen <span class="role-badge">⭐</span></td><td>⚙️ Verwaltung → <em>Abrechnen</em></td></tr>
+<tr><td>eine Storno-Anfrage bearbeiten <span class="role-badge">⭐</span></td><td>⚙️ Verwaltung → <em>Freigeben</em> / <em>Ablehnen</em></td></tr>
+<tr><td>einen Zusatztermin anlegen <span class="role-badge">⭐</span></td><td>⚙️ Verwaltung → <em>Zusatztermin anlegen</em></td></tr>
+<tr><td>eine Gastzahlung abhaken <span class="role-badge">⭐</span></td><td>Terminkarte antippen → Gästeliste → <em>Bezahlt</em></td></tr>
+</tbody>
+</table>
+
+<footer>
+<p>SportAbo Manager — Handbuch. Alle Screenshots stammen aus einer
+Demo-Installation mit erfundenen Personen und Beträgen.</p>
+</footer>
+
+</body>
+</html>

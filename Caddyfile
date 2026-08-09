@@ -1,0 +1,4 @@
+{$DOMAIN} {
+	reverse_proxy sportabo:8000
+	encode gzip
+}

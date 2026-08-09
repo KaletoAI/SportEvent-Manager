@@ -1,0 +1,18 @@
+# Secrets & lokale Konfiguration
+.env
+
+# Bleibt bewusst lokal — das Repo ist öffentlich:
+# Deploy-Runbook mit Infrastruktur-Details (Hosts, IDs, Adressen),
+# das zugehörige .env-Hilfsskript und die Arbeitsanweisung für Claude Code.
+deploy.local.md
+scripts/ct-env-upsert.py
+CLAUDE.md
+
+# Laufzeitdaten (SQLite-DB, Backups)
+data/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/

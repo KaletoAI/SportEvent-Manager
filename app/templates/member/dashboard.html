@@ -1,0 +1,372 @@
+{% extends "base.html" %}
+{% block title %}{{ subscription.name }} — {{ member.name }}{% endblock %}
+{% block nav_title %}Hallo {{ member.name }}{% if member.is_super %} ⭐{% endif %}{% endblock %}
+{% block nav_links %}
+<a href="/member/logout">Abmelden</a>
+{% endblock %}
+{% block content %}
+{% if member.is_super and pending_requests %}
+<div class="msg msg-error">🔔 {{ pending_requests|length }} offene Storno-Anfrage{% if pending_requests|length > 1 %}n{% endif %} — Freigabe im Tab „Verwaltung“.</div>
+{% endif %}
+
+{% if payee and payee.paypal %}
+<div class="msg msg-error">💸 Dein Guthaben ist im Minus ({{ member.credit|euro }}). Bitte zahle per PayPal an{% if payee.name %} <strong>{{ payee.name }}</strong>{% endif %}: <strong>{{ payee.paypal }}</strong> (Name + Termin im Verwendungszweck).</div>
+{% endif %}
+
+{% if other_memberships %}
+<div class="card">
+    <div class="flex-between">
+        <div><span class="muted small">Aktuelles Abo:</span> <strong>{{ subscription.name }}</strong></div>
+        <div class="actions">
+            {% for om in other_memberships %}
+            <form method="post" action="/member/switch/{{ om.id }}" class="inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button type="submit" class="btn btn-outline btn-sm">→ {{ om.subscription.name }}</button>
+            </form>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="tabs" data-tabs>
+    <button type="button" class="tab-btn active" data-tab="termine">📅 Termine</button>
+    <button type="button" class="tab-btn" data-tab="meine">✅ Meine</button>
+    <button type="button" class="tab-btn" data-tab="konto">💶 Konto</button>
+    {% if member.is_super %}
+    <button type="button" class="tab-btn" data-tab="verwaltung">⚙️ Verwaltung{% if pending_requests %} ({{ pending_requests|length }}){% endif %}</button>
+    {% endif %}
+</div>
+
+{# ── Tab: Kommende Termine ─────────────────────────────────────────── #}
+<section class="tab-panel active" id="tab-termine">
+<div class="card">
+    <h2>Kommende Termine</h2>
+    {% if upcoming_events %}
+    <div class="event-list">
+        {% for event in upcoming_events %}
+        <div class="event-item" data-href="/member/event/{{ event.id }}/participants" title="Antippen für Teilnehmer & Details">
+            <div>
+                <div class="when">
+                    {{ event.date|date_de }}{% if event.is_extra %} <span class="badge badge-warning">Zusatz</span>{% endif %}
+                    {% if booked_count[event.id] < event.min_participants %}
+                    <span class="badge badge-warning">Noch {{ event.min_participants - booked_count[event.id] }} bis Mindestzahl</span>
+                    {% else %}
+                    <span class="badge badge-success">Findet statt</span>
+                    {% endif %}
+                </div>
+                <div class="meta">
+                    {{ event.start_time|time_de }} – {{ event.end_time|time_de }} Uhr
+                    · {{ free_by_event[event.id] }} von {{ event.max_participants }} Plätzen frei
+                </div>
+                <div class="meta">
+                    {% if member.is_super %}
+                    Preis p. P.: {% for t in tiers_by_event[event.id] %}{% if not loop.first %} · {% endif %}bei {{ t.n }}: {{ t.member|euro }}{% endfor %}{% if tiers_by_event[event.id]|length > 1 %} …{% endif %}
+                    {% else %}
+                    Preis p. P.: max. {{ tiers_by_event[event.id][0].member|euro }}
+                    {% endif %}
+                </div>
+            </div>
+            <div class="actions">
+                {% if event.id in booked_event_ids %}
+                {% set my_b = my_bookings_by_event[event.id] %}
+                {% if my_b.cancel_requested_at %}
+                <span class="badge badge-warning">Storno angefragt</span>
+                {% else %}
+                <span class="badge badge-success">Angemeldet</span>
+                {% if cancel_state[event.id] == 'free' %}
+                <form method="post" action="/member/event/{{ event.id }}/unbook" class="inline"
+                      onsubmit="return confirm('Für den Termin am {{ event.date|date_de }} wirklich abmelden?')">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button type="submit" class="btn btn-danger btn-sm">Abmelden</button>
+                </form>
+                {% elif cancel_state[event.id] == 'approval' %}
+                <form method="post" action="/member/event/{{ event.id }}/unbook" class="inline"
+                      onsubmit="return confirm('Die Abmeldefrist ist abgelaufen. Abmelde-Anfrage an die Super-Mitglieder senden?')">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button type="submit" class="btn btn-warning btn-sm">Abmeldung anfragen</button>
+                </form>
+                {% else %}
+                <span class="muted small">Abmelden nicht mehr möglich</span>
+                {% endif %}
+                {% endif %}
+                {% elif free_by_event[event.id] > 0 %}
+                <form method="post" action="/member/event/{{ event.id }}/book" class="book-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <label for="guests-{{ event.id }}" class="mb-0 small">Gäste:</label>
+                    <input type="number" id="guests-{{ event.id }}" name="guest_count" min="0"
+                           max="{{ free_by_event[event.id] - 1 }}" value="0" title="Anzahl Gäste">
+                    <button type="submit" class="btn btn-primary btn-sm">Anmelden</button>
+                </form>
+                {% else %}
+                <span class="badge badge-danger">Ausgebucht</span>
+                {% if event.id in waitlist_pos %}
+                <span class="badge badge-warning">Warteliste Platz {{ waitlist_pos[event.id] }}</span>
+                <form method="post" action="/member/event/{{ event.id }}/waitlist/leave" class="inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button type="submit" class="btn btn-outline btn-sm">Warteliste verlassen</button>
+                </form>
+                {% else %}
+                <form method="post" action="/member/event/{{ event.id }}/waitlist" class="inline"
+                      onsubmit="return confirm('Auf die Warteliste? Sobald ein Platz frei wird, rückst du automatisch nach und wirst per E-Mail informiert.')">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button type="submit" class="btn btn-primary btn-sm">Auf die Warteliste{% if waitlist_count[event.id] %} ({{ waitlist_count[event.id] }}){% endif %}</button>
+                </form>
+                {% endif %}
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    <p class="muted small mt-1">Der endgültige Preis pro Person steht bei der Abrechnung fest: Termin-Budget ÷ Teilnehmerzahl. Gäste zahlen den Anteil vom Normalpreis. Ein Termin findet erst ab der Mindestteilnehmerzahl statt. Kostenlos abmelden: bis {{ subscription.cancel_hours_free }} Stunden vor Beginn{% if subscription.cancel_hours_approval < subscription.cancel_hours_free %}, danach bis {{ subscription.cancel_hours_approval }} Stunden vorher nur mit Freigabe{% endif %}.</p>
+    {% else %}
+    <p class="muted">Keine kommenden Termine.</p>
+    {% endif %}
+</div>
+</section>
+
+{# ── Tab: Meine Anmeldungen + Vergangene Termine ───────────────────── #}
+<section class="tab-panel" id="tab-meine">
+<div class="card">
+    <h2>Meine Anmeldungen</h2>
+    {% if my_bookings %}
+    <div class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>Termin</th>
+                <th class="num">Gäste</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for b in my_bookings %}
+            <tr>
+                <td>{{ b.event.date|date_de }}, {{ b.event.start_time|time_de }} Uhr{% if b.event.is_extra %} <span class="badge badge-warning">Zusatz</span>{% endif %}</td>
+                <td class="num">{{ b.guest_count }}</td>
+                <td>
+                    {% if b.event.is_cancelled %}<span class="badge badge-danger">Abgesagt</span>
+                    {% elif b.event.settled_at %}<span class="badge badge-muted">Abgerechnet</span>
+                    {% else %}<span class="badge badge-success">Angemeldet</span>{% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% else %}
+    <p class="muted">Noch keine Anmeldungen.</p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h2>Vergangene Termine</h2>
+    {% if past_events %}
+    <div class="event-list">
+        {% for event in past_events %}
+        <div class="event-item" data-href="/member/event/{{ event.id }}/participants" title="Antippen für Teilnehmer & Details">
+            <div>
+                <div class="when">
+                    {{ event.date|date_de }}{% if event.is_extra %} <span class="badge badge-warning">Zusatz</span>{% endif %}
+                    {% if event.settled_at %}<span class="badge badge-muted">Abgerechnet</span>{% else %}<span class="badge badge-warning">Offen</span>{% endif %}
+                </div>
+                <div class="meta">
+                    {{ booked_count[event.id] }} Teilnehmer
+                    {% if event.id in my_charges %} · dein Anteil: {{ (-my_charges[event.id])|euro }}{% elif event.id in booked_event_ids %} · du warst angemeldet{% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="muted">Noch keine vergangenen Termine.</p>
+    {% endif %}
+</div>
+</section>
+
+{# ── Tab: Konto ────────────────────────────────────────────────────── #}
+<section class="tab-panel" id="tab-konto">
+<div class="stat-grid">
+    <div class="stat-card"><div class="value {% if member.credit < 0 %}neg{% endif %}">{{ member.credit|euro }}</div><div class="label">Guthaben</div></div>
+    <div class="stat-card"><div class="value">{{ spending.spent|euro }}</div><div class="label">Ausgegeben</div></div>
+    <div class="stat-card"><div class="value">{{ my_bookings|length }}</div><div class="label">Anmeldungen</div></div>
+</div>
+
+{% if fellow_members %}
+<div class="card">
+    <details>
+        <summary><strong>💰 Zahlungseingang bestätigen</strong> <span class="muted small">— hier klicken, wenn dir ein Mitglied Geld gezahlt hat</span></summary>
+        <p class="muted small mt-1">Hat dir jemand seinen Anteil gezahlt (PayPal, bar, …)? Bestätige den Eingang: Das Guthaben des Zahlers steigt, deins sinkt entsprechend.</p>
+        <form method="post" action="/member/transfer-received" class="mt-1">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="payer_id">Zahler</label>
+                    <select id="payer_id" name="payer_id" required>
+                        {% for m in fellow_members %}
+                        <option value="{{ m.id }}">{{ m.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="tr_amount">Betrag (€)</label>
+                    <input type="number" id="tr_amount" name="amount" min="0.50" step="0.50" required>
+                </div>
+                <div class="form-group">
+                    <label for="tr_note">Notiz</label>
+                    <input type="text" id="tr_note" name="note" placeholder="z. B. PayPal 05.07.">
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary"
+                    onclick="return confirm('Zahlungseingang bestätigen? Dein Guthaben sinkt um den Betrag, das des Zahlers steigt.')">Eingang bestätigen</button>
+        </form>
+    </details>
+</div>
+{% endif %}
+
+<div class="card">
+    <h2>Kontoauszug</h2>
+    {% if payments %}
+    <div class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>Datum</th>
+                <th>Art</th>
+                <th>Notiz</th>
+                <th class="num">Betrag</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in payments %}
+            <tr>
+                <td>{{ p.created_at|date_de }}</td>
+                <td>{% if p.type == 'charge' %}<span class="badge badge-warning">Teilnahme</span>{% else %}<span class="badge badge-success">Einzahlung</span>{% endif %}</td>
+                <td>{{ p.note }}</td>
+                <td class="num">{{ p.amount|euro }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% else %}
+    <p class="muted">Noch keine Buchungen.</p>
+    {% endif %}
+</div>
+</section>
+
+{# ── Tab: Verwaltung (nur Super-Mitglieder) ────────────────────────── #}
+{% if member.is_super %}
+<section class="tab-panel" id="tab-verwaltung">
+{% if pending_requests %}
+<div class="card">
+    <h2>Storno-Anfragen</h2>
+    <div class="event-list">
+        {% for b in pending_requests %}
+        <div class="event-item">
+            <div>
+                <div class="when">{{ b.member.name }} — {{ b.event.date|date_de }}</div>
+                <div class="meta">{{ b.guest_count + 1 }} Plätze · angefragt am {{ b.cancel_requested_at|date_de }}</div>
+            </div>
+            <div class="actions">
+                <form method="post" action="/member/cancel-request/{{ b.id }}/approve" class="inline"
+                      onsubmit="return confirm('Stornierung von {{ b.member.name }} freigeben? Die Anmeldung wird gelöscht.')">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button type="submit" class="btn btn-success btn-sm">Freigeben</button>
+                </form>
+                <form method="post" action="/member/cancel-request/{{ b.id }}/reject" class="inline"
+                      onsubmit="return confirm('Storno-Anfrage von {{ b.member.name }} ablehnen?')">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button type="submit" class="btn btn-danger btn-sm">Ablehnen</button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{% if settleable_events %}
+<div class="card">
+    <h2>Abzurechnende Termine</h2>
+    <div class="event-list">
+        {% for se in settleable_events %}
+        <div class="event-item" data-href="/member/event/{{ se.event.id }}/participants" title="Antippen für Teilnehmer & Details">
+            <div>
+                <div class="when">{{ se.event.date|date_de }}{% if se.event.is_extra %} <span class="badge badge-warning">Zusatz</span>{% endif %}</div>
+                <div class="meta">{{ se.booked }} Teilnehmer (min. {{ se.event.min_participants }})</div>
+            </div>
+            <div class="actions">
+                {% if se.blocker %}
+                <span class="muted small">{{ se.blocker }}</span>
+                <form method="post" action="/member/event/{{ se.event.id }}/cancel" class="inline"
+                      onsubmit="return confirm('Termin absagen und Gesamtpreis um {{ se.event.abo_budget|euro }} reduzieren?')">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <input type="hidden" name="reduce_price" value="yes">
+                    <button type="submit" class="btn btn-danger btn-sm">Stornieren + Preis reduzieren</button>
+                </form>
+                <form method="post" action="/member/event/{{ se.event.id }}/cancel" class="inline"
+                      onsubmit="return confirm('Termin absagen und Budget auf die restlichen Termine umlegen?')">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <input type="hidden" name="reduce_price" value="no">
+                    <button type="submit" class="btn btn-danger btn-sm">Stornieren + umlegen</button>
+                </form>
+                {% else %}
+                <form method="post" action="/member/event/{{ se.event.id }}/settle" class="inline"
+                      onsubmit="return confirm('Termin abrechnen? Der Anteil wird allen angemeldeten Mitgliedern vom Guthaben abgezogen.')">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button type="submit" class="btn btn-warning btn-sm">Abrechnen</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<div class="card">
+    <h2>Zusatztermin anlegen</h2>
+    <p class="muted small">Zusatztermine fallen nicht in den Abo-Gesamtpreis: eigenes Budget, alle Teilnehmer zahlen den gleichen Anteil.</p>
+    <form method="post" action="/member/extra-event" class="mt-1">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="form-row">
+            <div class="form-group">
+                <label for="event_date">Datum</label>
+                <input type="date" id="event_date" name="event_date" required>
+            </div>
+            <div class="form-group">
+                <label for="start_hour">Beginn (Std.)</label>
+                <input type="number" id="start_hour" name="start_hour" min="0" max="23" value="{{ subscription.start_time.hour }}" required>
+            </div>
+            <div class="form-group">
+                <label for="start_minute">Beginn (Min.)</label>
+                <input type="number" id="start_minute" name="start_minute" min="0" max="59" value="{{ subscription.start_time.minute }}" required>
+            </div>
+            <div class="form-group">
+                <label for="duration_minutes">Dauer (Min.)</label>
+                <input type="number" id="duration_minutes" name="duration_minutes" min="1" value="{{ subscription.duration_minutes }}" required>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="budget">Terminkosten gesamt (€)</label>
+                <input type="number" id="budget" name="budget" min="0" step="0.50" required>
+            </div>
+            <div class="form-group">
+                <label for="min_participants">Min. Teilnehmer</label>
+                <input type="number" id="min_participants" name="min_participants" min="1" value="{{ subscription.min_participants }}" required>
+            </div>
+            <div class="form-group">
+                <label for="max_participants">Max. Teilnehmer</label>
+                <input type="number" id="max_participants" name="max_participants" min="1" value="{{ subscription.max_participants }}" required>
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Zusatztermin anlegen</button>
+    </form>
+</div>
+</section>
+{% endif %}
+
+<div class="tab-spacer"></div>
+{% endblock %}

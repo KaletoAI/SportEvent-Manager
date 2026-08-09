@@ -1,0 +1,7 @@
+-r requirements.txt
+pytest==9.1.1
+
+# Nur für die Handbuch-Screenshots (scripts/make_screenshots.py,
+# scripts/build_manual.py). Chromium separat holen: playwright install chromium
+playwright==1.62.0
+pillow==12.3.0
