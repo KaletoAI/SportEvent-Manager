@@ -182,5 +182,12 @@ python scripts/build_manual.py
 
 ## Lizenz
 
-Bisher keine Lizenz vergeben. Damit gilt das Standardurheberrecht: lesen ja,
-weiterverwenden nur nach Rücksprache.
+Apache License 2.0 — der vollständige Text steht in [LICENSE](LICENSE).
+Nutzung, Änderung und Weitergabe sind erlaubt, solange Lizenztext und
+Änderungshinweise erhalten bleiben; die Lizenz gewährt zusätzlich eine
+Patentlizenz und schließt Gewährleistung und Haftung aus.
+
+Copyright 2026 KaletoAI
+
+Die Volleyball-Icons unter `app/static/icons/` stammen aus
+[Twemoji](https://github.com/jdecked/twemoji) und stehen unter CC-BY 4.0.
