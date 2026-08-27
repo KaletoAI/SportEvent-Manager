@@ -188,6 +188,3 @@ Nutzung, Änderung und Weitergabe sind erlaubt, solange Lizenztext und
 Patentlizenz und schließt Gewährleistung und Haftung aus.
 
 Copyright 2026 KaletoAI
-
-Die Volleyball-Icons unter `app/static/icons/` stammen aus
-[Twemoji](https://github.com/jdecked/twemoji) und stehen unter CC-BY 4.0.
