@@ -2,7 +2,7 @@
 {% block title %}Admin-Übersicht — SportAbo{% endblock %}
 {% block nav_title %}SportAbo Admin{% endblock %}
 {% block nav_links %}
-<a href="/admin/logout">Abmelden</a>
+<a href="/admin/logout">Logout</a>
 {% endblock %}
 {% block content %}
 <div class="card">
@@ -12,7 +12,7 @@
     </div>
     {% if subscriptions %}
     <div class="table-wrap">
-    <table>
+    <table class="table-stack">
         <thead>
             <tr>
                 <th>Name</th>
@@ -26,9 +26,9 @@
             {% for sub in subscriptions %}
             <tr>
                 <td><a href="/admin/subscription/{{ sub.id }}">{{ sub.name }}</a></td>
-                <td>{{ sub.start_date|date_de }} – {{ sub.end_date|date_de }}</td>
-                <td class="num">{{ sub.abo_price|euro }}</td>
-                <td class="num">{{ sub.default_price|euro }}</td>
+                <td data-label="Zeitraum">{{ sub.start_date|date_de }} – {{ sub.end_date|date_de }}</td>
+                <td class="num" data-label="Abo-Preis">{{ sub.abo_price|euro }}</td>
+                <td class="num" data-label="Normalpreis">{{ sub.default_price|euro }}</td>
                 <td>
                     <div class="actions">
                         <a href="/admin/subscription/{{ sub.id }}/edit" class="btn btn-outline btn-sm">Bearbeiten</a>
@@ -48,20 +48,20 @@
 <div class="card">
     <h2>Test-Datum (Debug)</h2>
     <p class="muted small">Überschreibt temporär das Systemdatum — z. B. um die Abrechnung zukünftiger Termine zu testen. Gilt für alle Datumsprüfungen (Buchen, Stornieren, Abrechnen, „kommende Termine“). Nach dem Test zurücksetzen!</p>
-    <p class="mt-1">Aktuelles Systemdatum: <strong>{{ today|date_de }}</strong>{% if date_override %} <span class="badge badge-danger">Override aktiv</span>{% else %} <span class="badge badge-success">echtes Datum</span>{% endif %}</p>
+    <p class="mt-1">Aktuelles Systemdatum: <strong>{{ today|date_de }}</strong>{% if date_override %} <span class="badge badge-warning">Override aktiv</span>{% else %} <span class="badge badge-success">echtes Datum</span>{% endif %}</p>
     <form method="post" action="/admin/test-date" class="form-inline mt-1">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <div class="form-group">
             <label for="test_date">Datum</label>
             <input type="date" id="test_date" name="test_date" value="{{ date_override or '' }}">
         </div>
-        <button type="submit" class="btn btn-primary btn-sm">Setzen</button>
+        <button type="submit" class="btn btn-primary">Setzen</button>
     </form>
     {% if date_override %}
     <form method="post" action="/admin/test-date" class="mt-1">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="hidden" name="test_date" value="">
-        <button type="submit" class="btn btn-danger btn-sm">Zurücksetzen (echtes Datum)</button>
+        <button type="submit" class="btn btn-outline">Zurücksetzen (echtes Datum)</button>
     </form>
     {% endif %}
 </div>

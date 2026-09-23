@@ -2,34 +2,43 @@
 
 import hmac
 import secrets
-from datetime import datetime, timedelta
-from urllib.parse import quote
+from datetime import date, datetime, timedelta
+from decimal import Decimal
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse
+from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from starlette.background import BackgroundTask
 
 from app import clock, services
 from app.auth import (
+    SESSION_COOKIE,
     check_login_rate_limit,
+    check_rate_limit,
     clear_session_cookie,
     create_session,
     destroy_session,
+    get_current_member,
+    get_session,
     require_member,
     require_super,
     set_session_cookie,
-    SESSION_COOKIE,
 )
 from app.config import settings
 from app.database import get_db
 from app.emailer import (
+    Mail,
     cancel_request_email_body,
     login_link_email_body,
     login_link_email_html,
-    send_email,
+    send_batch,
+    send_with_config,
     smtp_config_for,
 )
 from app.templates import TemplateResponse, format_date, format_euro
+from app.web import flash_redirect, parse_clock, public_base_url
 from app.models.models import (
     Booking,
     Event,
@@ -43,9 +52,19 @@ from app.models.models import (
 
 router = APIRouter()
 
+# Wrong code entries per login request before its code (and link) is burnt
+MAX_CODE_ATTEMPTS = 5
+# Login-link requests per email address within the login window
+MAX_LINK_REQUESTS_PER_EMAIL = 5
+
+NEUTRAL_LOGIN_MSG = (
+    "Falls die Adresse registriert ist, ist ein Login-Link unterwegs – "
+    "bitte Postfach prüfen."
+)
+
 
 def _redirect(msg: str, url: str = "/member/dashboard", mt: str = "success"):
-    return RedirectResponse(url=f"{url}?msg={quote(msg)}&mt={mt}", status_code=302)
+    return flash_redirect(msg, url, mt)
 
 
 # ── Login (Magic Link per E-Mail) ──────────────────────────────────────────
@@ -59,8 +78,6 @@ async def login_page(
     db: Session = Depends(get_db),
 ):
     # Bereits eingeloggt (z. B. App-Neustart) → direkt ins Dashboard
-    from app.auth import get_current_member
-
     if get_current_member(request, db):
         return RedirectResponse(url="/member/dashboard", status_code=302)
     return TemplateResponse(
@@ -68,29 +85,36 @@ async def login_page(
     )
 
 
-def _public_base_url(request: Request) -> str:
-    """Base URL for links in emails: configured BASE_URL, else the request."""
-    if settings.base_url:
-        return settings.base_url.rstrip("/") + "/"
-    return str(request.base_url)
-
-
 @router.post("/login")
 async def request_login_link(
     request: Request,
-    email: str = Form(...),
+    email: str = Form(..., max_length=200),
     db: Session = Depends(get_db),
 ):
     check_login_rate_limit(request, "member")
+    email = services.normalize_email(email)
+    # Also per address (any address, registered or not — stays neutral):
+    # every request issues a fresh code, so this caps the guesses per mailbox
+    check_rate_limit(
+        f"member-email:{email}",
+        MAX_LINK_REQUESTS_PER_EMAIL,
+        settings.login_window_seconds,
+        "Zu viele Login-Anforderungen für diese Adresse. Bitte später erneut versuchen.",
+    )
     members = (
         db.query(Member)
-        .filter(Member.email == email, Member.is_active == True)  # noqa: E712
+        .filter(func.lower(Member.email) == email, Member.is_active == True)  # noqa: E712
         .all()
     )
+    # Only the newest request counts: older links and codes expire
+    if members:
+        db.query(LoginToken).filter(
+            LoginToken.member_id.in_([m.id for m in members])
+        ).delete(synchronize_session=False)
 
     # One shared 6-digit code per request (works for all memberships)
     code = f"{secrets.randbelow(10**6):06d}"
-    base = _public_base_url(request)
+    base = public_base_url(request)
     links = []
     for member in members:
         token = LoginToken(
@@ -108,60 +132,55 @@ async def request_login_link(
         )
     db.commit()
 
-    sent = False
-    if links:
-        member = links[0]["member"]
-        body_links = "\n".join(
-            f"{l['member'].subscription.name}: {l['url']}" if len(links) > 1
-            else l["url"]
-            for l in links
-        )
-        sent = await send_email(
-            member.subscription,
-            email,
-            "Dein Anmelde-Link – SportAbo",
-            login_link_email_body(member.name, body_links, code),
-            html=login_link_email_html(member.name, links[0]["url"], code),
-        )
-
+    config = smtp_config_for(links[0]["member"].subscription) if links else None
     # Dev fallback: without SMTP show link and code directly (never in prod)
-    show_links = (
-        links
-        and not sent
-        and settings.app_env != "production"
-        and smtp_config_for(links[0]["member"].subscription) is None
-    )
-    return TemplateResponse(
+    show_links = links and config is None and settings.app_env != "production"
+    response = TemplateResponse(
         "member/login.html",
         {
             "request": request,
-            "msg": (
-                "Login-Link per E-Mail versendet – bitte Postfach prüfen."
-                if sent
-                else "Falls die E-Mail registriert ist, wurde ein Login-Link versendet."
-            ),
+            # Same answer for every address — no account enumeration
+            "msg": NEUTRAL_LOGIN_MSG,
             "msg_type": "success",
             "code_email": email,
             "dev_links": links if show_links else None,
             "dev_code": code if show_links else None,
         },
     )
+    if links and config:
+        # Sent after the response: equal response time for known and
+        # unknown addresses (no timing oracle)
+        member = links[0]["member"]
+        body_links = "\n".join(
+            f"{l['member'].subscription.name}: {l['url']}" if len(links) > 1
+            else l["url"]
+            for l in links
+        )
+        mail = Mail(
+            email,
+            "Dein Anmelde-Link – SportAbo",
+            login_link_email_body(member.name, body_links, code),
+            login_link_email_html(member.name, links[0]["url"], code),
+        )
+        response.background = BackgroundTask(send_with_config, config, [mail])
+    return response
 
 
 @router.post("/login/code")
 async def login_with_code(
     request: Request,
-    email: str = Form(...),
+    email: str = Form(..., max_length=200),
     code: str = Form(..., min_length=6, max_length=6),
     db: Session = Depends(get_db),
 ):
     check_login_rate_limit(request, "member-code")
+    email = services.normalize_email(email)
     now = utcnow()
     tokens = (
         db.query(LoginToken)
         .join(Member)
         .filter(
-            Member.email == email,
+            func.lower(Member.email) == email,
             Member.is_active == True,  # noqa: E712
             LoginToken.expires_at >= now,
             LoginToken.code != "",
@@ -172,11 +191,19 @@ async def login_with_code(
         (t for t in tokens if hmac.compare_digest(t.code, code)), None
     )
     if not match:
+        # Count the miss on every open token of this address; after
+        # MAX_CODE_ATTEMPTS the code (and its link) is burnt
+        for t in tokens:
+            t.attempts += 1
+            if t.attempts >= MAX_CODE_ATTEMPTS:
+                db.delete(t)
+        db.commit()
         return TemplateResponse(
             "member/login.html",
             {
                 "request": request,
-                "error": "Code ungültig oder abgelaufen",
+                "error": "Code ungültig oder abgelaufen – nach mehreren "
+                "Fehlversuchen bitte einen neuen Link anfordern.",
                 "code_email": email,
             },
             status_code=401,
@@ -192,27 +219,48 @@ async def login_with_code(
     return resp
 
 
-@router.get("/login/t/{token}")
-async def login_with_token(
-    request: Request,
-    token: str,
-    db: Session = Depends(get_db),
-):
+def _valid_login_token(db: Session, token: str):
+    """(row, error message) — expired rows are cleaned up on the way."""
     row = db.query(LoginToken).filter(LoginToken.token == token).first()
     if not row or row.expires_at < utcnow():
         if row:
             db.delete(row)
             db.commit()
-        return _redirect(
-            "Login-Link ungültig oder abgelaufen – bitte neu anfordern.",
-            "/member/login",
-            mt="error",
-        )
+        return None, "Login-Link ungültig oder abgelaufen – bitte neu anfordern."
+    if not row.member or not row.member.is_active:
+        return None, "Konto ist deaktiviert"
+    return row, None
+
+
+@router.get("/login/t/{token}")
+async def login_link_page(
+    request: Request,
+    token: str,
+    db: Session = Depends(get_db),
+):
+    """Magic link target: only shows a confirm button. Mail scanners and
+    link previews fetch links with GET — logging in here would burn the
+    one-time token before the member even taps it."""
+    row, error = _valid_login_token(db, token)
+    if error:
+        return _redirect(error, "/member/login", mt="error")
+    return TemplateResponse(
+        "member/login_confirm.html",
+        {"request": request, "member": row.member, "token": token},
+    )
+
+
+@router.post("/login/t/{token}")
+async def login_with_token(
+    request: Request,
+    token: str,
+    db: Session = Depends(get_db),
+):
+    row, error = _valid_login_token(db, token)
+    if error:
+        return _redirect(error, "/member/login", mt="error")
     member = row.member
     db.delete(row)
-    if not member or not member.is_active:
-        db.commit()
-        return _redirect("Konto ist deaktiviert", "/member/login", mt="error")
     session = create_session(db, member_id=member.id)
     resp = RedirectResponse(url="/member/dashboard", status_code=302)
     set_session_cookie(resp, session.token)
@@ -270,7 +318,7 @@ async def dashboard(
     my_bookings_by_event = {b.event_id: b for b in my_bookings}
     booked_event_ids = set(my_bookings_by_event)
     all_events = upcoming_events + past_events
-    booked_count = {e.id: services.count_booked(db, e.id) for e in all_events}
+    booked_count = services.booked_counts(db, [e.id for e in all_events])
     free_by_event = {
         e.id: max(0, e.max_participants - booked_count[e.id])
         for e in upcoming_events
@@ -279,14 +327,13 @@ async def dashboard(
         e.id: services.price_tiers(e, limit=3) for e in upcoming_events
     }
     # Warteliste: Länge pro Termin + eigene Position (1-basiert)
-    waitlist_count = {}
-    waitlist_pos = {}
-    for e in upcoming_events:
-        entries = services.waitlist_entries(db, e.id)
-        waitlist_count[e.id] = len(entries)
-        for i, entry in enumerate(entries, start=1):
-            if entry.member_id == member.id:
-                waitlist_pos[e.id] = i
+    waitlists = services.waitlist_members(db, [e.id for e in upcoming_events])
+    waitlist_count = {eid: len(ids) for eid, ids in waitlists.items()}
+    waitlist_pos = {
+        eid: ids.index(member.id) + 1
+        for eid, ids in waitlists.items()
+        if member.id in ids
+    }
     # Own charge per past event (from the ledger)
     my_charges = {
         p.event_id: p.amount
@@ -358,13 +405,8 @@ async def dashboard(
             .order_by(Event.date)
             .all()
         )
-        settleable_events = [
-            {
-                "event": e,
-                "blocker": services.settle_blocker(db, e),
-                "booked": services.count_booked(db, e.id),
-            }
-            for e in db.query(Event)
+        open_past = (
+            db.query(Event)
             .filter(
                 Event.subscription_id == member.subscription_id,
                 Event.date < today,
@@ -373,6 +415,15 @@ async def dashboard(
             )
             .order_by(Event.date)
             .all()
+        )
+        open_counts = services.booked_counts(db, [e.id for e in open_past])
+        settleable_events = [
+            {
+                "event": e,
+                "blocker": services.settle_blocker(db, e),
+                "booked": open_counts[e.id],
+            }
+            for e in open_past
         ]
 
     return TemplateResponse(
@@ -416,7 +467,6 @@ async def book_event(
     request: Request,
     event_id: str,
     guest_count: int = Form(0, ge=0, le=20),
-    guest_emails: str = Form(""),
     member: Member = Depends(require_member),
     db: Session = Depends(get_db),
 ):
@@ -425,6 +475,8 @@ async def book_event(
         return _redirect("Termin nicht gefunden", mt="error")
     if event.is_cancelled:
         return _redirect("Termin ist abgesagt", mt="error")
+    if event.settled_at:
+        return _redirect("Termin ist bereits abgerechnet", mt="error")
     if event.date < clock.today(db):
         return _redirect("Vergangene Termine können nicht gebucht werden", mt="error")
 
@@ -436,17 +488,16 @@ async def book_event(
     if existing:
         return _redirect("Du bist für diesen Termin bereits angemeldet", mt="error")
 
-    booking = Booking(
-        event_id=event_id,
-        member_id=member.id,
-        guest_count=guest_count,
-        guest_emails=guest_emails,
-    )
+    booking = Booking(event_id=event_id, member_id=member.id, guest_count=guest_count)
     db.add(booking)
     db.flush()
     if services.count_booked(db, event_id) > event.max_participants:
         db.rollback()
         return _redirect("Termin ist ausgebucht", mt="error")
+    # Booked directly → an old waitlist entry for this event is obsolete
+    db.query(WaitlistEntry).filter(
+        WaitlistEntry.event_id == event_id, WaitlistEntry.member_id == member.id
+    ).delete(synchronize_session=False)
     db.commit()
     guests = f" (+{guest_count} Gäste)" if guest_count else ""
     return _redirect(f"Anmeldung bestätigt{guests}")
@@ -469,7 +520,7 @@ async def unbook_event(
     event = booking.event
     if event.settled_at:
         return _redirect(
-            "Termin ist bereits abgerechnet – Stornierung nicht mehr möglich",
+            "Termin ist bereits abgerechnet – Abmelden nicht mehr möglich",
             mt="error",
         )
     now = clock.now(db)
@@ -510,15 +561,19 @@ async def unbook_event(
             )
             .all()
         )
-        for s in supers:
-            await send_email(
-                sub,
-                s.email,
-                f"Storno-Anfrage {format_date(event.date)} – {sub.name}",
-                cancel_request_email_body(
-                    s.name, member.name, event.date.strftime("%d.%m.%Y")
-                ),
-            )
+        await send_batch(
+            sub,
+            [
+                Mail(
+                    s.email,
+                    f"Abmelde-Anfrage {format_date(event.date)} – {sub.name}",
+                    cancel_request_email_body(
+                        s.name, member.name, event.date.strftime("%d.%m.%Y")
+                    ),
+                )
+                for s in supers
+            ],
+        )
         return _redirect(
             "Abmeldefrist abgelaufen – Anfrage wurde an die Super-Mitglieder gesendet"
         )
@@ -538,8 +593,6 @@ async def switch_membership(
 ):
     """Zwischen eigenen Mitgliedschaften (gleiche E-Mail) wechseln:
     die bestehende Geräte-Session zeigt danach auf das andere Abo."""
-    from app.auth import get_session
-
     target = db.query(Member).filter(Member.id == target_id).first()
     if (
         not target
@@ -558,16 +611,14 @@ async def switch_membership(
 async def confirm_transfer_received(
     request: Request,
     payer_id: str = Form(...),
-    amount: float = Form(..., gt=0),
-    note: str = Form(""),
+    amount: float = Form(..., gt=0, le=100000),
+    note: str = Form("", max_length=200),
     member: Member = Depends(require_member),
     db: Session = Depends(get_db),
 ):
     """Zahlungseingang bestätigen: der Zahler bekommt Guthaben gutgeschrieben,
     das eigene Guthaben sinkt (Vorstreck-Modell). Betrugssicher, weil der
     Bestätigende sich damit nur selbst belasten kann."""
-    from decimal import Decimal
-
     payer = db.query(Member).filter(Member.id == payer_id).first()
     if (
         not payer
@@ -681,7 +732,7 @@ async def event_participants(
             "waitlist": services.waitlist_entries(db, event_id),
             "is_past": event.date < clock.today(db),
             "guest_link": (
-                f"{_public_base_url(request)}g/{event.public_token}"
+                f"{public_base_url(request)}g/{event.public_token}"
                 if member.is_super
                 else None
             ),
@@ -768,7 +819,7 @@ async def approve_cancel_request(
     info = (
         f" – {promoted[0].name} rückt von der Warteliste nach" if promoted else ""
     )
-    return _redirect(f"Stornierung von {name} freigegeben{info}")
+    return _redirect(f"Abmeldung von {name} freigegeben{info}")
 
 
 @router.post("/cancel-request/{booking_id}/reject")
@@ -787,33 +838,37 @@ async def reject_cancel_request(
         return _redirect("Anfrage nicht gefunden", mt="error")
     booking.cancel_requested_at = None
     db.commit()
-    return _redirect(f"Storno-Anfrage von {booking.member.name} abgelehnt")
+    return _redirect(f"Abmelde-Anfrage von {booking.member.name} abgelehnt")
 
 
 @router.post("/extra-event")
 async def super_create_extra_event(
     request: Request,
     event_date: str = Form(...),
-    start_hour: int = Form(..., ge=0, le=23),
+    start_time: str = Form(""),
+    start_hour: int | None = Form(None, ge=0, le=23),
     start_minute: int = Form(0, ge=0, le=59),
-    duration_minutes: int = Form(120, ge=1),
-    budget: float = Form(..., ge=0),
-    max_participants: int = Form(..., ge=1),
-    min_participants: int = Form(..., ge=1),
+    duration_minutes: int = Form(120, ge=1, le=24 * 60),
+    budget: float = Form(..., ge=0, le=100000),
+    max_participants: int = Form(..., ge=1, le=500),
+    min_participants: int = Form(..., ge=1, le=500),
     member: Member = Depends(require_super),
     db: Session = Depends(get_db),
 ):
-    from decimal import Decimal
-    from datetime import date as date_t, time as time_t
-
-    from sqlalchemy.exc import IntegrityError
-
+    back = "/member/dashboard"
+    try:
+        day = date.fromisoformat(event_date)
+        start = parse_clock(start_time, start_hour, start_minute)
+    except ValueError:
+        return _redirect("Ungültiges Datum oder Uhrzeit", back, mt="error")
+    if min_participants > max_participants:
+        return _redirect("Mindestzahl darf das Maximum nicht übersteigen", back, mt="error")
     try:
         services.create_extra_event(
             db,
             member.subscription,
-            date_t.fromisoformat(event_date),
-            time_t(hour=start_hour, minute=start_minute),
+            day,
+            start,
             duration_minutes,
             Decimal(str(budget)),
             max_participants,
@@ -821,22 +876,18 @@ async def super_create_extra_event(
         )
     except IntegrityError:
         db.rollback()
-        return _redirect("An diesem Tag existiert bereits ein Termin", mt="error")
-    except ValueError:
-        return _redirect("Ungültiges Datum", mt="error")
-    return _redirect("Zusatztermin angelegt")
+        return _redirect("An diesem Tag existiert bereits ein Termin", back, mt="error")
+    return _redirect("Zusatztermin angelegt", back)
 
 
 @router.post("/guest-booking/{gb_id}/paid")
 async def super_guest_paid(
     request: Request,
     gb_id: str,
-    amount: float = Form(..., gt=0),
+    amount: float = Form(..., gt=0, le=100000),
     member: Member = Depends(require_super),
     db: Session = Depends(get_db),
 ):
-    from decimal import Decimal
-
     gb = db.query(GuestBooking).filter(GuestBooking.id == gb_id).first()
     if not gb or gb.event.subscription_id != member.subscription_id:
         return _redirect("Gastbuchung nicht gefunden", mt="error")
@@ -864,4 +915,4 @@ async def super_guest_unpaid(
     if not gb.paid_at:
         return _redirect("Nicht als bezahlt markiert", back, mt="error")
     services.unmark_guest_paid(db, gb)
-    return _redirect(f"Bezahlt-Markierung von {gb.name} storniert", back)
+    return _redirect(f"Bezahlt-Markierung von {gb.name} zurückgenommen", back)

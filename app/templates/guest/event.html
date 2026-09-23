@@ -18,7 +18,7 @@
     <div class="stat-card"><div class="value">{{ event.start_time|time_de }} – {{ event.end_time|time_de }}</div><div class="label">Uhrzeit</div></div>
     <div class="stat-card"><div class="value">{{ available }} / {{ event.max_participants }}</div><div class="label">Freie Plätze</div></div>
     <div class="stat-card">
-        <div class="value">max. {{ tiers[0].guest|euro }}</div>
+        <div class="value">max. {{ max_share|euro }}</div>
         <div class="label">Preis pro Person</div>
     </div>
 </div>
@@ -31,17 +31,17 @@
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <div class="form-group">
             <label for="name">Dein Name</label>
-            <input type="text" id="name" name="name" required>
+            <input type="text" id="name" name="name" maxlength="100" autocomplete="name" required>
         </div>
         <div class="form-group">
             <label for="email">E-Mail</label>
-            <input type="email" id="email" name="email" required>
+            <input type="email" id="email" name="email" maxlength="200" autocomplete="email" inputmode="email" required>
         </div>
         <div class="form-group">
             <label for="count">Anzahl Personen</label>
-            <input type="number" id="count" name="count" min="1" max="{{ available }}" value="1" required>
+            <input type="number" id="count" name="count" min="1" max="{{ available }}" value="1" inputmode="numeric" required>
         </div>
-        <button type="submit" class="btn btn-primary btn-block">Verbindlich buchen</button>
+        <button type="submit" class="btn btn-primary btn-block btn-lg">Verbindlich buchen</button>
     </form>
     {% else %}
     <p class="muted">Dieser Termin ist leider ausgebucht.</p>

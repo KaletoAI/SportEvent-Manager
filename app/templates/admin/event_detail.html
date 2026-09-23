@@ -1,10 +1,11 @@
 {% extends "base.html" %}
+{% import "_macros.html" as ui %}
 {% block title %}Termin {{ event.date|date_de }} — SportAbo{% endblock %}
-{% block nav_title %}Termin: {{ event.date|date_de }}, {{ event.start_time|time_de }}{% if event.is_extra %} (Zusatz){% endif %}{% endblock %}
+{% block nav_title %}{{ event.date|date_short }}{% if event.is_extra %} (Zusatz){% endif %}{% endblock %}
 {% block nav_links %}
-<a href="/admin/subscription/{{ event.subscription_id }}">Zurück</a>
-<a href="/admin/dashboard">Übersicht</a>
-<a href="/admin/logout">Abmelden</a>
+{{ ui.nav_back("/admin/subscription/" ~ event.subscription_id, "Zurück zum Abo") }}
+{{ ui.nav_home("/admin/dashboard") }}
+<a href="/admin/logout">Logout</a>
 {% endblock %}
 {% block content %}
 <div class="stat-grid">
@@ -14,12 +15,60 @@
     <div class="stat-card"><div class="value">{{ event.normal_budget|euro }}</div><div class="label">Budget (Normal)</div></div>
 </div>
 
-{% set member_spots = bookings|sum(attribute='guest_count') + bookings|length %}
-<p class="muted small">Belegung: {{ member_spots }} über Mitglieder-Anmeldungen (inkl. deren Gäste) + {{ total_booked - member_spots }} über Gastlink = <strong>{{ total_booked }} Teilnehmer</strong>.</p>
-
-{% if not event.is_cancelled and not event.settled_at and total_booked < event.min_participants %}
-<div class="msg msg-error">Mindestteilnehmerzahl noch nicht erreicht ({{ total_booked }} von {{ event.min_participants }}) — der Termin findet so nicht statt.</div>
+{% if event.is_cancelled %}
+<div class="msg msg-error">Dieser Termin ist abgesagt.</div>
+{% elif not event.settled_at and total_booked < event.min_participants %}
+<div class="msg msg-warning">Mindestteilnehmerzahl noch nicht erreicht ({{ total_booked }} von {{ event.min_participants }}) — der Termin findet so nicht statt.</div>
 {% endif %}
+
+<div class="tabs" data-tabs>
+    <button type="button" class="tab-btn active" data-tab="uebersicht">📋 Übersicht</button>
+    <button type="button" class="tab-btn" data-tab="mitglieder">👥 Mitglieder ({{ bookings|length }})</button>
+    <button type="button" class="tab-btn" data-tab="gaeste">🎟️ Gäste ({{ guest_bookings|length }})</button>
+</div>
+
+{# ── Tab: Übersicht ─────────────────────────────────────────────────── #}
+<section class="tab-panel active" id="tab-uebersicht">
+{% set member_spots = bookings|sum(attribute='guest_count') + bookings|length %}
+<p class="muted small">{{ event.date|date_de }}, {{ event.start_time|time_de }}–{{ event.end_time|time_de }} Uhr · Belegung: {{ member_spots }} über Mitglieder-Anmeldungen (inkl. deren Gäste) + {{ total_booked - member_spots }} über Gastlink = <strong>{{ total_booked }} Teilnehmer</strong>.</p>
+
+<div class="card">
+    <h2>Aktionen</h2>
+    <div class="actions">
+        {% if event.is_cancelled %}
+        <form method="post" action="/admin/event/{{ event.id }}/reactivate" class="inline"
+              data-confirm="Termin wieder aktivieren? Eine frühere Preisreduzierung wird dabei nicht automatisch zurückgenommen.">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="btn btn-success">Reaktivieren</button>
+        </form>
+        {% elif event.settled_at %}
+        <span class="badge badge-muted">Abgerechnet am {{ event.settled_at|date_de }}</span>
+        {% else %}
+        <form method="post" action="/admin/event/{{ event.id }}/settle" class="inline"
+              data-confirm="Termin abrechnen? Der Anteil wird allen angemeldeten Mitgliedern vom Guthaben abgezogen.">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="btn btn-primary" {% if settle_blocker %}disabled{% endif %}>Abrechnen</button>
+        </form>
+        {{ ui.cancel_buttons("/admin/event/" ~ event.id ~ "/cancel", event, csrf_token) }}
+        {% endif %}
+    </div>
+    {% if settle_blocker and not event.settled_at and not event.is_cancelled %}<p class="muted small mt-1">Abrechnen: {{ settle_blocker }}</p>{% endif %}
+
+    {% if not event.settled_at and not event.is_cancelled %}
+    <form method="post" action="/admin/event/{{ event.id }}/capacity" class="form-inline mt-1">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="form-group">
+            <label for="min_participants">Min. Teilnehmer</label>
+            <input type="number" id="min_participants" name="min_participants" min="1" inputmode="numeric" value="{{ event.min_participants }}">
+        </div>
+        <div class="form-group">
+            <label for="max_participants">Max. Teilnehmer</label>
+            <input type="number" id="max_participants" name="max_participants" min="1" inputmode="numeric" value="{{ event.max_participants }}">
+        </div>
+        <button type="submit" class="btn btn-outline">Speichern</button>
+    </form>
+    {% endif %}
+</div>
 
 <div class="card">
     <h2>Preisstaffel</h2>
@@ -54,75 +103,17 @@
 <div class="card">
     <h2>Gastlink</h2>
     <p class="muted small">Diesen Link kannst du an Gäste weitergeben — Buchung ohne Konto:</p>
-    <div class="copy-row mt-1">
-        <input type="text" id="guest-link" value="{{ guest_link }}" readonly onclick="this.select()">
-        <button type="button" class="btn btn-outline btn-sm" id="copy-btn"
-                onclick="navigator.clipboard.writeText(document.getElementById('guest-link').value).then(() => { this.textContent = 'Kopiert ✓'; setTimeout(() => this.textContent = 'Kopieren', 2000); })">Kopieren</button>
-    </div>
+    {{ ui.copy_link(guest_link) }}
 </div>
+</section>
 
-<div class="card">
-    <h2>Aktionen</h2>
-    <div class="actions">
-        {% if event.is_cancelled %}
-        <form method="post" action="/admin/event/{{ event.id }}/cancel" class="inline"
-              onsubmit="return confirm('Termin wieder aktivieren? Eine frühere Preisreduzierung wird dabei nicht automatisch zurückgenommen.')">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <button type="submit" class="btn btn-success btn-sm">Reaktivieren</button>
-        </form>
-        {% elif not event.settled_at %}
-        {% if event.is_extra %}
-        <form method="post" action="/admin/event/{{ event.id }}/cancel" class="inline"
-              onsubmit="return confirm('Zusatztermin wirklich absagen?')">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <button type="submit" class="btn btn-danger btn-sm">Zusatztermin absagen</button>
-        </form>
-        {% else %}
-        <form method="post" action="/admin/event/{{ event.id }}/cancel" class="inline"
-              onsubmit="return confirm('Termin absagen und den Abo-Gesamtpreis um {{ event.abo_budget|euro }} reduzieren?')">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <input type="hidden" name="reduce_price" value="yes">
-            <button type="submit" class="btn btn-danger btn-sm">Absagen + Preis reduzieren</button>
-        </form>
-        <form method="post" action="/admin/event/{{ event.id }}/cancel" class="inline"
-              onsubmit="return confirm('Termin absagen und das Budget auf die restlichen Termine umlegen? (Gesamtpreis bleibt, andere Termine werden teurer)')">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <input type="hidden" name="reduce_price" value="no">
-            <button type="submit" class="btn btn-danger btn-sm">Absagen + umlegen</button>
-        </form>
-        {% endif %}
-        {% endif %}
-        <form method="post" action="/admin/event/{{ event.id }}/settle" class="inline"
-              onsubmit="return confirm('Termin abrechnen? Der Anteil wird allen angemeldeten Mitgliedern vom Guthaben abgezogen.')">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <button type="submit" class="btn btn-warning btn-sm" {% if event.settled_at or settle_blocker %}disabled{% endif %}>
-                {% if event.settled_at %}Abgerechnet am {{ event.settled_at|date_de }}{% else %}Abrechnen{% endif %}
-            </button>
-        </form>
-        {% if settle_blocker and not event.settled_at %}<span class="muted small">{{ settle_blocker }}</span>{% endif %}
-    </div>
-
-    {% if not event.settled_at %}
-    <form method="post" action="/admin/event/{{ event.id }}/capacity" class="form-inline mt-1">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <div class="form-group">
-            <label for="min_participants">Min. Teilnehmer</label>
-            <input type="number" id="min_participants" name="min_participants" min="1" value="{{ event.min_participants }}">
-        </div>
-        <div class="form-group">
-            <label for="max_participants">Max. Teilnehmer</label>
-            <input type="number" id="max_participants" name="max_participants" min="1" value="{{ event.max_participants }}">
-        </div>
-        <button type="submit" class="btn btn-outline btn-sm">Speichern</button>
-    </form>
-    {% endif %}
-</div>
-
+{# ── Tab: Mitglieder ───────────────────────────────────────────────── #}
+<section class="tab-panel" id="tab-mitglieder">
 <div class="card">
     <h2>Anmeldungen (Mitglieder)</h2>
     {% if bookings %}
     <div class="table-wrap">
-    <table>
+    <table class="table-stack">
         <thead>
             <tr>
                 <th>Mitglied</th>
@@ -135,16 +126,16 @@
         <tbody>
             {% for b in bookings %}
             <tr>
-                <td>{{ b.member.name }}{% if b.cancel_requested_at %} <span class="badge badge-warning">Storno angefragt</span>{% endif %}</td>
-                <td class="num">{{ b.guest_count }}</td>
-                <td class="num">{{ b.guest_count + 1 }}</td>
-                <td class="num">{{ (shares.member_share + b.guest_count * shares.guest_share)|euro }}</td>
+                <td>{{ b.member.name }}{% if b.cancel_requested_at %} <span class="badge badge-warning">Abmeldung angefragt</span>{% endif %}</td>
+                <td class="num" data-label="Gäste">{{ b.guest_count }}</td>
+                <td class="num" data-label="Plätze">{{ b.guest_count + 1 }}</td>
+                <td class="num" data-label="Anteil">{{ (shares.member_share + b.guest_count * shares.guest_share)|euro }}</td>
                 {% if not event.settled_at %}
                 <td>
                     <form method="post" action="/admin/booking/{{ b.id }}/delete" class="inline"
-                          onsubmit="return confirm('Anmeldung von {{ b.member.name }} entfernen?')">
+                          data-confirm="Anmeldung von {{ b.member.name }} entfernen?">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                        <button type="submit" class="btn btn-outline btn-sm">Entfernen</button>
+                        <button type="submit" class="btn btn-outline-danger btn-sm">Entfernen</button>
                     </form>
                 </td>
                 {% endif %}
@@ -153,8 +144,8 @@
             <tr class="total">
                 <td>Summe</td>
                 <td></td>
-                <td class="num">{{ bookings|sum(attribute='guest_count') + bookings|length }}</td>
-                <td class="num">{{ bookings_total|euro }}</td>
+                <td class="num" data-label="Plätze">{{ bookings|sum(attribute='guest_count') + bookings|length }}</td>
+                <td class="num" data-label="Anteil">{{ bookings_total|euro }}</td>
                 {% if not event.settled_at %}<td></td>{% endif %}
             </tr>
         </tbody>
@@ -178,9 +169,9 @@
         </div>
         <div class="form-group">
             <label for="bm_guest_count">Gäste</label>
-            <input type="number" id="bm_guest_count" name="guest_count" min="0" max="20" value="0">
+            <input type="number" id="bm_guest_count" name="guest_count" min="0" max="20" inputmode="numeric" value="0">
         </div>
-        <button type="submit" class="btn btn-primary btn-sm">Anmelden</button>
+        <button type="submit" class="btn btn-primary">Anmelden</button>
     </form>
     {% else %}
     <p class="muted small mt-1">Alle Mitglieder sind bereits angemeldet.</p>
@@ -192,17 +183,17 @@
 <div class="card">
     <h2>Warteliste</h2>
     <div class="table-wrap">
-    <table>
+    <table class="table-stack">
         <thead>
-            <tr><th class="num">Platz</th><th>Name</th><th>E-Mail</th><th>Seit</th></tr>
+            <tr><th>Name</th><th class="num">Platz</th><th>E-Mail</th><th>Seit</th></tr>
         </thead>
         <tbody>
             {% for w in waitlist %}
             <tr>
-                <td class="num">{{ loop.index }}</td>
                 <td>{{ w.member.name }}</td>
-                <td>{{ w.member.email }}</td>
-                <td>{{ w.created_at|date_de }}</td>
+                <td class="num" data-label="Platz">{{ loop.index }}</td>
+                <td data-label="E-Mail">{{ w.member.email }}</td>
+                <td data-label="Seit">{{ w.created_at|date_de }}</td>
             </tr>
             {% endfor %}
         </tbody>
@@ -211,12 +202,15 @@
     <p class="muted small">Rückt automatisch nach, sobald ein Platz frei wird (Abmeldung, Entfernen, höheres Maximum).</p>
 </div>
 {% endif %}
+</section>
 
+{# ── Tab: Gäste ────────────────────────────────────────────────────── #}
+<section class="tab-panel" id="tab-gaeste">
 <div class="card">
     <h2>Gastbuchungen</h2>
     {% if guest_bookings %}
     <div class="table-wrap">
-    <table>
+    <table class="table-stack">
         <thead>
             <tr>
                 <th>Name</th>
@@ -231,25 +225,25 @@
             {% for g in guest_bookings %}
             <tr>
                 <td>{{ g.name }}</td>
-                <td>{{ g.email }}</td>
-                <td class="num">{{ g.count }}</td>
-                <td class="num">{{ (g.count * shares.guest_share)|euro }}</td>
-                <td>
+                <td data-label="E-Mail">{{ g.email }}</td>
+                <td class="num" data-label="Personen">{{ g.count }}</td>
+                <td class="num" data-label="Anteil">{{ (g.count * shares.guest_share)|euro }}</td>
+                <td data-label="Bezahlt">
                     {% if g.paid_at %}
                     <div class="paid-form">
                         <span class="badge badge-success">✓ {{ g.paid_amount|euro }}</span>
                         <form method="post" action="/admin/guest-booking/{{ g.id }}/unpaid" class="inline"
-                              onsubmit="return confirm('Bezahlt-Markierung von {{ g.name }} stornieren?{% if g.paid_member_id %} Die Gegenbuchung wird rückgebucht.{% endif %}')">
+                              data-confirm="Bezahlt-Markierung von {{ g.name }} zurücknehmen?{% if g.paid_member_id %} Die Gegenbuchung wird rückgebucht.{% endif %}">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                            <button type="submit" class="btn btn-outline btn-sm">Storno</button>
+                            <button type="submit" class="btn btn-outline btn-sm">Zurücknehmen</button>
                         </form>
                     </div>
                     {% else %}
                     <form method="post" action="/admin/guest-booking/{{ g.id }}/paid" class="paid-form"
-                          onsubmit="return confirm('Zahlung von {{ g.name }} als erhalten verbuchen?')">
+                          data-confirm="Zahlung von {{ g.name }} als erhalten verbuchen?">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                        <input type="number" name="amount" min="0.01" step="0.01"
-                               value="{{ '%.2f'|format(g.count * shares.guest_share) }}" title="Erhaltener Betrag in Euro">
+                        <input type="number" name="amount" min="0.01" step="0.01" inputmode="decimal"
+                               value="{{ '%.2f'|format(g.count * shares.guest_share) }}" aria-label="Erhaltener Betrag in Euro">
                         <button type="submit" class="btn btn-primary btn-sm">Bezahlt ✓</button>
                     </form>
                     {% endif %}
@@ -257,9 +251,9 @@
                 {% if not event.settled_at %}
                 <td>
                     <form method="post" action="/admin/guest-booking/{{ g.id }}/delete" class="inline"
-                          onsubmit="return confirm('Gastbuchung von {{ g.name }} entfernen?')">
+                          data-confirm="Gastbuchung von {{ g.name }} entfernen?">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                        <button type="submit" class="btn btn-outline btn-sm">Entfernen</button>
+                        <button type="submit" class="btn btn-outline-danger btn-sm">Entfernen</button>
                     </form>
                 </td>
                 {% endif %}
@@ -278,18 +272,21 @@
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <div class="form-group">
             <label for="bg_name">Gast anmelden (Name)</label>
-            <input type="text" id="bg_name" name="name" required>
+            <input type="text" id="bg_name" name="name" maxlength="100" autocomplete="off" required>
         </div>
         <div class="form-group">
             <label for="bg_email">E-Mail (optional)</label>
-            <input type="email" id="bg_email" name="email">
+            <input type="email" id="bg_email" name="email" maxlength="200" autocomplete="off">
         </div>
         <div class="form-group">
             <label for="bg_count">Personen</label>
-            <input type="number" id="bg_count" name="count" min="1" max="20" value="1">
+            <input type="number" id="bg_count" name="count" min="1" max="20" inputmode="numeric" value="1">
         </div>
-        <button type="submit" class="btn btn-primary btn-sm">Anmelden</button>
+        <button type="submit" class="btn btn-primary">Anmelden</button>
     </form>
     {% endif %}
 </div>
+</section>
+
+<div class="tab-spacer"></div>
 {% endblock %}

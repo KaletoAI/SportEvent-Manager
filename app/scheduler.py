@@ -1,4 +1,5 @@
-"""Background jobs: cancellation reminders and automatic settlement.
+"""Background jobs: cancellation reminders, automatic settlement and
+housekeeping (expired sessions / login tokens).
 
 Runs as an asyncio task (see app.main lifespan) every
 `settings.scheduler_interval_seconds`. All date logic uses clock.today(db)
@@ -11,12 +12,14 @@ import logging
 from datetime import datetime, timedelta
 
 from app import clock, services
+from app.auth import purge_expired
 from app.config import settings
 from app.database import SessionLocal
 from app.emailer import (
+    Mail,
     cancel_reminder_email_body,
     guest_reminder_email_body,
-    send_email,
+    send_batch,
 )
 from app.templates import format_date
 from app.models.models import Event, GuestBooking
@@ -47,10 +50,8 @@ async def send_cancel_reminders(db) -> int:
         last_free = start - timedelta(hours=sub.cancel_hours_free)
         if not (timedelta(0) < last_free - now <= timedelta(hours=24)):
             continue
-        sent = 0
-        for booking in event.bookings:
-            ok = await send_email(
-                sub,
+        mails = [
+            Mail(
                 booking.member.email,
                 f"Erinnerung: Abmeldefrist {format_date(event.date)} – {sub.name}",
                 cancel_reminder_email_body(
@@ -59,7 +60,8 @@ async def send_cancel_reminders(db) -> int:
                     last_free.strftime("%d.%m.%Y %H:%M"),
                 ),
             )
-            sent += 1 if ok else 0
+            for booking in event.bookings
+        ]
         # Link-Gäste erinnern (können nicht selbst stornieren → Bitte,
         # dem Organisator abzusagen, damit der Platz frei wird)
         guest_bookings = (
@@ -67,11 +69,8 @@ async def send_cancel_reminders(db) -> int:
             .filter(GuestBooking.event_id == event.id)
             .all()
         )
-        for gb in guest_bookings:
-            if not gb.email:
-                continue
-            ok = await send_email(
-                sub,
+        mails += [
+            Mail(
                 gb.email,
                 f"Erinnerung: Termin {format_date(event.date)} – {sub.name}",
                 guest_reminder_email_body(
@@ -81,7 +80,10 @@ async def send_cancel_reminders(db) -> int:
                     gb.count,
                 ),
             )
-            sent += 1 if ok else 0
+            for gb in guest_bookings
+            if gb.email
+        ]
+        sent = await send_batch(sub, mails)
         event.reminder_sent = True
         db.commit()
         sent_total += sent
@@ -124,6 +126,7 @@ async def run_jobs() -> None:
     try:
         await send_cancel_reminders(db)
         await auto_settle_events(db)
+        purge_expired(db)
     except Exception:
         logger.exception("Scheduler run failed")
     finally:

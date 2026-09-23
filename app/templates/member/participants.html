@@ -1,8 +1,9 @@
 {% extends "base.html" %}
+{% import "_macros.html" as ui %}
 {% block title %}Teilnehmer {{ event.date|date_de }} — SportAbo{% endblock %}
 {% block nav_title %}Teilnehmer: {{ event.date|date_de }}{% if event.is_extra %} (Zusatz){% endif %}{% endblock %}
 {% block nav_links %}
-<a href="/member/dashboard">← Zurück</a>
+{{ ui.nav_back("/member/dashboard") }}
 {% endblock %}
 {% block content %}
 <div class="stat-grid">
@@ -21,30 +22,13 @@
 
 {% if member.is_super and not event.is_cancelled and not event.settled_at and not is_past %}
 <div class="card">
-    <h2>Termin stornieren</h2>
-    {% if event.is_extra %}
-    <form method="post" action="/member/event/{{ event.id }}/cancel" class="inline"
-          onsubmit="return confirm('Zusatztermin wirklich stornieren?')">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <button type="submit" class="btn btn-danger">Zusatztermin stornieren</button>
-    </form>
-    {% else %}
-    <p class="muted small">Fällt der Termin aus? Zwei Möglichkeiten: Abo-Gesamtpreis um das Termin-Budget ({{ event.abo_budget|euro }}) senken, oder das Budget auf die restlichen Termine umlegen (die werden dann teurer).</p>
-    <div class="actions mt-1">
-        <form method="post" action="/member/event/{{ event.id }}/cancel" class="inline"
-              onsubmit="return confirm('Termin stornieren und Gesamtpreis um {{ event.abo_budget|euro }} reduzieren?')">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <input type="hidden" name="reduce_price" value="yes">
-            <button type="submit" class="btn btn-danger">Stornieren − Preis reduzieren</button>
-        </form>
-        <form method="post" action="/member/event/{{ event.id }}/cancel" class="inline"
-              onsubmit="return confirm('Termin stornieren und Budget auf die restlichen Termine umlegen?')">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <input type="hidden" name="reduce_price" value="no">
-            <button type="submit" class="btn btn-danger">Stornieren + umlegen</button>
-        </form>
-    </div>
+    <h2>Termin absagen</h2>
+    {% if not event.is_extra %}
+    <p class="muted small">Fällt der Termin aus? Zwei Möglichkeiten: den Abo-Gesamtpreis um das Termin-Budget ({{ event.abo_budget|euro }}) reduzieren, oder das Budget auf die restlichen Termine umlegen (die werden dann teurer).</p>
     {% endif %}
+    <div class="actions mt-1">
+        {{ ui.cancel_buttons("/member/event/" ~ event.id ~ "/cancel", event, csrf_token) }}
+    </div>
 </div>
 {% endif %}
 
@@ -52,11 +36,7 @@
 <div class="card">
     <h2>Gastlink</h2>
     <p class="muted small">Diesen Link kannst du an Gäste weitergeben — Buchung ohne Konto:</p>
-    <div class="copy-row mt-1">
-        <input type="text" id="guest-link" value="{{ guest_link }}" readonly onclick="this.select()">
-        <button type="button" class="btn btn-outline btn-sm"
-                onclick="navigator.clipboard.writeText(document.getElementById('guest-link').value).then(() => { this.textContent = 'Kopiert ✓'; setTimeout(() => this.textContent = 'Kopieren', 2000); })">Kopieren</button>
-    </div>
+    {{ ui.copy_link(guest_link) }}
 </div>
 {% endif %}
 
@@ -153,7 +133,7 @@
     <h2>Gäste (über Gastlink)</h2>
     {% if guest_bookings %}
     <div class="table-wrap">
-    <table>
+    <table class="table-stack">
         <thead>
             <tr><th>Name</th>{% if member.is_super %}<th>E-Mail</th>{% endif %}<th class="num">Personen</th>{% if member.is_super %}<th class="num">Anteil</th><th>Bezahlt</th>{% endif %}</tr>
         </thead>
@@ -161,26 +141,26 @@
             {% for g in guest_bookings %}
             <tr>
                 <td>{{ g.name }}</td>
-                {% if member.is_super %}<td>{{ g.email }}</td>{% endif %}
-                <td class="num">{{ g.count }}</td>
+                {% if member.is_super %}<td data-label="E-Mail">{{ g.email }}</td>{% endif %}
+                <td class="num" data-label="Personen">{{ g.count }}</td>
                 {% if member.is_super %}
-                <td class="num">{{ (g.count * shares.guest_share)|euro }}</td>
-                <td>
+                <td class="num" data-label="Anteil">{{ (g.count * shares.guest_share)|euro }}</td>
+                <td data-label="Bezahlt">
                     {% if g.paid_at %}
                     <div class="paid-form">
                         <span class="badge badge-success">✓ {{ g.paid_amount|euro }}</span>
                         <form method="post" action="/member/guest-booking/{{ g.id }}/unpaid" class="inline"
-                              onsubmit="return confirm('Bezahlt-Markierung von {{ g.name }} stornieren?{% if g.paid_member_id %} Die Gegenbuchung wird rückgebucht.{% endif %}')">
+                              data-confirm="Bezahlt-Markierung von {{ g.name }} zurücknehmen?{% if g.paid_member_id %} Die Gegenbuchung wird rückgebucht.{% endif %}">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                            <button type="submit" class="btn btn-outline btn-sm">Storno</button>
+                            <button type="submit" class="btn btn-outline btn-sm">Zurücknehmen</button>
                         </form>
                     </div>
                     {% else %}
                     <form method="post" action="/member/guest-booking/{{ g.id }}/paid" class="paid-form"
-                          onsubmit="return confirm('Zahlung von {{ g.name }} als erhalten verbuchen?')">
+                          data-confirm="Zahlung von {{ g.name }} als erhalten verbuchen?">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                        <input type="number" name="amount" min="0.01" step="0.01"
-                               value="{{ '%.2f'|format(g.count * shares.guest_share) }}" title="Erhaltener Betrag in Euro">
+                        <input type="number" name="amount" min="0.01" step="0.01" inputmode="decimal"
+                               aria-label="Erhaltener Betrag" value="{{ '%.2f'|format(g.count * shares.guest_share) }}" title="Erhaltener Betrag in Euro">
                         <button type="submit" class="btn btn-primary btn-sm">Bezahlt ✓</button>
                     </form>
                     {% endif %}

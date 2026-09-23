@@ -1,9 +1,10 @@
 {% extends "base.html" %}
+{% import "_macros.html" as ui %}
 {% block title %}{{ subscription.name }} — SportAbo{% endblock %}
 {% block nav_title %}{{ subscription.name }}{% endblock %}
 {% block nav_links %}
-<a href="/admin/dashboard">Übersicht</a>
-<a href="/admin/logout">Abmelden</a>
+{{ ui.nav_home("/admin/dashboard") }}
+<a href="/admin/logout">Logout</a>
 {% endblock %}
 {% block content %}
 <div class="stat-grid">
@@ -25,7 +26,8 @@
     <div class="flex-between">
         <h2>Termine</h2>
         <div class="actions">
-            <form method="post" action="/admin/subscription/{{ subscription.id }}/generate-events" class="inline">
+            <form method="post" action="/admin/subscription/{{ subscription.id }}/generate-events" class="inline"
+                  data-confirm="Fehlende Termine im Abo-Zeitraum anlegen? Die Budgets der offenen Termine werden dabei neu verteilt.">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <button type="submit" class="btn btn-primary btn-sm">Termine generieren</button>
             </form>
@@ -35,7 +37,7 @@
     </div>
     {% if events %}
     <div class="table-wrap">
-    <table>
+    <table class="table-stack">
         <thead>
             <tr>
                 <th>Datum</th>
@@ -49,11 +51,11 @@
         <tbody>
             {% for event in events %}
             <tr>
-                <td>{{ event.date|date_de }}{% if event.is_extra %} <span class="badge badge-warning">Zusatz</span>{% endif %}</td>
-                <td>{{ event.start_time|time_de }} – {{ event.end_time|time_de }}</td>
-                <td class="num">{{ booked_by_event[event.id] }} / {{ event.max_participants }}</td>
-                <td class="num">{{ event.abo_budget|euro }}</td>
-                <td>
+                <td>{{ event.date|date_de }}{% if event.is_extra %} <span class="badge badge-info">Zusatz</span>{% endif %}</td>
+                <td data-label="Uhrzeit">{{ event.start_time|time_de }} – {{ event.end_time|time_de }}</td>
+                <td class="num" data-label="Belegt">{{ booked_by_event[event.id] }} / {{ event.max_participants }}</td>
+                <td class="num" data-label="Budget">{{ event.abo_budget|euro }}</td>
+                <td data-label="Status">
                     {% if event.is_cancelled %}<span class="badge badge-danger">Abgesagt</span>
                     {% elif event.settled_at %}<span class="badge badge-muted">Abgerechnet</span>
                     {% elif event.date < today %}<span class="badge badge-warning">Offen</span>
@@ -76,42 +78,7 @@
 <div class="card">
     <h2>Zusatztermin anlegen</h2>
     <p class="muted small">Zusatztermine fallen nicht in den Abo-Gesamtpreis: Sie haben ein eigenes Budget, das sich alle Teilnehmer (Mitglieder wie Gäste) gleich teilen.</p>
-    <form method="post" action="/admin/subscription/{{ subscription.id }}/extra-event" class="mt-1">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <div class="form-row">
-            <div class="form-group">
-                <label for="event_date">Datum</label>
-                <input type="date" id="event_date" name="event_date" required>
-            </div>
-            <div class="form-group">
-                <label for="x_start_hour">Beginn (Std.)</label>
-                <input type="number" id="x_start_hour" name="start_hour" min="0" max="23" value="{{ subscription.start_time.hour }}" required>
-            </div>
-            <div class="form-group">
-                <label for="x_start_minute">Beginn (Min.)</label>
-                <input type="number" id="x_start_minute" name="start_minute" min="0" max="59" value="{{ subscription.start_time.minute }}" required>
-            </div>
-            <div class="form-group">
-                <label for="x_duration">Dauer (Min.)</label>
-                <input type="number" id="x_duration" name="duration_minutes" min="1" value="{{ subscription.duration_minutes }}" required>
-            </div>
-        </div>
-        <div class="form-row">
-            <div class="form-group">
-                <label for="x_budget">Terminkosten gesamt (€)</label>
-                <input type="number" id="x_budget" name="budget" min="0" step="0.50" required>
-            </div>
-            <div class="form-group">
-                <label for="x_min">Min. Teilnehmer</label>
-                <input type="number" id="x_min" name="min_participants" min="1" value="{{ subscription.min_participants }}" required>
-            </div>
-            <div class="form-group">
-                <label for="x_max">Max. Teilnehmer</label>
-                <input type="number" id="x_max" name="max_participants" min="1" value="{{ subscription.max_participants }}" required>
-            </div>
-        </div>
-        <button type="submit" class="btn btn-primary">Zusatztermin anlegen</button>
-    </form>
+    {{ ui.extra_event_form("/admin/subscription/" ~ subscription.id ~ "/extra-event", subscription, csrf_token) }}
 </div>
 </section>
 
@@ -123,7 +90,7 @@
     </div>
     {% if members %}
     <div class="table-wrap">
-    <table>
+    <table class="table-stack">
         <thead>
             <tr>
                 <th>Name</th>
@@ -137,9 +104,9 @@
             {% for member in members %}
             <tr>
                 <td>{{ member.name }}</td>
-                <td>{{ member.email }}</td>
-                <td class="num">{{ member.credit|euro }}</td>
-                <td>{% if member.is_active %}<span class="badge badge-success">Aktiv</span>{% else %}<span class="badge badge-danger">Inaktiv</span>{% endif %}</td>
+                <td data-label="E-Mail">{{ member.email }}</td>
+                <td class="num" data-label="Guthaben">{{ member.credit|euro }}</td>
+                <td data-label="Status">{% if member.is_super %}<span class="badge badge-info">Super</span> {% endif %}{% if member.is_active %}<span class="badge badge-success">Aktiv</span>{% else %}<span class="badge badge-danger">Inaktiv</span>{% endif %}</td>
                 <td><a href="/admin/member/{{ member.id }}/edit" class="btn btn-outline btn-sm">Bearbeiten</a></td>
             </tr>
             {% endfor %}

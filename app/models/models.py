@@ -80,8 +80,8 @@ class Subscription(Base):
         Integer, nullable=False, default=0
     )
 
-    # Deprecated: guests now pay a share of default_price (kept only so
-    # existing DB rows keep loading; not used in any pricing logic).
+    # Legacy NOT NULL column without server default: the attribute must
+    # stay so inserts fill it. Unused — guests pay a share of default_price.
     guest_price_default: Mapped[Decimal] = mapped_column(
         DECIMAL(8, 2), nullable=False, default=10.00
     )
@@ -156,9 +156,14 @@ class Member(Base):
     subscription_id: Mapped[str] = mapped_column(
         ForeignKey("subscriptions.id"), nullable=False
     )
-    email: Mapped[str] = mapped_column(String(200), nullable=False)
+    # Always stored lower-case (services.normalize_email)
+    email: Mapped[str] = mapped_column(String(200), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
-    password_hash: Mapped[str] = mapped_column(String(200), nullable=False)
+    # Legacy NOT NULL column from the password era (login is passwordless
+    # now); kept so inserts on existing databases still fill it.
+    password_hash: Mapped[str] = mapped_column(
+        String(200), nullable=False, default=""
+    )
     credit: Mapped[Decimal] = mapped_column(
         DECIMAL(10, 2), nullable=False, default=0.00
     )
@@ -223,16 +228,11 @@ class Event(Base):
     # normal_budget == entered price), everyone pays the same share.
     is_extra: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
-    # Deprecated: fixed per-event guest price, superseded by cost sharing.
-    guest_price: Mapped[Optional[Decimal]] = mapped_column(
-        DECIMAL(8, 2), nullable=True
-    )
-
     # Status
     is_cancelled: Mapped[bool] = mapped_column(Boolean, default=False)
-    payment_sent: Mapped[bool] = mapped_column(
-        Boolean, default=False
-    )  # invoice email sent
+    # Legacy NOT NULL column without server default: the attribute must
+    # stay so inserts fill it. Unused (settlement mails are fire-and-forget).
+    payment_sent: Mapped[bool] = mapped_column(Boolean, default=False)
     settled_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     # Scheduler: reminder mail (1 day before last free cancellation) sent
     reminder_sent: Mapped[bool] = mapped_column(
@@ -266,9 +266,6 @@ class Booking(Base):
         ForeignKey("members.id"), nullable=False
     )
     guest_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    guest_emails: Mapped[Optional[str]] = mapped_column(
-        Text, default=""
-    )  # comma-separated
     # Set when the member asked to cancel inside the approval window;
     # a super member approves (booking deleted) or rejects (cleared).
     cancel_requested_at: Mapped[Optional[datetime]] = mapped_column(
@@ -298,13 +295,13 @@ class Payment(Base):
 
     id: Mapped[str] = mapped_column(String(12), primary_key=True, default=_uuid)
     member_id: Mapped[str] = mapped_column(
-        ForeignKey("members.id"), nullable=False
+        ForeignKey("members.id"), nullable=False, index=True
     )
     # Signed: deposits positive, charges negative.
     amount: Mapped[Decimal] = mapped_column(DECIMAL(10, 2), nullable=False)
     type: Mapped[str] = mapped_column(String(20), nullable=False, default=TYPE_DEPOSIT)
     event_id: Mapped[Optional[str]] = mapped_column(
-        ForeignKey("events.id"), nullable=True
+        ForeignKey("events.id"), nullable=True, index=True
     )
     note: Mapped[Optional[str]] = mapped_column(String(500), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
@@ -320,7 +317,7 @@ class GuestBooking(Base):
 
     id: Mapped[str] = mapped_column(String(12), primary_key=True, default=_uuid)
     event_id: Mapped[str] = mapped_column(
-        ForeignKey("events.id"), nullable=False
+        ForeignKey("events.id"), nullable=False, index=True
     )
     email: Mapped[str] = mapped_column(String(200), nullable=False)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
@@ -372,6 +369,8 @@ class LoginToken(Base):
     )
     # 6-digit alternative for manual entry (same lifetime as the link)
     code: Mapped[str] = mapped_column(String(6), nullable=False, default="")
+    # Wrong code entries; the token is burnt at MAX_CODE_ATTEMPTS
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     member_id: Mapped[str] = mapped_column(ForeignKey("members.id"), nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)

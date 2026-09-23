@@ -78,7 +78,7 @@ def test_super_approves_cancel_request(client, db, seed):
     super_csrf = member_login(client, email="sina@example.com")
     # Anfrage sichtbar im Dashboard
     resp = client.get("/member/dashboard")
-    assert "Storno-Anfrage" in resp.text
+    assert "Abmelde-Anfrage" in resp.text
     resp = client.post(
         f"/member/cancel-request/{booking.id}/approve",
         data={"csrf_token": super_csrf},

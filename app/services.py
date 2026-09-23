@@ -21,8 +21,9 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.emailer import (
+    Mail,
     guest_settlement_email_body,
-    send_email,
+    send_batch,
     settlement_email_body,
     waitlist_promoted_email_body,
 )
@@ -37,6 +38,15 @@ from app.models.models import (
     WaitlistEntry,
     utcnow,
 )
+
+
+# ── Input normalisation ────────────────────────────────────────────────────
+
+
+def normalize_email(email: str) -> str:
+    """Emails are stored and compared lower-case without surrounding blanks,
+    so "Kai@x.de " and "kai@x.de" are the same login."""
+    return (email or "").strip().lower()
 
 
 # ── Capacity ───────────────────────────────────────────────────────────────
@@ -59,6 +69,27 @@ def count_booked(db: Session, event_id: str) -> int:
 
 def free_spots(db: Session, event: Event) -> int:
     return max(0, event.max_participants - count_booked(db, event.id))
+
+
+def booked_counts(db: Session, event_ids: list[str]) -> dict[str, int]:
+    """count_booked for many events at once (two grouped queries instead
+    of two per event)."""
+    counts = dict.fromkeys(event_ids, 0)
+    if not event_ids:
+        return counts
+    for event_id, spots in (
+        db.query(Booking.event_id, func.sum(Booking.guest_count + 1))
+        .filter(Booking.event_id.in_(event_ids))
+        .group_by(Booking.event_id)
+    ):
+        counts[event_id] += int(spots or 0)
+    for event_id, spots in (
+        db.query(GuestBooking.event_id, func.sum(GuestBooking.count))
+        .filter(GuestBooking.event_id.in_(event_ids))
+        .group_by(GuestBooking.event_id)
+    ):
+        counts[event_id] += int(spots or 0)
+    return counts
 
 
 # ── Budgets ────────────────────────────────────────────────────────────────
@@ -173,6 +204,20 @@ def waitlist_entries(db: Session, event_id: str) -> list[WaitlistEntry]:
     )
 
 
+def waitlist_members(db: Session, event_ids: list[str]) -> dict[str, list[str]]:
+    """Member ids on the waitlist per event, FIFO order (one query)."""
+    result: dict[str, list[str]] = {event_id: [] for event_id in event_ids}
+    if not event_ids:
+        return result
+    for event_id, member_id in (
+        db.query(WaitlistEntry.event_id, WaitlistEntry.member_id)
+        .filter(WaitlistEntry.event_id.in_(event_ids))
+        .order_by(WaitlistEntry.created_at)
+    ):
+        result[event_id].append(member_id)
+    return result
+
+
 async def promote_from_waitlist(db: Session, event: Event) -> list[Member]:
     """Fill freed spots from the waitlist (FIFO): the first entries become
     bookings (without guests) and get notified by mail. Call after
@@ -192,21 +237,35 @@ async def promote_from_waitlist(db: Session, event: Event) -> list[Member]:
         if not entry:
             break
         member = entry.member
-        db.add(Booking(event_id=event.id, member_id=member.id, guest_count=0))
         db.delete(entry)
+        # Stale entries (member deleted/deactivated or meanwhile booked
+        # directly) are dropped instead of blocking the queue
+        already_booked = member is not None and (
+            db.query(Booking)
+            .filter(Booking.event_id == event.id, Booking.member_id == member.id)
+            .first()
+            is not None
+        )
+        if member is None or not member.is_active or already_booked:
+            db.commit()
+            continue
+        db.add(Booking(event_id=event.id, member_id=member.id, guest_count=0))
         db.commit()
         promoted.append(member)
-        await send_email(
-            event.subscription,
-            member.email,
-            f"Nachgerückt: {event.date.strftime('%d.%m.%Y')} – "
-            f"{event.subscription.name}",
-            waitlist_promoted_email_body(
-                member.name,
-                event.date.strftime("%d.%m.%Y"),
-                event.start_time.strftime("%H:%M"),
-            ),
-        )
+    date_str = event.date.strftime("%d.%m.%Y")
+    await send_batch(
+        event.subscription,
+        [
+            Mail(
+                m.email,
+                f"Nachgerückt: {date_str} – {event.subscription.name}",
+                waitlist_promoted_email_body(
+                    m.name, date_str, event.start_time.strftime("%H:%M")
+                ),
+            )
+            for m in promoted
+        ],
+    )
     return promoted
 
 
@@ -294,25 +353,26 @@ async def settle_and_notify(db: Session, event: Event) -> tuple[int, Decimal, in
 
     charged, total, shares = settle_event(db, event)
     payee = payee_info(db, event.subscription)
-    sent = 0
+    subject = f"Abrechnung {format_date(event.date)} – {event.subscription.name}"
+    mails = []
     for booking in event.bookings:
         member = booking.member
         amount = shares["member_share"] + booking.guest_count * shares["guest_share"]
-        ok = await send_email(
-            event.subscription,
-            member.email,
-            f"Abrechnung {format_date(event.date)} – {event.subscription.name}",
-            settlement_email_body(
-                member.name,
-                event.date.strftime("%d.%m.%Y"),
-                format_euro(amount),
-                format_euro(member.credit),
-                payee["paypal"],
-                payee["name"],
-                is_payee=(payee["member_id"] == member.id),
-            ),
+        mails.append(
+            Mail(
+                member.email,
+                subject,
+                settlement_email_body(
+                    member.name,
+                    event.date.strftime("%d.%m.%Y"),
+                    format_euro(amount),
+                    format_euro(member.credit),
+                    payee["paypal"],
+                    payee["name"],
+                    is_payee=(payee["member_id"] == member.id),
+                ),
+            )
         )
-        sent += 1 if ok else 0
     # Link-Gäste: kein Ledger, aber Abrechnungsmail mit Zahlungsziel —
     # bereits als bezahlt markierte Gäste bekommen keine Zahlungsaufforderung.
     guest_bookings = (
@@ -321,23 +381,21 @@ async def settle_and_notify(db: Session, event: Event) -> tuple[int, Decimal, in
     for gb in guest_bookings:
         if not gb.email or gb.paid_at:
             continue
-        ok = await send_email(
-            event.subscription,
-            gb.email,
-            f"Abrechnung {format_date(event.date)} – {event.subscription.name}",
-            guest_settlement_email_body(
-                gb.name,
-                event.date.strftime("%d.%m.%Y"),
-                gb.count,
-                format_euro(gb.count * shares["guest_share"]),
-                payee["paypal"],
-                payee["name"],
-            ),
+        mails.append(
+            Mail(
+                gb.email,
+                subject,
+                guest_settlement_email_body(
+                    gb.name,
+                    event.date.strftime("%d.%m.%Y"),
+                    gb.count,
+                    format_euro(gb.count * shares["guest_share"]),
+                    payee["paypal"],
+                    payee["name"],
+                ),
+            )
         )
-        sent += 1 if ok else 0
-    if sent:
-        event.payment_sent = True
-        db.commit()
+    sent = await send_batch(event.subscription, mails)
     return charged, total, sent
 
 
@@ -369,6 +427,11 @@ def delete_subscription(db: Session, subscription: Subscription) -> None:
 
     event_ids = [e.id for e in subscription.events]
     member_ids = [m.id for m in subscription.members]
+    if event_ids or member_ids:
+        db.query(WaitlistEntry).filter(
+            WaitlistEntry.event_id.in_(event_ids)
+            | WaitlistEntry.member_id.in_(member_ids)
+        ).delete(synchronize_session=False)
     if event_ids:
         db.query(GuestBooking).filter(
             GuestBooking.event_id.in_(event_ids)
@@ -392,6 +455,8 @@ def delete_subscription(db: Session, subscription: Subscription) -> None:
     db.query(Member).filter(Member.subscription_id == subscription.id).delete(
         synchronize_session=False
     )
+    # The rows are gone already — keep the ORM cascade from deleting them again
+    db.expire(subscription, ["events", "members"])
     db.delete(subscription)
     db.commit()
 
@@ -404,6 +469,7 @@ def upsert_person(
 ) -> Person:
     """Keep the central directory in sync (one entry per email).
     Caller commits."""
+    email = normalize_email(email)
     person = db.query(Person).filter(Person.email == email).first()
     if person:
         person.name = name
@@ -511,7 +577,7 @@ def mark_guest_paid(
 
 
 def unmark_guest_paid(db: Session, gb: GuestBooking) -> None:
-    """Bezahlt-Markierung stornieren; eine Gegenbuchung wird rückgebucht."""
+    """Bezahlt-Markierung zurücknehmen; eine Gegenbuchung wird rückgebucht."""
     if gb.paid_member_id and gb.paid_amount:
         recipient = db.get(Member, gb.paid_member_id)
         if recipient:
@@ -536,13 +602,30 @@ def unmark_guest_paid(db: Session, gb: GuestBooking) -> None:
 
 def member_spending(db: Session, member_id: str) -> dict:
     """Ledger aggregates for one member."""
+    return spending_by_member(db, [member_id])[member_id]
+
+
+def spending_by_member(db: Session, member_ids: list[str]) -> dict[str, dict]:
+    """Ledger aggregates (deposited / spent) for many members, one query."""
+    result = {
+        m: {"deposited": Decimal("0.00"), "spent": Decimal("0.00")}
+        for m in member_ids
+    }
+    if not member_ids:
+        return result
     rows = (
-        db.query(Payment.type, func.coalesce(func.sum(Payment.amount), 0))
-        .filter(Payment.member_id == member_id)
-        .group_by(Payment.type)
-        .all()
+        db.query(
+            Payment.member_id,
+            Payment.type,
+            func.coalesce(func.sum(Payment.amount), 0),
+        )
+        .filter(Payment.member_id.in_(member_ids))
+        .group_by(Payment.member_id, Payment.type)
     )
-    by_type = {t: Decimal(str(s)) for t, s in rows}
-    deposited = by_type.get(Payment.TYPE_DEPOSIT, Decimal("0.00"))
-    charged = -by_type.get(Payment.TYPE_CHARGE, Decimal("0.00"))
-    return {"deposited": deposited, "spent": charged}
+    for member_id, ptype, total in rows:
+        value = Decimal(str(total)).quantize(Decimal("0.01"))
+        if ptype == Payment.TYPE_DEPOSIT:
+            result[member_id]["deposited"] = value
+        elif ptype == Payment.TYPE_CHARGE:
+            result[member_id]["spent"] = -value
+    return result

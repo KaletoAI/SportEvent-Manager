@@ -1,28 +1,31 @@
 """Admin routes: login, subscription management, events, settlement, stats."""
 
 import hmac
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
-from urllib.parse import quote
+from typing import Optional
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse
+from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app import clock, services
 from app.auth import (
+    SESSION_COOKIE,
     check_login_rate_limit,
     clear_session_cookie,
     create_session,
     destroy_session,
+    get_session,
     require_admin,
     set_session_cookie,
-    SESSION_COOKIE,
 )
 from app.config import settings
 from app.database import get_db
 from app.templates import TemplateResponse, format_euro
+from app.web import flash_redirect, parse_clock, public_base_url
 from app.models.models import (
     Booking,
     Event,
@@ -33,6 +36,7 @@ from app.models.models import (
     Person,
     Subscription,
     UserSession,
+    WaitlistEntry,
 )
 
 router = APIRouter()
@@ -40,9 +44,7 @@ router = APIRouter()
 
 def _redirect(msg: str, url: str = "/admin/dashboard", mt: str = "success"):
     """Redirect with typed flash message via URL params."""
-    return RedirectResponse(
-        url=f"{url}?msg={quote(msg)}&mt={mt}", status_code=302
-    )
+    return flash_redirect(msg, url, mt)
 
 
 # ── Login ──────────────────────────────────────────────────────────────────
@@ -51,8 +53,6 @@ def _redirect(msg: str, url: str = "/admin/dashboard", mt: str = "success"):
 @router.get("/login")
 async def login_page(request: Request, db: Session = Depends(get_db)):
     # Bereits eingeloggt → direkt ins Dashboard
-    from app.auth import get_session
-
     session = get_session(db, request.cookies.get(SESSION_COOKIE))
     if session and session.is_admin:
         return RedirectResponse(url="/admin/dashboard", status_code=302)
@@ -97,48 +97,75 @@ async def new_subscription_page(request: Request):
     )
 
 
+def _apply_subscription_form(sub: Subscription, f: dict) -> Optional[str]:
+    """Validate the Abo form and copy it onto `sub`; returns an error
+    message instead when something doesn't fit."""
+    try:
+        start = parse_clock(f["start_time"], f["start_hour"], f["start_minute"])
+        first = date.fromisoformat(f["start_date"])
+        last = date.fromisoformat(f["end_date"])
+    except ValueError:
+        return "Ungültiges Datum oder Uhrzeit"
+    if last < first:
+        return "Das Enddatum liegt vor dem Startdatum"
+    if last > first + timedelta(days=3 * 366):
+        return "Ein Abo darf höchstens drei Jahre umfassen"
+    if f["min_participants"] > f["max_participants"]:
+        return "Mindestzahl darf das Maximum nicht übersteigen"
+    sub.name = f["name"].strip()
+    sub.description = f["description"]
+    sub.weekday = f["weekday"]
+    sub.start_time = start
+    sub.duration_minutes = f["duration_minutes"]
+    sub.start_date = first
+    sub.end_date = last
+    sub.default_price = Decimal(str(f["default_price"]))
+    sub.abo_price = Decimal(str(f["abo_price"]))
+    sub.max_participants = f["max_participants"]
+    sub.min_participants = f["min_participants"]
+    sub.cancel_hours_free = f["cancel_hours_free"]
+    sub.cancel_hours_approval = f["cancel_hours_approval"]
+    sub.paypal_address = f["paypal_address"].strip()
+    sub.payout_mode = (
+        f["payout_mode"] if f["payout_mode"] in ("central", "member") else "central"
+    )
+    return None
+
+
 @router.post("/subscription/new", dependencies=[Depends(require_admin)])
 async def create_subscription(
     request: Request,
-    name: str = Form(...),
-    description: str = Form(""),
+    name: str = Form(..., max_length=200),
+    description: str = Form("", max_length=2000),
     weekday: int = Form(..., ge=0, le=6),
-    start_hour: int = Form(..., ge=0, le=23),
+    start_time: str = Form(""),
+    start_hour: int | None = Form(None, ge=0, le=23),
     start_minute: int = Form(0, ge=0, le=59),
-    duration_minutes: int = Form(120, ge=1),
+    duration_minutes: int = Form(120, ge=1, le=24 * 60),
     start_date: str = Form(...),
     end_date: str = Form(...),
-    default_price: float = Form(10.0, ge=0),
-    abo_price: float = Form(8.0, ge=0),
-    max_participants: int = Form(12, ge=1),
-    min_participants: int = Form(4, ge=1),
-    cancel_hours_free: int = Form(48, ge=0),
-    cancel_hours_approval: int = Form(0, ge=0),
-    paypal_address: str = Form(""),
+    default_price: float = Form(10.0, ge=0, le=1000000),
+    abo_price: float = Form(8.0, ge=0, le=1000000),
+    max_participants: int = Form(12, ge=1, le=500),
+    min_participants: int = Form(4, ge=1, le=500),
+    cancel_hours_free: int = Form(48, ge=0, le=24 * 60),
+    cancel_hours_approval: int = Form(0, ge=0, le=24 * 60),
+    paypal_address: str = Form("", max_length=200),
     payout_mode: str = Form("central"),
     db: Session = Depends(get_db),
 ):
-    sub = Subscription(
-        name=name,
-        description=description,
-        weekday=weekday,
-        start_time=time(hour=start_hour, minute=start_minute),
-        duration_minutes=duration_minutes,
-        start_date=date.fromisoformat(start_date),
-        end_date=date.fromisoformat(end_date),
-        default_price=Decimal(str(default_price)),
-        abo_price=Decimal(str(abo_price)),
-        max_participants=max_participants,
-        min_participants=min_participants,
-        cancel_hours_free=cancel_hours_free,
-        cancel_hours_approval=cancel_hours_approval,
-        paypal_address=paypal_address,
-        payout_mode=payout_mode if payout_mode in ("central", "member") else "central",
-    )
+    form = dict(locals())
+    sub = Subscription()
+    error = _apply_subscription_form(sub, form)
+    if error:
+        return TemplateResponse(
+            "admin/subscription_form.html",
+            {"request": request, "subscription": None, "error": error},
+            status_code=400,
+        )
     db.add(sub)
     db.commit()
-    db.refresh(sub)
-    return _redirect(f"Abo „{name}“ angelegt")
+    return _redirect(f"Abo „{sub.name}“ angelegt")
 
 
 @router.get("/subscription/{sub_id}/edit", dependencies=[Depends(require_admin)])
@@ -160,48 +187,37 @@ async def edit_subscription_page(
 async def update_subscription(
     request: Request,
     sub_id: str,
-    name: str = Form(...),
-    description: str = Form(""),
+    name: str = Form(..., max_length=200),
+    description: str = Form("", max_length=2000),
     weekday: int = Form(..., ge=0, le=6),
-    start_hour: int = Form(..., ge=0, le=23),
+    start_time: str = Form(""),
+    start_hour: int | None = Form(None, ge=0, le=23),
     start_minute: int = Form(0, ge=0, le=59),
-    duration_minutes: int = Form(120, ge=1),
+    duration_minutes: int = Form(120, ge=1, le=24 * 60),
     start_date: str = Form(...),
     end_date: str = Form(...),
-    default_price: float = Form(10.0, ge=0),
-    abo_price: float = Form(8.0, ge=0),
-    max_participants: int = Form(12, ge=1),
-    min_participants: int = Form(4, ge=1),
-    cancel_hours_free: int = Form(48, ge=0),
-    cancel_hours_approval: int = Form(0, ge=0),
-    paypal_address: str = Form(""),
+    default_price: float = Form(10.0, ge=0, le=1000000),
+    abo_price: float = Form(8.0, ge=0, le=1000000),
+    max_participants: int = Form(12, ge=1, le=500),
+    min_participants: int = Form(4, ge=1, le=500),
+    cancel_hours_free: int = Form(48, ge=0, le=24 * 60),
+    cancel_hours_approval: int = Form(0, ge=0, le=24 * 60),
+    paypal_address: str = Form("", max_length=200),
     payout_mode: str = Form("central"),
     db: Session = Depends(get_db),
 ):
+    form = dict(locals())
     sub = db.query(Subscription).filter(Subscription.id == sub_id).first()
     if not sub:
         return _redirect("Abo nicht gefunden", mt="error")
-    sub.name = name
-    sub.description = description
-    sub.weekday = weekday
-    sub.start_time = time(hour=start_hour, minute=start_minute)
-    sub.duration_minutes = duration_minutes
-    sub.start_date = date.fromisoformat(start_date)
-    sub.end_date = date.fromisoformat(end_date)
-    sub.default_price = Decimal(str(default_price))
-    sub.abo_price = Decimal(str(abo_price))
-    sub.max_participants = max_participants
-    sub.min_participants = min_participants
-    sub.cancel_hours_free = cancel_hours_free
-    sub.cancel_hours_approval = cancel_hours_approval
-    sub.paypal_address = paypal_address
-    sub.payout_mode = (
-        payout_mode if payout_mode in ("central", "member") else "central"
-    )
+    error = _apply_subscription_form(sub, form)
+    if error:
+        db.rollback()
+        return _redirect(error, f"/admin/subscription/{sub_id}/edit", mt="error")
     # Totals may have changed → redistribute over the open events
     services.recompute_budgets(db, sub)
     db.commit()
-    return _redirect(f"Abo „{name}“ gespeichert")
+    return _redirect(f"Abo „{sub.name}“ gespeichert")
 
 
 @router.post(
@@ -354,7 +370,7 @@ async def subscription_detail(
         .order_by(Member.name)
         .all()
     )
-    booked_by_event = {e.id: services.count_booked(db, e.id) for e in events}
+    booked_by_event = services.booked_counts(db, [e.id for e in events])
     today = clock.today(db)
     return TemplateResponse(
         "admin/subscription_detail.html",
@@ -414,15 +430,18 @@ async def new_member_page(
 async def create_member(
     request: Request,
     sub_id: str,
-    name: str = Form(...),
-    email: str = Form(...),
-    paypal_address: str = Form(""),
-    credit: float = Form(0.0),
+    name: str = Form(..., max_length=200),
+    email: str = Form(..., max_length=200),
+    paypal_address: str = Form("", max_length=200),
+    credit: float = Form(0.0, ge=-100000, le=100000),
     db: Session = Depends(get_db),
 ):
     sub = db.query(Subscription).filter(Subscription.id == sub_id).first()
     if not sub:
         return _redirect("Abo nicht gefunden", mt="error")
+    name = name.strip()
+    email = services.normalize_email(email)
+    paypal_address = paypal_address.strip()
     existing = (
         db.query(Member)
         .filter(Member.subscription_id == sub_id, Member.email == email)
@@ -443,7 +462,6 @@ async def create_member(
         subscription_id=sub_id,
         name=name,
         email=email,
-        password_hash="",  # Login läuft über E-Mail-Token
         paypal_address=paypal_address,
         credit=Decimal("0.00"),
     )
@@ -475,7 +493,7 @@ async def add_existing_member(
     request: Request,
     sub_id: str,
     person_id: str = Form(...),
-    credit: float = Form(0.0),
+    credit: float = Form(0.0, ge=-100000, le=100000),
     db: Session = Depends(get_db),
 ):
     """Mitglied aus der zentralen Nutzerablage in dieses Abo übernehmen."""
@@ -491,7 +509,10 @@ async def add_existing_member(
         )
     existing = (
         db.query(Member)
-        .filter(Member.subscription_id == sub_id, Member.email == person.email)
+        .filter(
+            Member.subscription_id == sub_id,
+            func.lower(Member.email) == services.normalize_email(person.email),
+        )
         .first()
     )
     if existing:
@@ -503,8 +524,7 @@ async def add_existing_member(
     member = Member(
         subscription_id=sub_id,
         name=person.name,
-        email=person.email,
-        password_hash="",
+        email=services.normalize_email(person.email),
         paypal_address=person.paypal_address or "",
         credit=Decimal("0.00"),
     )
@@ -571,9 +591,9 @@ async def edit_member_page(
 async def update_member(
     request: Request,
     member_id: str,
-    name: str = Form(...),
-    email: str = Form(...),
-    paypal_address: str = Form(""),
+    name: str = Form(..., max_length=200),
+    email: str = Form(..., max_length=200),
+    paypal_address: str = Form("", max_length=200),
     is_active: str | None = Form(None),
     is_super: str | None = Form(None),
     db: Session = Depends(get_db),
@@ -581,6 +601,9 @@ async def update_member(
     member = db.query(Member).filter(Member.id == member_id).first()
     if not member:
         return _redirect("Mitglied nicht gefunden", mt="error")
+    name = name.strip()
+    email = services.normalize_email(email)
+    paypal_address = paypal_address.strip()
     duplicate = (
         db.query(Member)
         .filter(
@@ -603,6 +626,11 @@ async def update_member(
     # Unchecked checkboxes are absent from the form body
     member.is_active = is_active is not None
     member.is_super = is_super is not None
+    if not member.is_active:
+        # Deactivated members don't move up from waitlists any more
+        db.query(WaitlistEntry).filter(WaitlistEntry.member_id == member.id).delete(
+            synchronize_session=False
+        )
     services.upsert_person(db, name, email, paypal_address)
     db.commit()
     return _redirect(
@@ -617,8 +645,8 @@ async def update_member(
 async def add_member_credit(
     request: Request,
     member_id: str,
-    amount: float = Form(...),
-    note: str = Form(""),
+    amount: float = Form(..., ge=-100000, le=100000),
+    note: str = Form("", max_length=200),
     db: Session = Depends(get_db),
 ):
     member = db.query(Member).filter(Member.id == member_id).first()
@@ -671,9 +699,10 @@ async def delete_member(
         )
     sub_id = member.subscription_id
     name = member.name
-    # Sessions und Login-Tokens des Mitglieds mit entfernen
+    # Sessions, Login-Tokens und Wartelisten-Plätze des Mitglieds mit entfernen
     db.query(UserSession).filter(UserSession.member_id == member_id).delete()
     db.query(LoginToken).filter(LoginToken.member_id == member_id).delete()
+    db.query(WaitlistEntry).filter(WaitlistEntry.member_id == member_id).delete()
     db.delete(member)
     db.commit()
     return _redirect(
@@ -689,8 +718,8 @@ async def record_member_transfer(
     request: Request,
     member_id: str,
     payee_id: str = Form(...),
-    amount: float = Form(..., gt=0),
-    note: str = Form(""),
+    amount: float = Form(..., gt=0, le=100000),
+    note: str = Form("", max_length=200),
     db: Session = Depends(get_db),
 ):
     """Zahlung zwischen Mitgliedern erfassen (Vorstreck-Modell):
@@ -748,7 +777,7 @@ async def event_detail(
         ),
         Decimal("0.00"),
     )
-    guest_link = f"{request.base_url}g/{event.public_token}"
+    guest_link = f"{public_base_url(request)}g/{event.public_token}"
     return TemplateResponse(
         "admin/event_detail.html",
         {
@@ -783,15 +812,12 @@ async def cancel_event(
     event = db.query(Event).filter(Event.id == event_id).first()
     if not event:
         return _redirect("Termin nicht gefunden", mt="error")
+    back = f"/admin/event/{event_id}"
     if event.settled_at:
-        return _redirect(
-            "Abgerechnete Termine können nicht storniert werden",
-            f"/admin/event/{event_id}",
-            mt="error",
-        )
+        return _redirect("Abgerechnete Termine können nicht abgesagt werden", back, mt="error")
+    # Idempotent: a double tap must not flip the event back
     if event.is_cancelled:
-        services.reactivate_event(db, event)
-        return _redirect("Termin reaktiviert", f"/admin/event/{event_id}")
+        return _redirect("Termin ist bereits abgesagt", back, mt="error")
     services.cancel_event(db, event, reduce_price=(reduce_price == "yes"))
     if event.is_extra:
         msg = "Zusatztermin abgesagt"
@@ -801,15 +827,31 @@ async def cancel_event(
         )
     else:
         msg = "Termin abgesagt – Budget auf die restlichen Termine umgelegt"
-    return _redirect(msg, f"/admin/event/{event_id}")
+    return _redirect(msg, back)
+
+
+@router.post("/event/{event_id}/reactivate", dependencies=[Depends(require_admin)])
+async def reactivate_event(
+    request: Request,
+    event_id: str,
+    db: Session = Depends(get_db),
+):
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if not event:
+        return _redirect("Termin nicht gefunden", mt="error")
+    back = f"/admin/event/{event_id}"
+    if not event.is_cancelled:
+        return _redirect("Termin ist nicht abgesagt", back, mt="error")
+    services.reactivate_event(db, event)
+    return _redirect("Termin reaktiviert", back)
 
 
 @router.post("/event/{event_id}/capacity", dependencies=[Depends(require_admin)])
 async def update_event_capacity(
     request: Request,
     event_id: str,
-    min_participants: int = Form(..., ge=1),
-    max_participants: int = Form(..., ge=1),
+    min_participants: int = Form(..., ge=1, le=500),
+    max_participants: int = Form(..., ge=1, le=500),
     db: Session = Depends(get_db),
 ):
     event = db.query(Event).filter(Event.id == event_id).first()
@@ -865,23 +907,32 @@ async def create_extra_event(
     request: Request,
     sub_id: str,
     event_date: str = Form(...),
-    start_hour: int = Form(..., ge=0, le=23),
+    start_time: str = Form(""),
+    start_hour: int | None = Form(None, ge=0, le=23),
     start_minute: int = Form(0, ge=0, le=59),
-    duration_minutes: int = Form(120, ge=1),
-    budget: float = Form(..., ge=0),
-    max_participants: int = Form(..., ge=1),
-    min_participants: int = Form(..., ge=1),
+    duration_minutes: int = Form(120, ge=1, le=24 * 60),
+    budget: float = Form(..., ge=0, le=100000),
+    max_participants: int = Form(..., ge=1, le=500),
+    min_participants: int = Form(..., ge=1, le=500),
     db: Session = Depends(get_db),
 ):
     sub = db.query(Subscription).filter(Subscription.id == sub_id).first()
     if not sub:
         return _redirect("Abo nicht gefunden", mt="error")
+    back = f"/admin/subscription/{sub_id}"
+    try:
+        day = date.fromisoformat(event_date)
+        start = parse_clock(start_time, start_hour, start_minute)
+    except ValueError:
+        return _redirect("Ungültiges Datum oder Uhrzeit", back, mt="error")
+    if min_participants > max_participants:
+        return _redirect("Mindestzahl darf das Maximum nicht übersteigen", back, mt="error")
     try:
         services.create_extra_event(
             db,
             sub,
-            date.fromisoformat(event_date),
-            time(hour=start_hour, minute=start_minute),
+            day,
+            start,
             duration_minutes,
             Decimal(str(budget)),
             max_participants,
@@ -889,12 +940,8 @@ async def create_extra_event(
         )
     except IntegrityError:
         db.rollback()
-        return _redirect(
-            "An diesem Tag existiert bereits ein Termin",
-            f"/admin/subscription/{sub_id}",
-            mt="error",
-        )
-    return _redirect("Zusatztermin angelegt", f"/admin/subscription/{sub_id}")
+        return _redirect("An diesem Tag existiert bereits ein Termin", back, mt="error")
+    return _redirect("Zusatztermin angelegt", back)
 
 
 # ── Buchungen durch den Admin (Test & Verwaltung) ─────────────────────────
@@ -933,6 +980,9 @@ async def admin_book_member(
     if services.count_booked(db, event_id) > event.max_participants:
         db.rollback()
         return _redirect("Termin ist ausgebucht", back, mt="error")
+    db.query(WaitlistEntry).filter(
+        WaitlistEntry.event_id == event_id, WaitlistEntry.member_id == member_id
+    ).delete(synchronize_session=False)
     db.commit()
     return _redirect(f"{member.name} angemeldet", back)
 
@@ -941,8 +991,8 @@ async def admin_book_member(
 async def admin_book_guest(
     request: Request,
     event_id: str,
-    name: str = Form(..., min_length=1),
-    email: str = Form(""),
+    name: str = Form(..., min_length=1, max_length=100),
+    email: str = Form("", max_length=200),
     count: int = Form(1, ge=1, le=20),
     db: Session = Depends(get_db),
 ):
@@ -950,6 +1000,8 @@ async def admin_book_guest(
     if not event:
         return _redirect("Termin nicht gefunden", mt="error")
     back = f"/admin/event/{event_id}"
+    name = name.strip()
+    email = services.normalize_email(email)
     if event.settled_at:
         return _redirect("Termin ist bereits abgerechnet", back, mt="error")
     if event.is_cancelled:
@@ -999,7 +1051,7 @@ async def admin_delete_guest_booking(
         return _redirect("Termin ist bereits abgerechnet", back, mt="error")
     if gb.paid_at:
         return _redirect(
-            "Gastbuchung ist als bezahlt markiert – erst die Zahlung stornieren",
+            "Gastbuchung ist als bezahlt markiert – erst die Bezahlt-Markierung zurücknehmen",
             back,
             mt="error",
         )
@@ -1017,7 +1069,7 @@ async def admin_delete_guest_booking(
 async def admin_guest_paid(
     request: Request,
     gb_id: str,
-    amount: float = Form(..., gt=0),
+    amount: float = Form(..., gt=0, le=100000),
     db: Session = Depends(get_db),
 ):
     gb = db.query(GuestBooking).filter(GuestBooking.id == gb_id).first()
@@ -1048,7 +1100,7 @@ async def admin_guest_unpaid(
     if not gb.paid_at:
         return _redirect("Nicht als bezahlt markiert", back, mt="error")
     services.unmark_guest_paid(db, gb)
-    return _redirect(f"Bezahlt-Markierung von {gb.name} storniert", back)
+    return _redirect(f"Bezahlt-Markierung von {gb.name} zurückgenommen", back)
 
 
 # ── Statistics ────────────────────────────────────────────────────────────
@@ -1079,6 +1131,14 @@ async def subscription_stats(
         .all()
     )
 
+    member_ids = [m.id for m in members]
+    bookings_by_member = dict(
+        db.query(Booking.member_id, func.count(Booking.id))
+        .filter(Booking.member_id.in_(member_ids))
+        .group_by(Booking.member_id)
+        .all()
+    )
+    spending = services.spending_by_member(db, member_ids)
     member_stats = []
     totals = {
         "deposited": Decimal("0.00"),
@@ -1086,36 +1146,35 @@ async def subscription_stats(
         "credit": Decimal("0.00"),
     }
     for m in members:
-        bookings_count = db.query(Booking).filter(Booking.member_id == m.id).count()
-        spending = services.member_spending(db, m.id)
         member_stats.append(
             {
                 "member": m,
-                "bookings": bookings_count,
-                "deposited": spending["deposited"],
-                "spent": spending["spent"],
+                "bookings": bookings_by_member.get(m.id, 0),
+                "deposited": spending[m.id]["deposited"],
+                "spent": spending[m.id]["spent"],
                 "credit": m.credit,
             }
         )
-        totals["deposited"] += spending["deposited"]
-        totals["spent"] += spending["spent"]
+        totals["deposited"] += spending[m.id]["deposited"]
+        totals["spent"] += spending[m.id]["spent"]
         totals["credit"] += m.credit
 
-    event_stats = []
-    for e in events:
-        booked = services.count_booked(db, e.id)
-        revenue = (
-            db.query(Payment)
-            .filter(Payment.event_id == e.id, Payment.type == Payment.TYPE_CHARGE)
-            .all()
-        )
-        event_stats.append(
-            {
-                "event": e,
-                "booked": booked,
-                "revenue": -sum((p.amount for p in revenue), Decimal("0.00")),
-            }
-        )
+    event_ids = [e.id for e in events]
+    booked = services.booked_counts(db, event_ids)
+    revenue = {
+        event_id: -Decimal(str(total)).quantize(Decimal("0.01"))
+        for event_id, total in db.query(Payment.event_id, func.sum(Payment.amount))
+        .filter(Payment.event_id.in_(event_ids), Payment.type == Payment.TYPE_CHARGE)
+        .group_by(Payment.event_id)
+    }
+    event_stats = [
+        {
+            "event": e,
+            "booked": booked[e.id],
+            "revenue": revenue.get(e.id, Decimal("0.00")),
+        }
+        for e in events
+    ]
 
     return TemplateResponse(
         "admin/stats.html",

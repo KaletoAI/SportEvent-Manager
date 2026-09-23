@@ -12,7 +12,7 @@
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <div class="form-group">
             <label for="email">E-Mail</label>
-            <input type="email" id="email" name="email" required autofocus>
+            <input type="email" id="email" name="email" maxlength="200" autocomplete="email" inputmode="email" enterkeyhint="send" required autofocus>
         </div>
         <button type="submit" class="btn btn-primary btn-block">Login-Link anfordern</button>
     </form>
@@ -31,35 +31,6 @@
             {% endfor %}
         </div>
     </form>
-    <script>
-    (function () {
-        const inputs = Array.from(document.querySelectorAll('.otp-input'));
-        const hidden = document.getElementById('otp-code');
-        const form = document.getElementById('code-form');
-        function sync() {
-            hidden.value = inputs.map(i => i.value).join('');
-            if (hidden.value.length === 6) form.submit();
-        }
-        inputs.forEach((inp, idx) => {
-            inp.addEventListener('input', () => {
-                inp.value = inp.value.replace(/\D/g, '').slice(-1);
-                if (inp.value && idx < 5) inputs[idx + 1].focus();
-                sync();
-            });
-            inp.addEventListener('keydown', (e) => {
-                if (e.key === 'Backspace' && !inp.value && idx > 0) inputs[idx - 1].focus();
-            });
-            inp.addEventListener('paste', (e) => {
-                e.preventDefault();
-                const digits = (e.clipboardData.getData('text') || '').replace(/\D/g, '').slice(0, 6);
-                digits.split('').forEach((ch, i) => { if (inputs[i]) inputs[i].value = ch; });
-                if (digits.length) inputs[Math.min(digits.length - 1, 5)].focus();
-                sync();
-            });
-        });
-        inputs[0].focus();
-    })();
-    </script>
 </div>
 {% endif %}
 {% if dev_links %}

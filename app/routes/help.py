@@ -37,8 +37,22 @@ DOCS = {
 }
 
 
+# The built manuals are self-contained: inline <style>, images as data:
+# URIs, no scripts — so they get their own, even stricter policy.
+HELP_CSP = (
+    "default-src 'none'; style-src 'unsafe-inline'; img-src data:; "
+    "base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+)
+
+
 def _path(key: str) -> Path:
     return HELP_DIR / DOCS[key]["file"]
+
+
+def _doc_response(path: Path) -> FileResponse:
+    return FileResponse(
+        path, media_type="text/html", headers={"Content-Security-Policy": HELP_CSP}
+    )
 
 
 def require_any_session(
@@ -75,7 +89,7 @@ async def quickref():
     path = _path("kurzreferenz")
     if not path.exists():
         raise HTTPException(status_code=404, detail="Kurzreferenz nicht gefunden")
-    return FileResponse(path, media_type="text/html")
+    return _doc_response(path)
 
 
 @router.get("/handbuch", dependencies=[Depends(require_any_session)])
@@ -84,4 +98,4 @@ async def manual():
     path = _path("handbuch")
     if not path.exists():
         raise HTTPException(status_code=404, detail="Handbuch nicht gefunden")
-    return FileResponse(path, media_type="text/html")
+    return _doc_response(path)
