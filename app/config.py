@@ -13,7 +13,6 @@ class Settings(BaseSettings):
     database_url: str = ""
     secret_key: str = INSECURE_SECRET_KEY_DEFAULT
     admin_password: str = INSECURE_ADMIN_PASSWORD_DEFAULT
-    admin_email: str = "admin@example.com"
 
     # "dev" or "production". In production the app refuses to start with
     # insecure default credentials.
@@ -55,8 +54,10 @@ class Settings(BaseSettings):
 
     data_dir: str = str(Path(__file__).resolve().parent.parent / "data")
 
+    # extra="ignore": retired variables in an existing .env (e.g. the
+    # former ADMIN_EMAIL) must not stop the app from starting
     model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8"
+        env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )
 
     @property

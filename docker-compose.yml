@@ -10,7 +10,6 @@ services:
       # No insecure fallbacks: compose fails fast if these are unset (.env)
       - SECRET_KEY=${SECRET_KEY:?Set SECRET_KEY in .env}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in .env}
-      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@example.com}
       - APP_ENV=${APP_ENV:-production}
       - COOKIE_SECURE=${COOKIE_SECURE:-true}
       - BASE_URL=${BASE_URL:-https://${DOMAIN}}

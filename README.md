@@ -96,7 +96,6 @@ Alle Einstellungen kommen aus der `.env` (Vorlage: `.env.example`):
 |---|---|
 | `SECRET_KEY` | Schlüssel für Sitzungen und Token. In Produktion Pflicht. |
 | `ADMIN_PASSWORD` | Passwort für den Administrationsbereich. In Produktion Pflicht. |
-| `ADMIN_EMAIL` | Absender- und Kontaktadresse des Administrators |
 | `APP_ENV` | `production` erzwingt eine sichere Konfiguration, `dev` erlaubt Standardwerte |
 | `BASE_URL` | Öffentliche Basis-URL für Links in E-Mails |
 | `COOKIE_SECURE` | `true` hinter HTTPS |
