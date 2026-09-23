@@ -76,13 +76,13 @@
                 <span class="badge badge-success">Angemeldet</span>
                 {% if cancel_state[event.id] == 'free' %}
                 <form method="post" action="/member/event/{{ event.id }}/unbook" class="inline"
-                      onsubmit="return confirm('Für den Termin am {{ event.date|date_de }} wirklich abmelden?')">
+                      data-confirm="Für den Termin am {{ event.date|date_de }} wirklich abmelden?">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <button type="submit" class="btn btn-danger btn-sm">Abmelden</button>
                 </form>
                 {% elif cancel_state[event.id] == 'approval' %}
                 <form method="post" action="/member/event/{{ event.id }}/unbook" class="inline"
-                      onsubmit="return confirm('Die Abmeldefrist ist abgelaufen. Abmelde-Anfrage an die Super-Mitglieder senden?')">
+                      data-confirm="Die Abmeldefrist ist abgelaufen. Abmelde-Anfrage an die Super-Mitglieder senden?">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <button type="submit" class="btn btn-warning btn-sm">Abmeldung anfragen</button>
                 </form>
@@ -108,7 +108,7 @@
                 </form>
                 {% else %}
                 <form method="post" action="/member/event/{{ event.id }}/waitlist" class="inline"
-                      onsubmit="return confirm('Auf die Warteliste? Sobald ein Platz frei wird, rückst du automatisch nach und wirst per E-Mail informiert.')">
+                      data-confirm="Auf die Warteliste? Sobald ein Platz frei wird, rückst du automatisch nach und wirst per E-Mail informiert.">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <button type="submit" class="btn btn-primary btn-sm">Auf die Warteliste{% if waitlist_count[event.id] %} ({{ waitlist_count[event.id] }}){% endif %}</button>
                 </form>
@@ -197,7 +197,8 @@
     <details>
         <summary><strong>💰 Zahlungseingang bestätigen</strong> <span class="muted small">— hier klicken, wenn dir ein Mitglied Geld gezahlt hat</span></summary>
         <p class="muted small mt-1">Hat dir jemand seinen Anteil gezahlt (PayPal, bar, …)? Bestätige den Eingang: Das Guthaben des Zahlers steigt, deins sinkt entsprechend.</p>
-        <form method="post" action="/member/transfer-received" class="mt-1">
+        <form method="post" action="/member/transfer-received" class="mt-1"
+              data-confirm="Zahlungseingang bestätigen? Dein Guthaben sinkt um den Betrag, das des Zahlers steigt.">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <div class="form-row">
                 <div class="form-group">
@@ -217,8 +218,7 @@
                     <input type="text" id="tr_note" name="note" placeholder="z. B. PayPal 05.07.">
                 </div>
             </div>
-            <button type="submit" class="btn btn-primary"
-                    onclick="return confirm('Zahlungseingang bestätigen? Dein Guthaben sinkt um den Betrag, das des Zahlers steigt.')">Eingang bestätigen</button>
+            <button type="submit" class="btn btn-primary">Eingang bestätigen</button>
         </form>
     </details>
 </div>
@@ -270,12 +270,12 @@
             </div>
             <div class="actions">
                 <form method="post" action="/member/cancel-request/{{ b.id }}/approve" class="inline"
-                      onsubmit="return confirm('Stornierung von {{ b.member.name }} freigeben? Die Anmeldung wird gelöscht.')">
+                      data-confirm="Stornierung von {{ b.member.name }} freigeben? Die Anmeldung wird gelöscht.">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <button type="submit" class="btn btn-success btn-sm">Freigeben</button>
                 </form>
                 <form method="post" action="/member/cancel-request/{{ b.id }}/reject" class="inline"
-                      onsubmit="return confirm('Storno-Anfrage von {{ b.member.name }} ablehnen?')">
+                      data-confirm="Storno-Anfrage von {{ b.member.name }} ablehnen?">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <button type="submit" class="btn btn-danger btn-sm">Ablehnen</button>
                 </form>
@@ -300,20 +300,20 @@
                 {% if se.blocker %}
                 <span class="muted small">{{ se.blocker }}</span>
                 <form method="post" action="/member/event/{{ se.event.id }}/cancel" class="inline"
-                      onsubmit="return confirm('Termin absagen und Gesamtpreis um {{ se.event.abo_budget|euro }} reduzieren?')">
+                      data-confirm="Termin absagen und Gesamtpreis um {{ se.event.abo_budget|euro }} reduzieren?">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <input type="hidden" name="reduce_price" value="yes">
                     <button type="submit" class="btn btn-danger btn-sm">Stornieren + Preis reduzieren</button>
                 </form>
                 <form method="post" action="/member/event/{{ se.event.id }}/cancel" class="inline"
-                      onsubmit="return confirm('Termin absagen und Budget auf die restlichen Termine umlegen?')">
+                      data-confirm="Termin absagen und Budget auf die restlichen Termine umlegen?">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <input type="hidden" name="reduce_price" value="no">
                     <button type="submit" class="btn btn-danger btn-sm">Stornieren + umlegen</button>
                 </form>
                 {% else %}
                 <form method="post" action="/member/event/{{ se.event.id }}/settle" class="inline"
-                      onsubmit="return confirm('Termin abrechnen? Der Anteil wird allen angemeldeten Mitgliedern vom Guthaben abgezogen.')">
+                      data-confirm="Termin abrechnen? Der Anteil wird allen angemeldeten Mitgliedern vom Guthaben abgezogen.">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <button type="submit" class="btn btn-warning btn-sm">Abrechnen</button>
                 </form>

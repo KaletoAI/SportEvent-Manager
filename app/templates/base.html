@@ -6,17 +6,7 @@
     <title>{% block title %}SportAbo Manager{% endblock %}</title>
     <meta name="theme-color" content="#2563eb" media="(prefers-color-scheme: light)">
     <meta name="theme-color" content="#0b1220" media="(prefers-color-scheme: dark)">
-    <script>
-    // Theme vor dem ersten Rendern setzen (kein Aufblitzen):
-    // gespeicherte Wahl pro Gerät, sonst Systemvorgabe
-    (function () {
-        var t = localStorage.getItem('theme');
-        if (t !== 'dark' && t !== 'light') {
-            t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-        }
-        document.documentElement.dataset.theme = t;
-    })();
-    </script>
+    <script src="/static/theme.js?v={{ static_version }}"></script>
     <link rel="manifest" href="/static/manifest.json">
     <link rel="icon" type="image/png" href="/static/icons/icon-192.png">
     <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
@@ -44,51 +34,6 @@
         {% endif %}
         {% block content %}{% endblock %}
     </div>
-    <script>
-    // Tabs: Panels umschalten, aktiven Tab pro Seite merken (sessionStorage)
-    document.querySelectorAll('[data-tabs]').forEach(function (bar) {
-        const btns = Array.from(bar.querySelectorAll('.tab-btn'));
-        const key = 'tab:' + location.pathname;
-        function activate(name, save) {
-            btns.forEach(b => b.classList.toggle('active', b.dataset.tab === name));
-            document.querySelectorAll('.tab-panel').forEach(
-                p => p.classList.toggle('active', p.id === 'tab-' + name)
-            );
-            if (save) sessionStorage.setItem(key, name);
-        }
-        btns.forEach(b => b.addEventListener('click', () => activate(b.dataset.tab, true)));
-        const saved = sessionStorage.getItem(key);
-        if (saved && btns.some(b => b.dataset.tab === saved)) activate(saved, false);
-    });
-    // Theme-Umschalter: Wahl pro Gerät speichern, Icon + theme-color anpassen
-    (function () {
-        var btn = document.getElementById('theme-toggle');
-        function apply(t) {
-            document.documentElement.dataset.theme = t;
-            btn.textContent = t === 'dark' ? '☀️' : '🌙';
-            document.querySelectorAll('meta[name="theme-color"]').forEach(function (m) {
-                m.setAttribute('content', t === 'dark' ? '#0b1220' : '#2563eb');
-            });
-        }
-        apply(document.documentElement.dataset.theme);
-        btn.addEventListener('click', function () {
-            var next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
-            localStorage.setItem('theme', next);
-            apply(next);
-        });
-        // Ohne manuelle Wahl der Systemumschaltung folgen (z. B. Nachtmodus)
-        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function (e) {
-            if (!localStorage.getItem('theme')) apply(e.matches ? 'dark' : 'light');
-        });
-    })();
-    // Antippbare Karten: Klick irgendwo auf der Karte öffnet data-href —
-    // außer auf Buttons, Links und Formularelementen
-    document.addEventListener('click', function (e) {
-        const card = e.target.closest('[data-href]');
-        if (!card) return;
-        if (e.target.closest('a, button, form, input, select, textarea, label, details, summary')) return;
-        window.location = card.dataset.href;
-    });
-    </script>
+    <script src="/static/app.js?v={{ static_version }}" defer></script>
 </body>
 </html>

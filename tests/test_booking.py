@@ -79,8 +79,9 @@ def test_guest_booking_via_public_token(client, db, seed):
     )
     assert resp.status_code == 200
     assert "Danke, Gast" in resp.text
-    # 2 Teilnehmer teilen sich das Normal-Budget 10 € → 2 × 5,00 = 10,00
-    assert "10,00" in resp.text
+    # "Maximal" = Anteil bei Mindestteilnehmerzahl (hier 1): Normal-Budget
+    # 10 € pro Person → 2 × 10,00 = 20,00 (kann durch Absagen nicht steigen)
+    assert "20,00" in resp.text
     assert "pay@example.com" in resp.text
     assert db.query(GuestBooking).count() == 1
 

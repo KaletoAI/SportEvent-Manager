@@ -76,7 +76,7 @@
     {% if member %}
     {% if deletable %}
     <form method="post" action="/admin/member/{{ member.id }}/delete" class="mt-1"
-          onsubmit="return confirm('Mitglied „{{ member.name }}“ endgültig aus diesem Abo löschen? Der Eintrag in der Nutzerablage bleibt erhalten.')">
+          data-confirm="Mitglied „{{ member.name }}“ endgültig aus diesem Abo löschen? Der Eintrag in der Nutzerablage bleibt erhalten.">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <button type="submit" class="btn btn-danger btn-block">Mitglied löschen</button>
     </form>

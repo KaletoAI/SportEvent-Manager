@@ -1,7 +1,5 @@
-"""Authentication: Argon2 password hashing, server-side sessions,
-login rate limiting and CSRF verification."""
+"""Authentication: server-side sessions, rate limiting and CSRF verification."""
 
-import hashlib
 import hmac
 import secrets
 import time as time_module
@@ -9,49 +7,17 @@ from collections import defaultdict, deque
 from datetime import timedelta
 from typing import Optional
 
-from argon2 import PasswordHasher
-from argon2.exceptions import VerifyMismatchError, InvalidHashError
 from fastapi import Depends, Form, HTTPException, Request, status
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import get_db
-from app.models.models import Member, UserSession, utcnow
-
-_ph = PasswordHasher()
+from app.models.models import LoginToken, Member, UserSession, utcnow
+from app.web import client_ip
 
 SESSION_COOKIE = "session"
 CSRF_COOKIE = "csrf_token"
-
-
-# ── Passwords ───────────────────────────────────────────────────────────────
-
-
-def hash_password(password: str) -> str:
-    return _ph.hash(password)
-
-
-def verify_password(password: str, stored: str) -> bool:
-    """Verify against Argon2 or the legacy salted-SHA256 format."""
-    if stored.startswith("$argon2"):
-        try:
-            _ph.verify(stored, password)
-            return True
-        except (VerifyMismatchError, InvalidHashError):
-            return False
-    # Legacy format: "<salt_hex>:<sha256_hex>"
-    try:
-        salt_hex, hash_hex = stored.split(":", 1)
-        salt = bytes.fromhex(salt_hex)
-    except ValueError:
-        return False
-    digest = hashlib.sha256(salt + password.encode("utf-8")).hexdigest()
-    return hmac.compare_digest(digest, hash_hex)
-
-
-def password_needs_rehash(stored: str) -> bool:
-    return not stored.startswith("$argon2")
 
 
 # ── Sessions ────────────────────────────────────────────────────────────────
@@ -99,6 +65,16 @@ def destroy_session(db: Session, token: Optional[str]) -> None:
         return
     db.query(UserSession).filter(UserSession.token == token).delete()
     db.commit()
+
+
+def purge_expired(db: Session) -> int:
+    """Delete expired sessions and login tokens (scheduler housekeeping —
+    otherwise they are only removed when someone tries to use them)."""
+    now = utcnow()
+    n = db.query(UserSession).filter(UserSession.expires_at < now).delete()
+    n += db.query(LoginToken).filter(LoginToken.expires_at < now).delete()
+    db.commit()
+    return n
 
 
 def set_session_cookie(response: Response, token: str) -> None:
@@ -155,26 +131,32 @@ def require_super(member: Member = Depends(require_member)) -> Member:
     return member
 
 
-# ── Login rate limiting (in-memory, per client IP and scope) ───────────────
+# ── Rate limiting (in-memory, resets on restart) ───────────────────────────
 
 _attempts: dict[str, deque] = defaultdict(deque)
 
 
+def check_rate_limit(
+    key: str, max_attempts: int, window_seconds: int, detail: str
+) -> None:
+    """Raise 429 when `key` was used max_attempts times within the window."""
+    now = time_module.monotonic()
+    attempts = _attempts[key]
+    while attempts and now - attempts[0] > window_seconds:
+        attempts.popleft()
+    if len(attempts) >= max_attempts:
+        raise HTTPException(status_code=429, detail=detail)
+    attempts.append(now)
+
+
 def check_login_rate_limit(request: Request, scope: str) -> None:
     """Raise 429 when too many recent login attempts from this IP."""
-    ip = request.client.host if request.client else "unknown"
-    key = f"{scope}:{ip}"
-    now = time_module.monotonic()
-    window = settings.login_window_seconds
-    attempts = _attempts[key]
-    while attempts and now - attempts[0] > window:
-        attempts.popleft()
-    if len(attempts) >= settings.login_max_attempts:
-        raise HTTPException(
-            status_code=429,
-            detail="Zu viele Login-Versuche. Bitte später erneut versuchen.",
-        )
-    attempts.append(now)
+    check_rate_limit(
+        f"{scope}:{client_ip(request)}",
+        settings.login_max_attempts,
+        settings.login_window_seconds,
+        "Zu viele Login-Versuche. Bitte später erneut versuchen.",
+    )
 
 
 def reset_rate_limits() -> None:

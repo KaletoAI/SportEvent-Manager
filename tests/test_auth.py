@@ -1,28 +1,8 @@
-"""Auth: sessions, password hashing, rate limiting, CSRF."""
+"""Auth: sessions, magic-link/code login, rate limiting, CSRF."""
 
 from conftest import ADMIN_PW, admin_login, get_csrf, member_login
 
-from app.auth import hash_password, verify_password, password_needs_rehash
 from app.models.models import Member, UserSession
-
-
-def test_password_hash_roundtrip():
-    h = hash_password("hunter22")
-    assert h.startswith("$argon2")
-    assert verify_password("hunter22", h)
-    assert not verify_password("wrong", h)
-
-
-def test_legacy_hash_verifies_and_flags_rehash():
-    # Old format: salt_hex:sha256(salt+pw)
-    import hashlib, os
-
-    salt = os.urandom(32)
-    legacy = salt.hex() + ":" + hashlib.sha256(salt + b"oldpw").hexdigest()
-    assert verify_password("oldpw", legacy)
-    assert not verify_password("wrong", legacy)
-    assert password_needs_rehash(legacy)
-    assert not verify_password("x", "garbage-without-colon")  # no crash
 
 
 def test_admin_login_and_logout(client, db):
@@ -66,7 +46,15 @@ def test_member_token_login_flow(client, db, seed):
     import re
 
     token = re.search(r"/member/login/t/([A-Za-z0-9_-]+)", resp.text).group(1)
+    # GET zeigt nur die Bestätigung (Mail-Scanner verbrauchen den Link nicht)
     resp = client.get(f"/member/login/t/{token}", follow_redirects=False)
+    assert resp.status_code == 200
+    assert "Jetzt anmelden" in resp.text
+    resp = client.post(
+        f"/member/login/t/{token}",
+        data={"csrf_token": client.cookies.get("csrf_token")},
+        follow_redirects=False,
+    )
     assert resp.status_code == 302
     assert resp.headers["location"] == "/member/dashboard"
     # Token ist einmalig

@@ -21,7 +21,7 @@ from decimal import Decimal
 import pytest
 from fastapi.testclient import TestClient
 
-from app.auth import hash_password, reset_rate_limits
+from app.auth import reset_rate_limits
 from app.database import SessionLocal, engine
 from app.main import app
 from app.models.models import (
@@ -114,22 +114,19 @@ def seed(db):
         subscription_id=sub.id,
         email="anna@example.com",
         name="Anna",
-        password_hash=hash_password("secret123"),
-        credit=Decimal("20.00"),
+                credit=Decimal("20.00"),
     )
     super_member = Member(
         subscription_id=sub.id,
         email="sina@example.com",
         name="Sina",
-        password_hash=hash_password("secret123"),
-        is_super=True,
+                is_super=True,
     )
     outsider = Member(
         subscription_id=other_sub.id,
         email="bernd@example.com",
         name="Bernd",
-        password_hash=hash_password("secret123"),
-    )
+            )
     db.add_all([event, past_event, member, super_member, outsider])
     db.commit()
     for obj in (sub, other_sub, event, past_event, member, super_member, outsider):
@@ -186,7 +183,9 @@ def member_login(client: TestClient, email="anna@example.com") -> str:
     """Log a member in via login token; returns the CSRF token."""
     csrf = get_csrf(client, "/member/login")
     token = make_login_token(email)
-    resp = client.get(f"/member/login/t/{token}", follow_redirects=False)
+    resp = client.post(
+        f"/member/login/t/{token}", data={"csrf_token": csrf}, follow_redirects=False
+    )
     assert resp.status_code == 302, resp.text
     assert resp.headers["location"] == "/member/dashboard", resp.headers["location"]
     return csrf

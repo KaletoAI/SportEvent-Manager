@@ -144,6 +144,11 @@ def upgrade(engine: Engine) -> None:
                 "ALTER TABLE login_tokens ADD COLUMN code VARCHAR(6) "
                 "NOT NULL DEFAULT ''"
             )
+        if lt_cols and "attempts" not in lt_cols:
+            conn.exec_driver_sql(
+                "ALTER TABLE login_tokens ADD COLUMN attempts INTEGER "
+                "NOT NULL DEFAULT 0"
+            )
 
         # persons directory: one-time backfill from existing members
         (persons_count,) = conn.exec_driver_sql(
@@ -192,3 +197,31 @@ def upgrade(engine: Engine) -> None:
                 "ALTER TABLE payments ADD COLUMN event_id VARCHAR(12) "
                 "REFERENCES events(id)"
             )
+
+        # Indexes on hot lookup columns (create_all only indexes new tables)
+        for name, table, column in (
+            ("ix_payments_member_id", "payments", "member_id"),
+            ("ix_payments_event_id", "payments", "event_id"),
+            ("ix_guest_bookings_event_id", "guest_bookings", "event_id"),
+            ("ix_members_email", "members", "email"),
+        ):
+            conn.exec_driver_sql(
+                f"CREATE INDEX IF NOT EXISTS {name} ON {table} ({column})"
+            )
+
+        # E-Mail-Adressen einheitlich klein schreiben (Login vergleicht
+        # normalisiert). Zeilen, die dabei mit einer anderen kollidieren
+        # würden, bleiben unverändert — der Login findet sie trotzdem.
+        conn.exec_driver_sql(
+            "UPDATE members SET email = lower(trim(email)) "
+            "WHERE email != lower(trim(email)) AND NOT EXISTS ("
+            "SELECT 1 FROM members m2 WHERE m2.subscription_id = "
+            "members.subscription_id AND m2.id != members.id "
+            "AND m2.email = lower(trim(members.email)))"
+        )
+        conn.exec_driver_sql(
+            "UPDATE persons SET email = lower(trim(email)) "
+            "WHERE email != lower(trim(email)) AND NOT EXISTS ("
+            "SELECT 1 FROM persons p2 WHERE p2.id != persons.id "
+            "AND p2.email = lower(trim(persons.email)))"
+        )

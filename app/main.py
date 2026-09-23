@@ -31,6 +31,11 @@ if settings.has_insecure_defaults:
     logger.warning(
         "SECRET_KEY/ADMIN_PASSWORD are insecure defaults — dev use only!"
     )
+if settings.app_env == "production" and not settings.base_url:
+    logger.warning(
+        "BASE_URL is not set — login links are built from the client-supplied "
+        "Host header. Set BASE_URL in production."
+    )
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -51,9 +56,22 @@ Base.metadata.create_all(bind=engine)
 upgrade(engine)
 
 
+# No inline scripts or styles anywhere (all behaviour lives in
+# static/app.js, confirmations via data-confirm) — so the CSP can forbid
+# them, which defuses any HTML injection that slips through escaping.
+CONTENT_SECURITY_POLICY = (
+    "default-src 'self'; script-src 'self'; style-src 'self'; "
+    "img-src 'self' data:; object-src 'none'; base-uri 'none'; "
+    "form-action 'self'; frame-ancestors 'none'"
+)
+
+
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
         response = await call_next(request)
+        response.headers.setdefault(
+            "Content-Security-Policy", CONTENT_SECURITY_POLICY
+        )
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("X-Frame-Options", "DENY")
         response.headers.setdefault(

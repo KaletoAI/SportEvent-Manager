@@ -55,9 +55,8 @@
     <h2>Gastlink</h2>
     <p class="muted small">Diesen Link kannst du an Gäste weitergeben — Buchung ohne Konto:</p>
     <div class="copy-row mt-1">
-        <input type="text" id="guest-link" value="{{ guest_link }}" readonly onclick="this.select()">
-        <button type="button" class="btn btn-outline btn-sm" id="copy-btn"
-                onclick="navigator.clipboard.writeText(document.getElementById('guest-link').value).then(() => { this.textContent = 'Kopiert ✓'; setTimeout(() => this.textContent = 'Kopieren', 2000); })">Kopieren</button>
+        <input type="text" id="guest-link" value="{{ guest_link }}" readonly data-select-all>
+        <button type="button" class="btn btn-outline btn-sm" data-copy="#guest-link">Kopieren</button>
     </div>
 </div>
 
@@ -65,27 +64,27 @@
     <h2>Aktionen</h2>
     <div class="actions">
         {% if event.is_cancelled %}
-        <form method="post" action="/admin/event/{{ event.id }}/cancel" class="inline"
-              onsubmit="return confirm('Termin wieder aktivieren? Eine frühere Preisreduzierung wird dabei nicht automatisch zurückgenommen.')">
+        <form method="post" action="/admin/event/{{ event.id }}/reactivate" class="inline"
+              data-confirm="Termin wieder aktivieren? Eine frühere Preisreduzierung wird dabei nicht automatisch zurückgenommen.">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <button type="submit" class="btn btn-success btn-sm">Reaktivieren</button>
         </form>
         {% elif not event.settled_at %}
         {% if event.is_extra %}
         <form method="post" action="/admin/event/{{ event.id }}/cancel" class="inline"
-              onsubmit="return confirm('Zusatztermin wirklich absagen?')">
+              data-confirm="Zusatztermin wirklich absagen?">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <button type="submit" class="btn btn-danger btn-sm">Zusatztermin absagen</button>
         </form>
         {% else %}
         <form method="post" action="/admin/event/{{ event.id }}/cancel" class="inline"
-              onsubmit="return confirm('Termin absagen und den Abo-Gesamtpreis um {{ event.abo_budget|euro }} reduzieren?')">
+              data-confirm="Termin absagen und den Abo-Gesamtpreis um {{ event.abo_budget|euro }} reduzieren?">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="reduce_price" value="yes">
             <button type="submit" class="btn btn-danger btn-sm">Absagen + Preis reduzieren</button>
         </form>
         <form method="post" action="/admin/event/{{ event.id }}/cancel" class="inline"
-              onsubmit="return confirm('Termin absagen und das Budget auf die restlichen Termine umlegen? (Gesamtpreis bleibt, andere Termine werden teurer)')">
+              data-confirm="Termin absagen und das Budget auf die restlichen Termine umlegen? (Gesamtpreis bleibt, andere Termine werden teurer)">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="reduce_price" value="no">
             <button type="submit" class="btn btn-danger btn-sm">Absagen + umlegen</button>
@@ -93,7 +92,7 @@
         {% endif %}
         {% endif %}
         <form method="post" action="/admin/event/{{ event.id }}/settle" class="inline"
-              onsubmit="return confirm('Termin abrechnen? Der Anteil wird allen angemeldeten Mitgliedern vom Guthaben abgezogen.')">
+              data-confirm="Termin abrechnen? Der Anteil wird allen angemeldeten Mitgliedern vom Guthaben abgezogen.">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <button type="submit" class="btn btn-warning btn-sm" {% if event.settled_at or settle_blocker %}disabled{% endif %}>
                 {% if event.settled_at %}Abgerechnet am {{ event.settled_at|date_de }}{% else %}Abrechnen{% endif %}
@@ -142,7 +141,7 @@
                 {% if not event.settled_at %}
                 <td>
                     <form method="post" action="/admin/booking/{{ b.id }}/delete" class="inline"
-                          onsubmit="return confirm('Anmeldung von {{ b.member.name }} entfernen?')">
+                          data-confirm="Anmeldung von {{ b.member.name }} entfernen?">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <button type="submit" class="btn btn-outline btn-sm">Entfernen</button>
                     </form>
@@ -239,14 +238,14 @@
                     <div class="paid-form">
                         <span class="badge badge-success">✓ {{ g.paid_amount|euro }}</span>
                         <form method="post" action="/admin/guest-booking/{{ g.id }}/unpaid" class="inline"
-                              onsubmit="return confirm('Bezahlt-Markierung von {{ g.name }} stornieren?{% if g.paid_member_id %} Die Gegenbuchung wird rückgebucht.{% endif %}')">
+                              data-confirm="Bezahlt-Markierung von {{ g.name }} stornieren?{% if g.paid_member_id %} Die Gegenbuchung wird rückgebucht.{% endif %}">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                             <button type="submit" class="btn btn-outline btn-sm">Storno</button>
                         </form>
                     </div>
                     {% else %}
                     <form method="post" action="/admin/guest-booking/{{ g.id }}/paid" class="paid-form"
-                          onsubmit="return confirm('Zahlung von {{ g.name }} als erhalten verbuchen?')">
+                          data-confirm="Zahlung von {{ g.name }} als erhalten verbuchen?">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <input type="number" name="amount" min="0.01" step="0.01"
                                value="{{ '%.2f'|format(g.count * shares.guest_share) }}" title="Erhaltener Betrag in Euro">
@@ -257,7 +256,7 @@
                 {% if not event.settled_at %}
                 <td>
                     <form method="post" action="/admin/guest-booking/{{ g.id }}/delete" class="inline"
-                          onsubmit="return confirm('Gastbuchung von {{ g.name }} entfernen?')">
+                          data-confirm="Gastbuchung von {{ g.name }} entfernen?">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <button type="submit" class="btn btn-outline btn-sm">Entfernen</button>
                     </form>

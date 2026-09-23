@@ -14,12 +14,12 @@ def outbox(monkeypatch):
     """Fängt alle Mails ab (Settlement + Scheduler)."""
     mails = []
 
-    async def fake_send_email(subscription, to, subject, body, html_body=None):
-        mails.append({"to": to, "subject": subject, "body": body})
-        return True
+    async def fake_send_batch(subscription, batch):
+        mails.extend({"to": m.to, "subject": m.subject, "body": m.body} for m in batch)
+        return len(batch)
 
-    monkeypatch.setattr(services, "send_email", fake_send_email)
-    monkeypatch.setattr(scheduler, "send_email", fake_send_email)
+    monkeypatch.setattr(services, "send_batch", fake_send_batch)
+    monkeypatch.setattr(scheduler, "send_batch", fake_send_batch)
     return mails
 
 

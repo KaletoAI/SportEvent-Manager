@@ -18,7 +18,7 @@
     <div class="stat-card"><div class="value">{{ event.start_time|time_de }} – {{ event.end_time|time_de }}</div><div class="label">Uhrzeit</div></div>
     <div class="stat-card"><div class="value">{{ available }} / {{ event.max_participants }}</div><div class="label">Freie Plätze</div></div>
     <div class="stat-card">
-        <div class="value">max. {{ tiers[0].guest|euro }}</div>
+        <div class="value">max. {{ max_share|euro }}</div>
         <div class="label">Preis pro Person</div>
     </div>
 </div>

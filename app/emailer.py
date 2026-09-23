@@ -2,10 +2,16 @@
 
 Per-subscription SMTP settings override the global ones from config.
 Without any configured SMTP host, sending is silently skipped (returns
-False) so the app works fully without a mail server.
+0/False) so the app works fully without a mail server.
+
+Several mails for one occasion (settlement, reminders, waitlist) go out as
+one batch over a single SMTP connection — one TLS handshake instead of
+one per recipient, so e.g. "Abrechnen" doesn't keep the phone waiting.
 """
 
+import html
 import logging
+from dataclasses import dataclass
 from email.message import EmailMessage
 from typing import Optional
 
@@ -15,6 +21,14 @@ from app.config import settings
 from app.models.models import Subscription
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class Mail:
+    to: str
+    subject: str
+    body: str
+    html: Optional[str] = None
 
 
 def smtp_config_for(subscription: Optional[Subscription]) -> Optional[dict]:
@@ -43,6 +57,63 @@ def smtp_config_for(subscription: Optional[Subscription]) -> Optional[dict]:
     return None
 
 
+def _message(config: dict, mail: Mail) -> EmailMessage:
+    message = EmailMessage()
+    message["From"] = f"{config['sender_name']} <{config['sender']}>"
+    message["To"] = mail.to
+    message["Subject"] = mail.subject
+    message.set_content(mail.body)
+    if mail.html:
+        message.add_alternative(mail.html, subtype="html")
+    return message
+
+
+async def send_with_config(config: Optional[dict], mails: list[Mail]) -> int:
+    """Send `mails` over one SMTP connection. Returns how many succeeded.
+    Takes a resolved config (no ORM access) so it can run as a background
+    task after the request's DB session is gone."""
+    if not mails:
+        return 0
+    if config is None:
+        for mail in mails:
+            logger.info(
+                "No SMTP configured, skipping email to %s (%s)", mail.to, mail.subject
+            )
+        return 0
+    # Port 465 = implicit SSL (SMTPS); otherwise STARTTLS per config
+    implicit = config["port"] == 465
+    smtp = aiosmtplib.SMTP(
+        hostname=config["host"],
+        port=config["port"],
+        use_tls=implicit,
+        start_tls=False if implicit else config["use_tls"],
+        timeout=30,
+    )
+    sent = 0
+    try:
+        async with smtp:
+            if config["user"]:
+                await smtp.login(config["user"], config["password"])
+            for mail in mails:
+                try:
+                    await smtp.send_message(_message(config, mail))
+                    logger.info("Email sent to %s (%s)", mail.to, mail.subject)
+                    sent += 1
+                except Exception:
+                    logger.exception("Email to %s failed", mail.to)
+    except Exception:
+        for mail in mails[sent:]:
+            logger.exception("Email to %s failed", mail.to)
+    return sent
+
+
+async def send_batch(
+    subscription: Optional[Subscription], mails: list[Mail]
+) -> int:
+    """Send several mails with the subscription's SMTP config."""
+    return await send_with_config(smtp_config_for(subscription), mails)
+
+
 async def send_email(
     subscription: Optional[Subscription],
     to: str,
@@ -50,41 +121,8 @@ async def send_email(
     body: str,
     html: Optional[str] = None,
 ) -> bool:
-    """Send an email (plain text, optional HTML alternative).
-    Returns True on success, False otherwise."""
-    config = smtp_config_for(subscription)
-    if config is None:
-        logger.info("No SMTP configured, skipping email to %s (%s)", to, subject)
-        return False
-
-    message = EmailMessage()
-    message["From"] = f"{config['sender_name']} <{config['sender']}>"
-    message["To"] = to
-    message["Subject"] = subject
-    message.set_content(body)
-    if html:
-        message.add_alternative(html, subtype="html")
-
-    try:
-        # Port 465 = implicit SSL (SMTPS); otherwise STARTTLS per config
-        tls_args = (
-            {"use_tls": True}
-            if config["port"] == 465
-            else {"start_tls": config["use_tls"]}
-        )
-        await aiosmtplib.send(
-            message,
-            hostname=config["host"],
-            port=config["port"],
-            username=config["user"] or None,
-            password=config["password"] or None,
-            **tls_args,
-        )
-        logger.info("Email sent to %s (%s)", to, subject)
-        return True
-    except Exception:
-        logger.exception("Email to %s failed", to)
-        return False
+    """Send a single email. Returns True on success, False otherwise."""
+    return await send_batch(subscription, [Mail(to, subject, body, html)]) == 1
 
 
 def login_link_email_body(member_name: str, link: str, code: str) -> str:
@@ -106,6 +144,9 @@ def login_link_email_body(member_name: str, link: str, code: str) -> str:
 
 
 def login_link_email_html(member_name: str, link: str, code: str) -> str:
+    member_name = html.escape(member_name)
+    link = html.escape(link, quote=True)
+    code = html.escape(code)
     return f"""\
 <div style="font-family:sans-serif; max-width:480px;">
   <p>Hallo {member_name},</p>

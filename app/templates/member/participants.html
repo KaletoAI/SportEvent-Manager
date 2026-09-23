@@ -24,7 +24,7 @@
     <h2>Termin stornieren</h2>
     {% if event.is_extra %}
     <form method="post" action="/member/event/{{ event.id }}/cancel" class="inline"
-          onsubmit="return confirm('Zusatztermin wirklich stornieren?')">
+          data-confirm="Zusatztermin wirklich stornieren?">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <button type="submit" class="btn btn-danger">Zusatztermin stornieren</button>
     </form>
@@ -32,13 +32,13 @@
     <p class="muted small">Fällt der Termin aus? Zwei Möglichkeiten: Abo-Gesamtpreis um das Termin-Budget ({{ event.abo_budget|euro }}) senken, oder das Budget auf die restlichen Termine umlegen (die werden dann teurer).</p>
     <div class="actions mt-1">
         <form method="post" action="/member/event/{{ event.id }}/cancel" class="inline"
-              onsubmit="return confirm('Termin stornieren und Gesamtpreis um {{ event.abo_budget|euro }} reduzieren?')">
+              data-confirm="Termin stornieren und Gesamtpreis um {{ event.abo_budget|euro }} reduzieren?">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="reduce_price" value="yes">
             <button type="submit" class="btn btn-danger">Stornieren − Preis reduzieren</button>
         </form>
         <form method="post" action="/member/event/{{ event.id }}/cancel" class="inline"
-              onsubmit="return confirm('Termin stornieren und Budget auf die restlichen Termine umlegen?')">
+              data-confirm="Termin stornieren und Budget auf die restlichen Termine umlegen?">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="reduce_price" value="no">
             <button type="submit" class="btn btn-danger">Stornieren + umlegen</button>
@@ -53,9 +53,8 @@
     <h2>Gastlink</h2>
     <p class="muted small">Diesen Link kannst du an Gäste weitergeben — Buchung ohne Konto:</p>
     <div class="copy-row mt-1">
-        <input type="text" id="guest-link" value="{{ guest_link }}" readonly onclick="this.select()">
-        <button type="button" class="btn btn-outline btn-sm"
-                onclick="navigator.clipboard.writeText(document.getElementById('guest-link').value).then(() => { this.textContent = 'Kopiert ✓'; setTimeout(() => this.textContent = 'Kopieren', 2000); })">Kopieren</button>
+        <input type="text" id="guest-link" value="{{ guest_link }}" readonly data-select-all>
+        <button type="button" class="btn btn-outline btn-sm" data-copy="#guest-link">Kopieren</button>
     </div>
 </div>
 {% endif %}
@@ -170,14 +169,14 @@
                     <div class="paid-form">
                         <span class="badge badge-success">✓ {{ g.paid_amount|euro }}</span>
                         <form method="post" action="/member/guest-booking/{{ g.id }}/unpaid" class="inline"
-                              onsubmit="return confirm('Bezahlt-Markierung von {{ g.name }} stornieren?{% if g.paid_member_id %} Die Gegenbuchung wird rückgebucht.{% endif %}')">
+                              data-confirm="Bezahlt-Markierung von {{ g.name }} stornieren?{% if g.paid_member_id %} Die Gegenbuchung wird rückgebucht.{% endif %}">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                             <button type="submit" class="btn btn-outline btn-sm">Storno</button>
                         </form>
                     </div>
                     {% else %}
                     <form method="post" action="/member/guest-booking/{{ g.id }}/paid" class="paid-form"
-                          onsubmit="return confirm('Zahlung von {{ g.name }} als erhalten verbuchen?')">
+                          data-confirm="Zahlung von {{ g.name }} als erhalten verbuchen?">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <input type="number" name="amount" min="0.01" step="0.01"
                                value="{{ '%.2f'|format(g.count * shares.guest_share) }}" title="Erhaltener Betrag in Euro">

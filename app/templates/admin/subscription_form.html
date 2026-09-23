@@ -106,7 +106,7 @@
     <h2>Abo löschen</h2>
     <p class="muted small">Löscht das Abo <strong>endgültig</strong> — inklusive aller Termine, Anmeldungen, Gastbuchungen, Mitglieder und deren Kontoauszüge. Die Nutzerablage bleibt erhalten. Zur Bestätigung den Abo-Namen eintippen:</p>
     <form method="post" action="/admin/subscription/{{ subscription.id }}/delete" class="form-inline mt-1"
-          onsubmit="return confirm('Wirklich ALLES zu „{{ subscription.name }}“ unwiderruflich löschen?')">
+          data-confirm="Wirklich ALLES zu „{{ subscription.name }}“ unwiderruflich löschen?">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <div class="form-group">
             <label for="confirm_name">Abo-Name</label>

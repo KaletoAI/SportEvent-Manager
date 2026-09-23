@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Anmelden — SportAbo{% endblock %}
+{% block nav_title %}Mitglieder-Login{% endblock %}
+{% block content %}
+<div class="card narrow mt-1 center">
+    <div class="emoji-big">🏐</div>
+    <h2>Hallo {{ member.name }}!</h2>
+    <p class="muted">Abo: <strong>{{ member.subscription.name }}</strong></p>
+    <form method="post" action="/member/login/t/{{ token }}" class="mt-1">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="btn btn-primary btn-block btn-lg">Jetzt anmelden</button>
+    </form>
+    <p class="muted small mt-1">Der Link ist nur einmal gültig. Ein Tipp auf den Button meldet dich auf diesem Gerät an.</p>
+</div>
+{% endblock %}

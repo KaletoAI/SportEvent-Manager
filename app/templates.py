@@ -14,6 +14,7 @@ from fastapi.responses import HTMLResponse
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from app.config import settings
+from app.web import flash_is_authentic
 
 _templates_dir = Path(__file__).resolve().parent / "templates"
 _env = Environment(
@@ -57,17 +58,18 @@ _env.globals["weekdays_de"] = WEEKDAYS_DE_LONG
 
 
 def _static_version() -> int:
-    """Cache-buster for the stylesheet: changes whenever the file does."""
-    css = Path(__file__).resolve().parent / "static" / "style.css"
+    """Cache-buster for stylesheet and scripts: changes whenever one does."""
+    static = Path(__file__).resolve().parent / "static"
     try:
-        return int(css.stat().st_mtime)
+        return max(
+            int((static / name).stat().st_mtime)
+            for name in ("style.css", "app.js", "theme.js")
+        )
     except OSError:
         return 0
 
 
 _env.globals["static_version"] = _static_version()
-
-templates = _env  # Jinja2 environment
 
 
 def TemplateResponse(
@@ -85,6 +87,9 @@ def TemplateResponse(
             csrf_token = secrets.token_urlsafe(32)
             csrf_cookie_missing = True
         context.setdefault("csrf_token", csrf_token)
+        # Unsigned ?msg= from a crafted link is not shown (see app.web)
+        if context.get("msg") and not flash_is_authentic(request, context["msg"]):
+            context["msg"] = ""
 
     template = _env.get_template(template_name)
     html = template.render(**context)
