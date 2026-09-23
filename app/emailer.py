@@ -209,9 +209,8 @@ def cancel_request_email_body(
         [
             f"Hallo {super_name},",
             "",
-            f"{member_name} möchte die Anmeldung für den Termin am "
-            f"{event_date} stornieren.",
-            "Die Stornofrist ist bereits abgelaufen — bitte gib die Anfrage "
+            f"{member_name} möchte sich vom Termin am {event_date} abmelden.",
+            "Die freie Abmeldefrist ist bereits abgelaufen — bitte gib die Anfrage "
             "im Dashboard frei oder lehne sie ab.",
             "",
             "Sportliche Grüße",

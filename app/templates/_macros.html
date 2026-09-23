@@ -1,0 +1,104 @@
+{# Gemeinsame Bausteine für Admin- und Mitgliederseiten.
+   Einbinden: {% import "_macros.html" as ui %} — Makros sehen den
+   Seitenkontext nicht, daher csrf_token immer explizit übergeben. #}
+
+{# Kontoauszug eines Mitglieds (signierter Ledger) #}
+{% macro ledger(payments) %}
+{% if payments %}
+<div class="table-wrap">
+<table class="table-stack">
+    <thead>
+        <tr><th>Datum</th><th>Art</th><th>Notiz</th><th class="num">Betrag</th></tr>
+    </thead>
+    <tbody>
+        {% for p in payments %}
+        <tr>
+            <td>{{ p.created_at|date_de }}</td>
+            <td data-label="Art">
+                {% if p.type == 'charge' %}<span class="badge badge-muted">Teilnahme</span>
+                {% elif p.amount < 0 %}<span class="badge badge-info">Ausgleich</span>
+                {% else %}<span class="badge badge-success">Einzahlung</span>{% endif %}
+            </td>
+            <td class="wrap" data-label="Notiz">{{ p.note }}</td>
+            <td class="num" data-label="Betrag">{{ p.amount|euro }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+{% else %}
+<p class="muted">Noch keine Buchungen.</p>
+{% endif %}
+{% endmacro %}
+
+{# Zusatztermin anlegen (Admin: Abo-Seite, Super: Dashboard) #}
+{% macro extra_event_form(action, subscription, csrf_token) %}
+<form method="post" action="{{ action }}" class="mt-1">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="form-row">
+        <div class="form-group">
+            <label for="x_event_date">Datum</label>
+            <input type="date" id="x_event_date" name="event_date" required>
+        </div>
+        <div class="form-group">
+            <label for="x_start_time">Beginn</label>
+            <input type="time" id="x_start_time" name="start_time" value="{{ subscription.start_time|time_de }}" required>
+        </div>
+        <div class="form-group">
+            <label for="x_duration">Dauer (Min.)</label>
+            <input type="number" id="x_duration" name="duration_minutes" min="1" inputmode="numeric" value="{{ subscription.duration_minutes }}" required>
+        </div>
+    </div>
+    <div class="form-row">
+        <div class="form-group">
+            <label for="x_budget">Terminkosten gesamt (€)</label>
+            <input type="number" id="x_budget" name="budget" min="0" step="0.01" inputmode="decimal" required>
+        </div>
+        <div class="form-group">
+            <label for="x_min">Min. Teilnehmer</label>
+            <input type="number" id="x_min" name="min_participants" min="1" inputmode="numeric" value="{{ subscription.min_participants }}" required>
+        </div>
+        <div class="form-group">
+            <label for="x_max">Max. Teilnehmer</label>
+            <input type="number" id="x_max" name="max_participants" min="1" inputmode="numeric" value="{{ subscription.max_participants }}" required>
+        </div>
+    </div>
+    <button type="submit" class="btn btn-primary">Zusatztermin anlegen</button>
+</form>
+{% endmacro %}
+
+{# Termin absagen mit der Preisfrage. action = …/cancel #}
+{% macro cancel_buttons(action, event, csrf_token, size="") %}
+{% if event.is_extra %}
+<form method="post" action="{{ action }}" class="inline"
+      data-confirm="Zusatztermin am {{ event.date|date_de }} wirklich absagen?">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="btn btn-danger {{ size }}">Zusatztermin absagen</button>
+</form>
+{% else %}
+<form method="post" action="{{ action }}" class="inline"
+      data-confirm="Termin absagen und den Abo-Gesamtpreis um {{ event.abo_budget|euro }} reduzieren?">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="reduce_price" value="yes">
+    <button type="submit" class="btn btn-danger {{ size }}">Absagen – Preis reduzieren</button>
+</form>
+<form method="post" action="{{ action }}" class="inline"
+      data-confirm="Termin absagen und das Budget auf die restlichen Termine umlegen? (Gesamtpreis bleibt, die anderen Termine werden teurer)">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="reduce_price" value="no">
+    <button type="submit" class="btn btn-outline-danger {{ size }}">Absagen – Budget umlegen</button>
+</form>
+{% endif %}
+{% endmacro %}
+
+{# Gastlink mit Kopieren-Button #}
+{% macro copy_link(link) %}
+<div class="copy-row mt-1">
+    <input type="text" id="guest-link" value="{{ link }}" readonly data-select-all aria-label="Gastlink">
+    <button type="button" class="btn btn-outline btn-sm" data-copy="#guest-link">Kopieren</button>
+</div>
+{% endmacro %}
+
+{# Nav: Symbol-Links (Zurück / Übersicht) mit Beschriftung für Screenreader #}
+{% macro nav_back(url, label="Zurück") %}<a href="{{ url }}" class="nav-icon" title="{{ label }}" aria-label="{{ label }}">←</a>{% endmacro %}
+{% macro nav_home(url) %}<a href="{{ url }}" class="nav-icon" title="Übersicht" aria-label="Übersicht">🏠</a>{% endmacro %}

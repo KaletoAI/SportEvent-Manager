@@ -520,7 +520,7 @@ async def unbook_event(
     event = booking.event
     if event.settled_at:
         return _redirect(
-            "Termin ist bereits abgerechnet – Stornierung nicht mehr möglich",
+            "Termin ist bereits abgerechnet – Abmelden nicht mehr möglich",
             mt="error",
         )
     now = clock.now(db)
@@ -819,7 +819,7 @@ async def approve_cancel_request(
     info = (
         f" – {promoted[0].name} rückt von der Warteliste nach" if promoted else ""
     )
-    return _redirect(f"Stornierung von {name} freigegeben{info}")
+    return _redirect(f"Abmeldung von {name} freigegeben{info}")
 
 
 @router.post("/cancel-request/{booking_id}/reject")
@@ -838,7 +838,7 @@ async def reject_cancel_request(
         return _redirect("Anfrage nicht gefunden", mt="error")
     booking.cancel_requested_at = None
     db.commit()
-    return _redirect(f"Storno-Anfrage von {booking.member.name} abgelehnt")
+    return _redirect(f"Abmelde-Anfrage von {booking.member.name} abgelehnt")
 
 
 @router.post("/extra-event")
@@ -915,4 +915,4 @@ async def super_guest_unpaid(
     if not gb.paid_at:
         return _redirect("Nicht als bezahlt markiert", back, mt="error")
     services.unmark_guest_paid(db, gb)
-    return _redirect(f"Bezahlt-Markierung von {gb.name} storniert", back)
+    return _redirect(f"Bezahlt-Markierung von {gb.name} zurückgenommen", back)

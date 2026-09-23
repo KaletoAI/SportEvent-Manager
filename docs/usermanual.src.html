@@ -292,17 +292,20 @@ werden übernommen.
 </div>
 
 <h3>Die Termin-Detailseite</h3>
-<p>Auf ihr sieht der Admin die vollständige Preisstaffel, den Gastlink zum
-Weitergeben und alle Anmeldungen.</p>
+<p>Die Seite hat drei Tabs: <strong>Übersicht</strong> mit den Aktionen
+(abrechnen, absagen, Teilnehmergrenzen), der vollständigen Preisstaffel und
+dem Gastlink zum Weitergeben, <strong>Mitglieder</strong> mit allen
+Anmeldungen und der Warteliste sowie <strong>Gäste</strong> mit den
+Gastbuchungen und dem Bezahlt-Haken.</p>
 
 <div class="figrow">
   <figure>
     <img src="screenshots/05-admin-termin-detail-1.png" alt="Termin-Detailseite mit Preisstaffel und Gastlink">
-    <figcaption>Preisstaffel und Gastlink</figcaption>
+    <figcaption>Tab „Übersicht“: Aktionen, Preisstaffel, Gastlink</figcaption>
   </figure>
   <figure>
     <img src="screenshots/05-admin-termin-detail-2.png" alt="Termin-Detailseite mit Anmeldungen">
-    <figcaption>Anmeldungen und Gastbuchungen</figcaption>
+    <figcaption>Tab „Mitglieder“: die Anmeldungen</figcaption>
   </figure>
 </div>
 
@@ -312,8 +315,10 @@ Weitergeben und alle Anmeldungen.</p>
 <p>Der SportAbo Manager hat keine Passwörter. Du gibst deine E-Mail-Adresse
 ein und bekommst eine Mail mit einem <strong>Anmelde-Link</strong> und einem
 <strong>6-stelligen Code</strong>. Beides ist 15 Minuten gültig. Der Link
-funktioniert per Klick; den Code kannst du eintippen, wenn du die Mail auf
-einem anderen Gerät liest.</p>
+öffnet eine Seite mit deinem Namen — dort tippst du auf <strong>Jetzt
+anmelden</strong>. Den Code kannst du eintippen, wenn du die Mail auf einem
+anderen Gerät liest. Forderst du mehrmals an, gilt nur die neueste Mail; nach
+fünf falschen Codes musst du einen neuen Link anfordern.</p>
 
 <div class="figrow">
   <figure>
@@ -411,7 +416,7 @@ Plätze, den Maximalpreis pro Person und deinen Status.</p>
 <tr><td class="nowrap">Angemeldet</td><td>Du bist dabei.</td></tr>
 <tr><td class="nowrap">Ausgebucht</td><td>Keine Plätze mehr frei — du kannst auf die Warteliste.</td></tr>
 <tr><td class="nowrap">Zusatz</td><td>Ein Zusatztermin außerhalb des Abo-Preises (eigene Kosten, alle zahlen gleich viel).</td></tr>
-<tr><td class="nowrap">Storno angefragt</td><td>Deine Abmeldung wartet auf Freigabe durch ein Super-Mitglied.</td></tr>
+<tr><td class="nowrap">Abmeldung angefragt</td><td>Deine Abmeldung wartet auf Freigabe durch ein Super-Mitglied.</td></tr>
 </tbody>
 </table>
 
@@ -469,8 +474,8 @@ Buchung.</p>
   </figure>
   <figure class="wide">
     <img src="screenshots/09b-member-kontoauszug.png" alt="Kontoauszug mit Beträgen">
-    <figcaption>Der Kontoauszug lässt sich seitlich schieben — rechts stehen
-    die Beträge</figcaption>
+    <figcaption>Der Kontoauszug: jede Buchung mit Art, Notiz und
+    Betrag</figcaption>
   </figure>
 </div>
 
@@ -526,8 +531,8 @@ Teilnehmern pro Person kostet.</p>
 
 <div class="figrow">
   <figure>
-    <img src="screenshots/14-super-verwaltung-1.png" alt="Verwaltungstab mit Storno-Anfragen und abzurechnenden Terminen">
-    <figcaption>Storno-Anfragen und abzurechnende Termine</figcaption>
+    <img src="screenshots/14-super-verwaltung-1.png" alt="Verwaltungstab mit Abmelde-Anfragen und abzurechnenden Terminen">
+    <figcaption>Abmelde-Anfragen und abzurechnende Termine</figcaption>
   </figure>
   <figure>
     <img src="screenshots/14-super-verwaltung-2.png" alt="Formular für einen Zusatztermin">
@@ -535,7 +540,7 @@ Teilnehmern pro Person kostet.</p>
   </figure>
 </div>
 
-<h4>Storno-Anfragen freigeben oder ablehnen</h4>
+<h4>Abmelde-Anfragen freigeben oder ablehnen</h4>
 <p>Meldet sich jemand nach Ablauf der freien Frist ab, landet die Anfrage
 hier — und du bekommst eine E-Mail. <strong>Freigeben</strong> löscht die
 Anmeldung (und rückt jemanden von der Warteliste nach),
@@ -569,12 +574,12 @@ Geld passiert:</p>
 <thead><tr><th>Option</th><th>Wirkung</th><th>Wann sinnvoll</th></tr></thead>
 <tbody>
 <tr>
-  <td class="nowrap">Absagen + Preis reduzieren</td>
+  <td class="nowrap">Absagen – Preis reduzieren</td>
   <td>Der Gesamtpreis des Abos sinkt um das Budget dieses Termins. Die übrigen Termine bleiben gleich teuer.</td>
   <td>Wenn der Termin ersatzlos ausfällt und ihr dafür auch nichts zahlen müsst.</td>
 </tr>
 <tr>
-  <td class="nowrap">Absagen + umlegen</td>
+  <td class="nowrap">Absagen – Budget umlegen</td>
   <td>Der Gesamtpreis bleibt, das Budget verteilt sich auf die verbleibenden Termine — die werden also teurer.</td>
   <td>Wenn die Platzmiete trotzdem fällig wird, z. B. bei kurzfristiger Absage wegen Wetter.</td>
 </tr>
@@ -604,7 +609,7 @@ der Person, die das Geld bekommen hat.</p>
 
 <figure class="wide">
   <img src="screenshots/16-super-gast-bezahlt.png" alt="Gastbuchung als bezahlt markiert">
-  <figcaption>Eine bezahlte Gastbuchung — die Markierung lässt sich stornieren</figcaption>
+  <figcaption>Eine bezahlte Gastbuchung — die Markierung lässt sich zurücknehmen</figcaption>
 </figure>
 
 <h2 id="gast">5. Als Gast buchen — ohne Konto</h2>
@@ -664,7 +669,7 @@ vom selben Absender und nennen im Betreff das Abo und das Datum.</p>
   <td class="nowrap"><strong>Dein Anmelde-Link</strong></td>
   <td>Sofort, wenn du auf der Login-Seite deine E-Mail eingibst.</td>
   <td>Mitglied</td>
-  <td>Link anklicken oder den 6-stelligen Code eingeben. Beides ist 15 Minuten gültig.</td>
+  <td>Link anklicken und auf <em>Jetzt anmelden</em> tippen – oder den 6-stelligen Code eingeben. Beides ist 15 Minuten gültig.</td>
 </tr>
 <tr>
   <td class="nowrap"><strong>Erinnerung: Abmeldefrist</strong></td>
@@ -685,7 +690,7 @@ vom selben Absender und nennen im Betreff das Abo und das Datum.</p>
   <td>Nichts — du bist automatisch fest angemeldet. Wenn du doch nicht kannst, melde dich ab.</td>
 </tr>
 <tr>
-  <td class="nowrap"><strong>Storno-Anfrage</strong></td>
+  <td class="nowrap"><strong>Abmelde-Anfrage</strong></td>
   <td>Wenn sich jemand nach Ablauf der freien Frist abmelden will.</td>
   <td>Super-Mitglieder</td>
   <td>Im Verwaltungsbereich freigeben oder ablehnen.</td>
@@ -729,7 +734,7 @@ bekannt ist.
 <tr><td>die App auf den Startbildschirm legen</td><td>Android: Chrome-Menü ⋮ → <em>App installieren</em> · iPhone: Safari → Teilen-Symbol → <em>Zum Home-Bildschirm</em></td></tr>
 <tr><td>eine erhaltene Zahlung bestätigen</td><td>💶 Konto → <em>Zahlungseingang bestätigen</em></td></tr>
 <tr><td>einen Termin abrechnen <span class="role-badge">⭐</span></td><td>⚙️ Verwaltung → <em>Abrechnen</em></td></tr>
-<tr><td>eine Storno-Anfrage bearbeiten <span class="role-badge">⭐</span></td><td>⚙️ Verwaltung → <em>Freigeben</em> / <em>Ablehnen</em></td></tr>
+<tr><td>eine Abmelde-Anfrage bearbeiten <span class="role-badge">⭐</span></td><td>⚙️ Verwaltung → <em>Freigeben</em> / <em>Ablehnen</em></td></tr>
 <tr><td>einen Zusatztermin anlegen <span class="role-badge">⭐</span></td><td>⚙️ Verwaltung → <em>Zusatztermin anlegen</em></td></tr>
 <tr><td>eine Gastzahlung abhaken <span class="role-badge">⭐</span></td><td>Terminkarte antippen → Gästeliste → <em>Bezahlt</em></td></tr>
 </tbody>

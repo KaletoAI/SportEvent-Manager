@@ -122,7 +122,7 @@ def test_delete_paid_guest_booking_blocked(client, db, seed):
         follow_redirects=False,
     )
     assert resp.status_code == 302
-    assert "stornieren" in resp.headers["location"]
+    assert "zur%C3%BCcknehmen" in resp.headers["location"]
     db.expire_all()
     assert db.get(GuestBooking, gb.id) is not None
 

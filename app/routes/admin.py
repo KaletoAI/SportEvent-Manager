@@ -823,7 +823,7 @@ async def cancel_event(
         msg = "Zusatztermin abgesagt"
     elif reduce_price == "yes":
         msg = (
-            f"Termin abgesagt – Gesamtpreis um {format_euro(event.abo_budget)} gesenkt"
+            f"Termin abgesagt – Gesamtpreis um {format_euro(event.abo_budget)} reduziert"
         )
     else:
         msg = "Termin abgesagt – Budget auf die restlichen Termine umgelegt"
@@ -1051,7 +1051,7 @@ async def admin_delete_guest_booking(
         return _redirect("Termin ist bereits abgerechnet", back, mt="error")
     if gb.paid_at:
         return _redirect(
-            "Gastbuchung ist als bezahlt markiert – erst die Zahlung stornieren",
+            "Gastbuchung ist als bezahlt markiert – erst die Bezahlt-Markierung zurücknehmen",
             back,
             mt="error",
         )
@@ -1100,7 +1100,7 @@ async def admin_guest_unpaid(
     if not gb.paid_at:
         return _redirect("Nicht als bezahlt markiert", back, mt="error")
     services.unmark_guest_paid(db, gb)
-    return _redirect(f"Bezahlt-Markierung von {gb.name} storniert", back)
+    return _redirect(f"Bezahlt-Markierung von {gb.name} zurückgenommen", back)
 
 
 # ── Statistics ────────────────────────────────────────────────────────────

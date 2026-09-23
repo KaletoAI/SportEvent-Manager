@@ -125,3 +125,27 @@ def test_extra_event_min_above_max_refused(client, db, seed):
     )
     extra = db.query(Event).filter(Event.is_extra).one()
     assert extra.start_time.strftime("%H:%M") == "19:00"
+
+
+# ── UI-Regeln ──────────────────────────────────────────────────────────────
+
+
+def test_money_inputs_accept_cents():
+    """step="0.50" ließ Beträge wie 2,67 € nicht zu (Browser-Validierung)."""
+    from pathlib import Path
+
+    for path in Path("app/templates").rglob("*.html"):
+        assert 'step="0.5' not in path.read_text(), path
+
+
+def test_nav_logout_is_not_called_abmelden(client, seed):
+    member_login(client)
+    html = client.get("/member/dashboard").text
+    assert '<a href="/member/logout">Logout</a>' in html
+
+
+def test_time_inputs_instead_of_hour_minute_fields(client, seed):
+    admin_login(client)
+    html = client.get("/admin/subscription/new").text
+    assert 'type="time"' in html
+    assert 'name="start_hour"' not in html

@@ -262,8 +262,7 @@ def main() -> None:
                 page.fill("#description",
                           "Feste Platzmiete dienstags auf Platz 3, Sommersaison.")
                 page.select_option("#weekday", label="Dienstag")
-                page.fill("#start_hour", "18")
-                page.fill("#start_minute", "30")
+                page.fill("#start_time", "18:30")
                 page.fill("#duration_minutes", "120")
                 page.fill("#min_participants", "4")
                 page.fill("#max_participants", "8")
@@ -292,9 +291,17 @@ def main() -> None:
                     f"/^https?:\\/\\/[^/]+/, '{PUBLIC_DOMAIN}')",
                 )
 
-            shot_split(("05-admin-termin-detail-1", "05-admin-termin-detail-2"),
-                       f"/admin/event/{ctx['next_event_id']}",
-                       prepare=neutral_guest_link)
+            # Die Terminseite hat Tabs: Übersicht (Aktionen, Preisstaffel,
+            # Gastlink) und die Anmeldungen der Mitglieder
+            def overview_tab():
+                tab("📋 Übersicht")()
+                neutral_guest_link()
+
+            shot("05-admin-termin-detail-1",
+                 f"/admin/event/{ctx['next_event_id']}", prepare=overview_tab)
+            shot("05-admin-termin-detail-2",
+                 f"/admin/event/{ctx['next_event_id']}",
+                 prepare=lambda: page.locator(".tab-btn", has_text="Mitglieder").first.click())
 
             # ── Mitglied ─────────────────────────────────────────────────
             print("Mitglied:")
@@ -322,13 +329,10 @@ def main() -> None:
             shot("08-member-meine", "/member/dashboard", prepare=tab("✅ Meine"))
             shot("09-member-konto", "/member/dashboard", prepare=tab("💶 Konto"))
 
-            # Der Kontoauszug scrollt seitlich — die Betragsspalte separat.
+            # Der Kontoauszug als eigenes Bild (auf dem Handy eine Karte je Buchung)
             page.get_by_role("button", name="💶 Konto").first.click()
             time.sleep(0.2)
             ledger = page.locator("div.card", has_text="Kontoauszug")
-            ledger.locator(".table-wrap").evaluate(
-                "el => el.scrollLeft = el.scrollWidth"
-            )
             time.sleep(0.3)
             ledger.screenshot(path=str(OUT_DIR / "09b-member-kontoauszug.png"))
             shots += 1
@@ -363,16 +367,12 @@ def main() -> None:
             shot("15-super-teilnehmer",
                  f"/member/event/{ctx['settled_event_id']}/participants")
 
-            # Die Gästetabelle scrollt auf dem Handy seitlich — für das
-            # Handbuch die rechte Hälfte mit der Bezahlt-Spalte zeigen.
+            # Die Gästekarte mit der Bezahlt-Markierung als eigenes Bild
             page.goto(
                 base + f"/member/event/{ctx['settled_event_id']}/participants",
                 wait_until="networkidle",
             )
             guest_card = page.locator("div.card", has_text="Gäste (über Gastlink)")
-            guest_card.locator(".table-wrap").evaluate(
-                "el => el.scrollLeft = el.scrollWidth"
-            )
             time.sleep(0.3)
             guest_card.screenshot(path=str(OUT_DIR / "16-super-gast-bezahlt.png"))
             shots += 1

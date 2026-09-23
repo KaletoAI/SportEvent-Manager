@@ -18,13 +18,15 @@
 <body>
     <nav>
         <strong>{% block nav_title %}SportAbo{% endblock %}</strong>
-        <div>
-            {% block nav_links %}{% endblock %}<a href="/hilfe" class="theme-toggle" title="Hilfe und Anleitungen">❓</a><button type="button" class="theme-toggle" id="theme-toggle" title="Hell/Dunkel umschalten">🌙</button>
+        <div class="nav-links">
+            {% block nav_links %}{% endblock %}
+            <a href="/hilfe" class="nav-icon" title="Hilfe und Anleitungen" aria-label="Hilfe">❓</a>
+            <button type="button" class="nav-icon" id="theme-toggle" title="Hell/Dunkel umschalten" aria-label="Hell/Dunkel umschalten">🌙</button>
         </div>
     </nav>
     <div class="container">
         {% if date_override %}
-        <div class="msg msg-error">⏰ Test-Datum aktiv: das System rechnet mit dem {{ date_override|date_de }} (zurücksetzen im Admin-Dashboard).</div>
+        <div class="msg msg-warning">⏰ Test-Datum aktiv: das System rechnet mit dem {{ date_override|date_de }} (zurücksetzen im Admin-Dashboard).</div>
         {% endif %}
         {% if msg %}
         <div class="msg msg-{{ 'error' if msg_type == 'error' else 'success' }}">{{ msg }}</div>

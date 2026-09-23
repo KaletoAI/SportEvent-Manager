@@ -577,7 +577,7 @@ def mark_guest_paid(
 
 
 def unmark_guest_paid(db: Session, gb: GuestBooking) -> None:
-    """Bezahlt-Markierung stornieren; eine Gegenbuchung wird rückgebucht."""
+    """Bezahlt-Markierung zurücknehmen; eine Gegenbuchung wird rückgebucht."""
     if gb.paid_member_id and gb.paid_amount:
         recipient = db.get(Member, gb.paid_member_id)
         if recipient:

@@ -38,6 +38,15 @@ def format_date(value: date | datetime | None) -> str:
     return f"{_WEEKDAYS_DE[value.weekday()]}, {value.strftime('%d.%m.%Y')}"
 
 
+def format_date_short(value: date | datetime | None) -> str:
+    """2026-07-15 → 'Mi, 15.07.' (Kopfzeile auf dem Handy)"""
+    if value is None:
+        return "—"
+    if isinstance(value, datetime):
+        value = value.date()
+    return f"{_WEEKDAYS_DE[value.weekday()]}, {value.strftime('%d.%m.')}"
+
+
 def format_time(value: time | None) -> str:
     if value is None:
         return "—"
@@ -52,6 +61,7 @@ def format_euro(value: Decimal | float | int | None) -> str:
 
 
 _env.filters["date_de"] = format_date
+_env.filters["date_short"] = format_date_short
 _env.filters["time_de"] = format_time
 _env.filters["euro"] = format_euro
 _env.globals["weekdays_de"] = WEEKDAYS_DE_LONG

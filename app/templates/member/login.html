@@ -12,7 +12,7 @@
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <div class="form-group">
             <label for="email">E-Mail</label>
-            <input type="email" id="email" name="email" required autofocus>
+            <input type="email" id="email" name="email" maxlength="200" autocomplete="email" inputmode="email" enterkeyhint="send" required autofocus>
         </div>
         <button type="submit" class="btn btn-primary btn-block">Login-Link anfordern</button>
     </form>

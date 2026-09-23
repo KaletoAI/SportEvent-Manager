@@ -114,7 +114,6 @@ def main() -> None:
             subscription_id=sub.id,
             name=name,
             email=email,
-            password_hash="",
             credit=Decimal("0.00"),
             is_super=is_super,
             paypal_address=paypal,
