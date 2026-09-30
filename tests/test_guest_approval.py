@@ -64,7 +64,8 @@ def test_up_to_minimum_is_confirmed_immediately(client, db, seed, ev, outbox):
     assert resp.status_code == 302
     gb = _gb(db)
     assert gb.confirmed_at is not None
-    assert outbox == []
+    # Nur der Gast bekommt eine Bestätigung (u. a. mit Türcode), keine Supers
+    assert [m["to"] for m in outbox] == ["gast@example.com"]
     page = client.get(resp.headers["location"])
     assert "ist bestätigt" in page.text
 

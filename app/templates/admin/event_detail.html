@@ -54,6 +54,16 @@
     </div>
     {% if settle_blocker and not event.settled_at and not event.is_cancelled %}<p class="muted small mt-1">Abrechnen: {{ settle_blocker }}</p>{% endif %}
 
+    <form method="post" action="/admin/event/{{ event.id }}/door-code" class="form-inline mt-1">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="form-group">
+            <label for="door_code">🔑 Türcode</label>
+            <input type="text" id="door_code" name="door_code" maxlength="50" autocomplete="off" value="{{ event.door_code }}"{% if event.subscription.door_code %} placeholder="Saison: {{ event.subscription.door_code }}"{% endif %}>
+        </div>
+        <button type="submit" class="btn btn-outline">Speichern</button>
+    </form>
+    <p class="muted small">{% if event.subscription.door_code %}Leer = Saison-Code {{ event.subscription.door_code }}.{% else %}Nur für diesen Termin; einen Saison-Code trägst du beim Abo ein.{% endif %}</p>
+
     {% if not event.settled_at and not event.is_cancelled %}
     <form method="post" action="/admin/event/{{ event.id }}/capacity" class="form-inline mt-1">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">

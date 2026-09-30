@@ -16,6 +16,7 @@
 </div>
 {% set member_spots = bookings|sum(attribute='guest_count') + bookings|length %}
 <p class="muted small">Belegung: {{ member_spots }} über Mitglieder-Anmeldungen (inkl. deren Gäste) + {{ total_booked - member_spots }} über Gastlink = <strong>{{ total_booked }} Teilnehmer</strong>.</p>
+{% if door_code and not event.is_cancelled %}<p class="door-code">🔑 Türcode: <strong>{{ door_code }}</strong></p>{% endif %}
 {% if event.settled_at %}
 <p class="muted small">Abgerechnet am {{ event.settled_at|date_de }} mit {{ shares.participants }} Teilnehmern.</p>
 {% endif %}

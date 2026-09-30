@@ -7,6 +7,7 @@
     <div class="emoji-big">✅</div>
     <h2>Danke, {{ name }}!</h2>
     <p>Deine Buchung für <strong>{{ event.date|date_de }}, {{ event.start_time|time_de }} Uhr</strong> ist bestätigt.</p>
+    {% if door_code %}<p class="door-code">🔑 Türcode: <strong>{{ door_code }}</strong></p>{% endif %}
     {% else %}
     <div class="emoji-big">⏳</div>
     <h2>Danke, {{ name }}!</h2>

@@ -247,6 +247,7 @@ folgenden Angaben. Am besten schickst du sie ihm als komplette Liste.</p>
 <tr><td class="nowrap">Abmelden ohne Freigabe</td><td>Bis wie viele <strong>Stunden</strong> vor Beginn man sich frei abmelden darf.</td><td>48</td></tr>
 <tr><td class="nowrap">Abmelden mit Freigabe</td><td>Bis wie viele Stunden vorher eine Abmeldung noch möglich ist, aber ein Super-Mitglied zustimmen muss. <code>0</code> = bis zum Beginn.</td><td>12</td></tr>
 <tr><td class="nowrap">Gast-Link: buchbar ab</td><td>Wie viele <strong>Tage</strong> vor einem Termin Gäste ihn über den Abo-Gastlink buchen können (siehe Kapitel 5).</td><td>5</td></tr>
+<tr><td class="nowrap">Türcode (Saison)</td><td>Ein Code, der die ganze Saison gilt. Mitglieder sehen ihn in der App, Gäste mit bestätigter Buchung in der Mail. Hat jeder Termin einen eigenen Code, bleibt das Feld leer und der Code wird auf der Terminseite eingetragen.</td><td>34512</td></tr>
 <tr><td class="nowrap">Zahlungen gehen an</td><td>Entweder eine zentrale Kasse oder das Mitglied, das das Geld ausgelegt hat („Vorstrecker“, siehe unten).</td><td>Vorstrecker</td></tr>
 <tr><td class="nowrap">PayPal-Adresse</td><td>Die zentrale Adresse. Wird auch als Rückfallebene benutzt, wenn im Vorstrecker-Modus kein Mitglied infrage kommt.</td><td>kasse@example.com</td></tr>
 </tbody>
@@ -298,7 +299,7 @@ werden übernommen.
 
 <h3>Die Termin-Detailseite</h3>
 <p>Die Seite hat drei Tabs: <strong>Übersicht</strong> mit den Aktionen
-(abrechnen, absagen, Teilnehmergrenzen), der vollständigen Preisstaffel und
+(abrechnen, absagen, Türcode, Teilnehmergrenzen), der vollständigen Preisstaffel und
 dem Gastlink zum Weitergeben, <strong>Mitglieder</strong> mit allen
 Anmeldungen und der Warteliste sowie <strong>Gäste</strong> mit den
 Gastbuchungen und dem Bezahlt-Haken.</p>
@@ -430,7 +431,9 @@ liegt die Navigation mit drei Bereichen: <strong>📅 Termine</strong>,
 
 <h4>📅 Termine — an- und abmelden</h4>
 <p>Hier stehen alle kommenden Termine. Jede Karte zeigt Datum, Uhrzeit, freie
-Plätze, den Maximalpreis pro Person und deinen Status.</p>
+Plätze, den Maximalpreis pro Person und deinen Status. Braucht die Halle einen
+Code, steht er als <strong>🔑 Türcode</strong> dabei, bei deinen Anmeldungen
+unter „Meine“ und in der Terminbeschreibung im Kalender-Abo ebenfalls.</p>
 
 <div class="figrow">
   <figure>
@@ -447,7 +450,7 @@ Plätze, den Maximalpreis pro Person und deinen Status.</p>
 <table>
 <thead><tr><th>Markierung</th><th>Bedeutung</th></tr></thead>
 <tbody>
-<tr><td class="nowrap">Findet statt</td><td>Die Mindestteilnehmerzahl ist erreicht.</td></tr>
+<tr><td class="nowrap">Findet statt (N)</td><td>Die Mindestteilnehmerzahl ist erreicht; N Spieler sind angemeldet, Gäste mitgezählt.</td></tr>
 <tr><td class="nowrap">Noch N bis Mindestzahl</td><td>Es fehlen noch N Anmeldungen, damit der Termin stattfindet.</td></tr>
 <tr><td class="nowrap">Angemeldet</td><td>Du bist dabei.</td></tr>
 <tr><td class="nowrap">Ausgebucht</td><td>Keine Plätze mehr frei — du kannst auf die Warteliste.</td></tr>
@@ -749,8 +752,9 @@ Link — den öffnest du und buchst direkt. Es gibt zwei Arten:</p>
       noch frei sind und den maximalen Preis pro Person.</li>
   <li><strong>Formular ausfüllen.</strong> Name, E-Mail und die Zahl der
       Personen, die du mitbringst — du selbst zählst mit.</li>
-  <li><strong>Bestätigung lesen.</strong> Sie nennt den Höchstbetrag und die
-      PayPal-Adresse, an die du nach dem Termin zahlst. Ist die
+  <li><strong>Bestätigung lesen.</strong> Sie nennt den Höchstbetrag, die
+      PayPal-Adresse, an die du nach dem Termin zahlst, und falls nötig den
+      <strong>Türcode</strong>. Dieselben Angaben kommen per E-Mail. Ist die
       Mindestteilnehmerzahl schon erreicht, ist deine Buchung zunächst eine
       <strong>Anfrage</strong>: Dein Platz ist reserviert, ein Plus-Mitglied
       bestätigt sie, und du bekommst dann eine E-Mail. Die Bestätigungsseite
@@ -822,9 +826,9 @@ vom selben Absender und nennen im Betreff das Abo und das Datum.</p>
 </tr>
 <tr>
   <td class="nowrap"><strong>Gastbuchung bestätigt</strong></td>
-  <td>Sobald ein Super-Mitglied die Anfrage bestätigt hat.</td>
+  <td>Direkt nach der Buchung bzw. sobald ein Super-Mitglied die Anfrage bestätigt hat.</td>
   <td>Gast</td>
-  <td>Nichts — du bist dabei. Enthält Maximalpreis und Zahlungsziel.</td>
+  <td>Nichts — du bist dabei. Enthält Maximalpreis, Zahlungsziel und ggf. den Türcode.</td>
 </tr>
 <tr>
   <td class="nowrap"><strong>Gastanfrage abgelehnt</strong></td>

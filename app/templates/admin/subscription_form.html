@@ -84,6 +84,11 @@
             <input type="number" id="guest_days_ahead" inputmode="numeric" name="guest_days_ahead" min="0" max="365" value="{{ subscription.guest_days_ahead if subscription else 5 }}" required>
         </div>
         <p class="muted small">Der Abo-Gast-Link zeigt immer den nächsten Termin; Gäste können ihn erst so viele Tage vorher buchen.</p>
+        <div class="form-group">
+            <label for="door_code">Türcode für die ganze Saison</label>
+            <input type="text" id="door_code" name="door_code" maxlength="50" autocomplete="off" value="{{ subscription.door_code if subscription else '' }}">
+        </div>
+        <p class="muted small">Sehen alle Mitglieder in der App und Gäste mit bestätigter Buchung (Mail + Bestätigungsseite). Hat jeder Termin einen eigenen Code, hier leer lassen und den Code auf der Terminseite eintragen — ein Termin-Code hat immer Vorrang.</p>
         <div class="form-row">
             <div class="form-group">
                 <label for="payout_mode">Zahlungen gehen an</label>

@@ -56,13 +56,14 @@
                     {% if booked_count[event.id] < event.min_participants %}
                     <span class="badge badge-warning">Noch {{ event.min_participants - booked_count[event.id] }} bis Mindestzahl</span>
                     {% else %}
-                    <span class="badge badge-success">Findet statt</span>
+                    <span class="badge badge-success">Findet statt ({{ booked_count[event.id] }})</span>
                     {% endif %}
                 </div>
                 <div class="meta">
                     {{ event.start_time|time_de }} – {{ event.end_time|time_de }} Uhr
                     · {{ free_by_event[event.id] }} von {{ event.max_participants }} Plätzen frei
                 </div>
+                {% if door_codes[event.id] %}<div class="meta door-code">🔑 Türcode <strong>{{ door_codes[event.id] }}</strong></div>{% endif %}
                 <div class="meta">
                     {% if member.is_super %}
                     Preis p. P.: {% for t in tiers_by_event[event.id] %}{% if not loop.first %} · {% endif %}bei {{ t.n }}: {{ t.member|euro }}{% endfor %}{% if tiers_by_event[event.id]|length > 1 %} …{% endif %}
@@ -131,7 +132,7 @@
 
 {# ── Tab: Meine Anmeldungen + Vergangene Termine ───────────────────── #}
 <section class="tab-panel" id="tab-meine">
-{% macro booking_card(b, week, multi_abo) %}
+{% macro booking_card(b, week, multi_abo, door_code="") %}
 <div class="event-item booking-item week-{{ week }}">
     <div>
         <div class="when">
@@ -144,6 +145,7 @@
         <div class="meta">
             {% if multi_abo %}<strong>{{ b.event.subscription.name }}</strong>{% endif %}
             {% if b.guest_count %}{% if multi_abo %} · {% endif %}+{{ b.guest_count }} Gast{% if b.guest_count > 1 %}e{% endif %}{% endif %}
+            {% if door_code and not b.event.is_cancelled %}{% if multi_abo or b.guest_count %} · {% endif %}<span class="door-code">🔑 Türcode <strong>{{ door_code }}</strong></span>{% endif %}
         </div>
     </div>
 </div>
@@ -154,7 +156,7 @@
     {% for week in booking_weeks %}
     <h3 class="week-heading">{{ week.label }}{% if week.key != "later" %} <span class="muted small">{{ week.start|date_short }} – {{ week.end|date_short }}</span>{% endif %}</h3>
     <div class="event-list">
-        {% for b in week.bookings %}{{ booking_card(b, week.key, multi_abo) }}{% endfor %}
+        {% for b in week.bookings %}{{ booking_card(b, week.key, multi_abo, door_codes[b.event.id]) }}{% endfor %}
     </div>
     {% else %}
     <p class="muted">Keine kommenden Anmeldungen.</p>

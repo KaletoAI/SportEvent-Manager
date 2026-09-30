@@ -167,8 +167,12 @@ def login_link_email_html(member_name: str, link: str, code: str) -> str:
 </div>"""
 
 
+def _door_code_lines(door_code: str) -> list[str]:
+    return ["", f"Türcode: {door_code}"] if door_code else []
+
+
 def cancel_reminder_email_body(
-    member_name: str, event_date: str, deadline: str
+    member_name: str, event_date: str, deadline: str, door_code: str = ""
 ) -> str:
     return "\n".join(
         [
@@ -176,6 +180,7 @@ def cancel_reminder_email_body(
             "",
             f"du bist für den Termin am {event_date} angemeldet.",
             f"Bis {deadline} Uhr kannst du dich noch kostenlos abmelden.",
+            *_door_code_lines(door_code),
             "",
             "Sportliche Grüße",
             "SportAbo Manager",
@@ -305,6 +310,7 @@ def guest_confirmed_email_body(
     max_amount: str,
     paypal: Optional[str],
     payee_name: Optional[str] = None,
+    door_code: str = "",
 ) -> str:
     persons = f" für {count} Personen" if count > 1 else ""
     lines = [
@@ -312,6 +318,7 @@ def guest_confirmed_email_body(
         "",
         f"deine Gastbuchung{persons} für den Termin am {event_date} um "
         f"{start_time} Uhr ist bestätigt — bis dann!",
+        *_door_code_lines(door_code),
         "",
         f"Maximal zahlst du {max_amount}; der endgültige Betrag steht nach "
         "dem Termin fest (Terminkosten ÷ Teilnehmerzahl).",
@@ -349,7 +356,8 @@ def guest_rejected_email_body(guest_name: str, event_date: str) -> str:
 
 
 def guest_reminder_email_body(
-    guest_name: str, event_date: str, start_time: str, count: int
+    guest_name: str, event_date: str, start_time: str, count: int,
+    door_code: str = "",
 ) -> str:
     persons = f" mit {count} Personen" if count > 1 else ""
     return "\n".join(
@@ -360,6 +368,7 @@ def guest_reminder_email_body(
             f"um {start_time} Uhr angemeldet.",
             "Falls du nicht kommen kannst, gib bitte dem Organisator "
             "Bescheid, damit dein Platz frei wird.",
+            *_door_code_lines(door_code),
             "",
             "Sportliche Grüße",
             "SportAbo Manager",

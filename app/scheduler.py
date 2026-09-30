@@ -58,6 +58,7 @@ async def send_cancel_reminders(db) -> int:
                     booking.member.name,
                     event.date.strftime("%d.%m.%Y"),
                     last_free.strftime("%d.%m.%Y %H:%M"),
+                    services.door_code(event),
                 ),
             )
             for booking in event.bookings
@@ -81,6 +82,7 @@ async def send_cancel_reminders(db) -> int:
                     event.date.strftime("%d.%m.%Y"),
                     event.start_time.strftime("%H:%M"),
                     gb.count,
+                    services.door_code(event),
                 ),
             )
             for gb in guest_bookings

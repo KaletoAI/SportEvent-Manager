@@ -104,6 +104,7 @@ def main() -> None:
         cancel_hours_approval=12,
         payout_mode="member",
         paypal_address="kasse.beachclub@example.com",
+        door_code="34512",  # erfunden
     )
     db.add(sub)
     db.flush()
@@ -342,6 +343,9 @@ def main() -> None:
     db.flush()
     db.refresh(hall)
     services.recompute_budgets(db, hall)
+    # Halle mit wechselndem Türcode pro Termin (erfunden)
+    for ev, code in zip(hall_events, ("418203", "093517", "662841", "250739")):
+        ev.door_code = code
     for ev in hall_events[:3]:
         for m in hall_members:
             db.add(Booking(event_id=ev.id, member_id=m.id))

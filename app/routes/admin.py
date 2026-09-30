@@ -207,6 +207,7 @@ def _apply_subscription_form(sub: Subscription, f: dict) -> Optional[str]:
     sub.cancel_hours_free = f["cancel_hours_free"]
     sub.cancel_hours_approval = f["cancel_hours_approval"]
     sub.guest_days_ahead = f["guest_days_ahead"]
+    sub.door_code = f["door_code"].strip()
     sub.paypal_address = f["paypal_address"].strip()
     sub.payout_mode = (
         f["payout_mode"] if f["payout_mode"] in ("central", "member") else "central"
@@ -235,6 +236,7 @@ async def create_subscription(
     paypal_address: str = Form("", max_length=200),
     payout_mode: str = Form("central"),
     guest_days_ahead: int = Form(5, ge=0, le=365),
+    door_code: str = Form("", max_length=50),
     db: Session = Depends(get_db),
 ):
     form = dict(locals())
@@ -288,6 +290,7 @@ async def update_subscription(
     paypal_address: str = Form("", max_length=200),
     payout_mode: str = Form("central"),
     guest_days_ahead: int = Form(5, ge=0, le=365),
+    door_code: str = Form("", max_length=50),
     db: Session = Depends(get_db),
 ):
     form = dict(locals())
@@ -976,6 +979,25 @@ async def update_event_capacity(
     info = f" – {len(promoted)} von der Warteliste nachgerückt" if promoted else ""
     return _redirect(
         f"Teilnehmergrenzen: {min_participants}–{max_participants}{info}",
+        f"/admin/event/{event_id}",
+    )
+
+
+@router.post("/event/{event_id}/door-code", dependencies=[Depends(require_admin)])
+async def update_event_door_code(
+    event_id: str,
+    door_code: str = Form("", max_length=50),
+    db: Session = Depends(get_db),
+):
+    """Door code of this date only; empty falls back to the season code."""
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if not event:
+        return _redirect("Termin nicht gefunden", mt="error")
+    event.door_code = door_code.strip()
+    db.commit()
+    effective = services.door_code(event)
+    return _redirect(
+        f"Türcode gespeichert: {effective}" if effective else "Türcode entfernt",
         f"/admin/event/{event_id}",
     )
 

@@ -409,6 +409,13 @@ async def dashboard(
     past_bookings.reverse()
     booking_weeks = [w for w in booking_weeks if w["bookings"]]
 
+    # Türcodes der kommenden Termine (Termine-Tab + „Meine“, alle Abos)
+    door_codes = {e.id: services.door_code(e) for e in upcoming_events}
+    for w in booking_weeks:
+        door_codes.update(
+            {b.event.id: services.door_code(b.event) for b in w["bookings"]}
+        )
+
     # Kalender-Abo: persönlicher iCal-Feed (ein Link pro Person, alle Abos)
     cal_token = services.calendar_token(db, member)
     db.commit()
@@ -483,6 +490,7 @@ async def dashboard(
             "past_bookings": past_bookings,
             "multi_abo": bool(other_memberships),
             "calendar_url": calendar_url,
+            "door_codes": door_codes,
             "calendar_webcal": calendar_webcal,
             "booked_event_ids": booked_event_ids,
             "free_by_event": free_by_event,
@@ -796,6 +804,7 @@ async def event_participants(
             "my_charge": my_charge,
             "waitlist": services.waitlist_entries(db, event_id),
             "is_past": event.date < clock.today(db),
+            "door_code": services.door_code(event),
             "guest_link": (
                 f"{public_base_url(request)}g/{event.public_token}"
                 if member.is_super

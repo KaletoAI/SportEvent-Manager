@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
-from app import clock, ical
+from app import clock, ical, services
 from app.database import get_db
 from app.models.models import Booking, Event, Member, Person
 from app.templates import format_date, format_time
@@ -43,6 +43,9 @@ def _description(b: Booking, start: datetime) -> str:
     lines = []
     if sub.description:
         lines.append(sub.description.strip())
+    code = services.door_code(b.event)
+    if code and not b.event.is_cancelled:
+        lines.append(f"Türcode: {code}")
     if not b.event.is_cancelled and not b.event.settled_at:
         free_until = start - timedelta(hours=sub.cancel_hours_free)
         lines.append(

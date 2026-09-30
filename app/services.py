@@ -281,12 +281,22 @@ def guest_max_share(event: Event) -> Decimal:
     return price_tiers(event, limit=1)[0]["guest"]
 
 
+def door_code(event: Event) -> str:
+    """Effective door code: the event's own, else the Abo's season code."""
+    return event.door_code or event.subscription.door_code or ""
+
+
 async def confirm_guest_booking(db: Session, gb: GuestBooking) -> None:
     """Confirm a request and tell the guest (with max price + payee)."""
-    from app.templates import format_date, format_euro
-
     gb.confirmed_at = utcnow()
     db.commit()
+    await send_guest_confirmation(db, gb)
+
+
+async def send_guest_confirmation(db: Session, gb: GuestBooking) -> None:
+    """Mail a confirmed guest booking: max price, payee and door code."""
+    from app.templates import format_date, format_euro
+
     event = gb.event
     if not gb.email:
         return
@@ -306,6 +316,7 @@ async def confirm_guest_booking(db: Session, gb: GuestBooking) -> None:
                     format_euro(guest_max_share(event) * gb.count),
                     payee["paypal"],
                     payee["name"],
+                    door_code(event),
                 ),
             )
         ],

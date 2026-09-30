@@ -154,6 +154,7 @@ async def guest_booking(
         return flash_redirect(
             "Anfrage gespeichert", f"/g/{token}/buchung/{gb.token}"
         )
+    await services.send_guest_confirmation(db, gb)
     return flash_redirect(
         "Buchung gespeichert", f"/g/{token}/buchung/{gb.token}"
     )
@@ -184,6 +185,8 @@ async def guest_confirmation(
             "email": gb.email,
             "count": gb.count,
             "confirmed": gb.confirmed_at is not None,
+            # Türcode erst mit bestätigter Buchung
+            "door_code": services.door_code(event) if gb.confirmed_at else "",
             "event": event,
             "subscription": event.subscription,
             "total_price": services.guest_max_share(event) * gb.count,

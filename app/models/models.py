@@ -105,6 +105,9 @@ class Subscription(Base):
     guest_days_ahead: Mapped[int] = mapped_column(
         Integer, nullable=False, default=5
     )
+    # Door code for the whole season; an event's own door_code wins
+    # (services.door_code). Members see it, link guests once confirmed.
+    door_code: Mapped[str] = mapped_column(String(50), nullable=False, default="")
 
     # Email sender config
     email_sender: Mapped[Optional[str]] = mapped_column(
@@ -241,6 +244,8 @@ class Event(Base):
     # Extra event outside the Abo totals: own budget (abo_budget ==
     # normal_budget == entered price), everyone pays the same share.
     is_extra: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # Door code of this date only (empty = the Abo's season code)
+    door_code: Mapped[str] = mapped_column(String(50), nullable=False, default="")
 
     # Status
     is_cancelled: Mapped[bool] = mapped_column(Boolean, default=False)

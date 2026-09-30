@@ -179,6 +179,14 @@ def upgrade(engine: Engine) -> None:
                 "NOT NULL DEFAULT 0"
             )
 
+        # door codes: per season (subscription) and per event
+        for table in ("subscriptions", "events"):
+            if "door_code" not in _columns(conn, table):
+                conn.exec_driver_sql(
+                    f"ALTER TABLE {table} ADD COLUMN door_code VARCHAR(50) "
+                    "NOT NULL DEFAULT ''"
+                )
+
         # persons: secret of the personal iCal feed (created lazily)
         if "calendar_token" not in _columns(conn, "persons"):
             conn.exec_driver_sql(
