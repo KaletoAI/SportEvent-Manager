@@ -140,13 +140,16 @@
         <tbody>
             {% for g in guest_bookings %}
             <tr>
-                <td>{{ g.name }}</td>
+                <td>{{ g.name }}{% if not g.confirmed_at and not member.is_super %} <span class="badge badge-warning">Anfrage</span>{% endif %}</td>
                 {% if member.is_super %}<td data-label="E-Mail">{{ g.email }}</td>{% endif %}
                 <td class="num" data-label="Personen">{{ g.count }}</td>
                 {% if member.is_super %}
                 <td class="num" data-label="Anteil">{{ (g.count * shares.guest_share)|euro }}</td>
                 <td data-label="Bezahlt">
-                    {% if g.paid_at %}
+                    {% if not g.confirmed_at %}
+                    <span class="badge badge-warning">⏳ Anfrage</span>
+                    <div class="actions mt-1">{{ ui.guest_request_buttons("/member/guest-booking/" ~ g.id, g, csrf_token) }}</div>
+                    {% elif g.paid_at %}
                     <div class="paid-form">
                         <span class="badge badge-success">✓ {{ g.paid_amount|euro }}</span>
                         <form method="post" action="/member/guest-booking/{{ g.id }}/unpaid" class="inline"

@@ -9,6 +9,9 @@
 {% if member.is_super and pending_requests %}
 <div class="msg msg-info">🔔 {{ pending_requests|length }} offene Abmelde-Anfrage{% if pending_requests|length > 1 %}n{% endif %} — Freigabe im Tab „Verwaltung“.</div>
 {% endif %}
+{% if member.is_super and guest_requests %}
+<div class="msg msg-info">🎟️ {{ guest_requests|length }} offene Gast-Anfrage{% if guest_requests|length > 1 %}n{% endif %} — Bestätigung im Tab „Verwaltung“.</div>
+{% endif %}
 
 {% if payee and payee.paypal %}
 <div class="msg msg-warning">💸 Dein Guthaben ist im Minus ({{ member.credit|euro }}). Bitte zahle per PayPal an{% if payee.name %} <strong>{{ payee.name }}</strong>{% endif %}: <strong>{{ payee.paypal }}</strong> (Name + Termin im Verwendungszweck).</div>
@@ -234,6 +237,26 @@
 {# ── Tab: Verwaltung (nur Super-Mitglieder) ────────────────────────── #}
 {% if member.is_super %}
 <section class="tab-panel" id="tab-verwaltung">
+{% if guest_requests %}
+<div class="card">
+    <h2>Gast-Anfragen</h2>
+    <p class="muted small">Diese Gäste haben über den Gast-Link gebucht, nachdem die Mindestzahl erreicht war. Ihr Platz ist reserviert, bis du bestätigst oder ablehnst — sie bekommen in beiden Fällen eine E-Mail.</p>
+    <div class="event-list">
+        {% for g in guest_requests %}
+        <div class="event-item">
+            <div>
+                <div class="when">{{ g.name }} — {{ g.event.date|date_de }}</div>
+                <div class="meta">{{ g.count }} Person{% if g.count > 1 %}en{% endif %} · {{ g.email }}</div>
+            </div>
+            <div class="actions">
+                {{ ui.guest_request_buttons("/member/guest-booking/" ~ g.id, g, csrf_token, "dashboard") }}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
 {% if pending_requests %}
 <div class="card">
     <h2>Abmelde-Anfragen</h2>

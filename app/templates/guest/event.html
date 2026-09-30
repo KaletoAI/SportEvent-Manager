@@ -27,6 +27,9 @@
 <div class="card narrow">
     <h2>{{ subscription.name }} — jetzt buchen</h2>
     {% if available > 0 %}
+    {% if needs_approval %}
+    <p class="msg msg-info">Die Mindestteilnehmerzahl ist erreicht: Deine Buchung wird als Anfrage gespeichert und muss noch von einem Plus-Mitglied bestätigt werden. Du bekommst dann eine E-Mail.</p>
+    {% endif %}
     <form method="post" action="/g/{{ event.public_token }}/book">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <div class="form-group">
@@ -41,7 +44,7 @@
             <label for="count">Anzahl Personen</label>
             <input type="number" id="count" name="count" min="1" max="{{ available }}" value="1" inputmode="numeric" required>
         </div>
-        <button type="submit" class="btn btn-primary btn-block btn-lg">Verbindlich buchen</button>
+        <button type="submit" class="btn btn-primary btn-block btn-lg">{% if needs_approval %}Verbindlich anfragen{% else %}Verbindlich buchen{% endif %}</button>
     </form>
     {% else %}
     <p class="muted">Dieser Termin ist leider ausgebucht.</p>

@@ -22,6 +22,9 @@ from sqlalchemy.orm import Session
 
 from app.emailer import (
     Mail,
+    guest_confirmed_email_body,
+    guest_rejected_email_body,
+    guest_request_email_body,
     guest_settlement_email_body,
     send_batch,
     settlement_email_body,
@@ -216,6 +219,120 @@ def next_guest_event(
 def guest_bookable_from(subscription: Subscription, event: Event) -> date:
     """First day guests can book `event` via the Abo-wide link."""
     return event.date - timedelta(days=subscription.guest_days_ahead)
+
+
+# ── Guest requests (confirmation by super members) ────────────────────────
+
+
+def guest_needs_approval(db: Session, event: Event) -> bool:
+    """Call after adding a link booking (flushed): anything beyond
+    min_participants needs a super member's confirmation — a booking
+    that straddles the minimum as a whole."""
+    return count_booked(db, event.id) > event.min_participants
+
+
+def pending_guest_bookings(db: Session, subscription_id: str) -> list[GuestBooking]:
+    """Open guest requests of an Abo, next event first."""
+    return (
+        db.query(GuestBooking)
+        .join(Event)
+        .filter(
+            Event.subscription_id == subscription_id,
+            GuestBooking.confirmed_at.is_(None),
+        )
+        .order_by(Event.date, GuestBooking.created_at)
+        .all()
+    )
+
+
+async def notify_guest_request(db: Session, gb: GuestBooking) -> None:
+    """Mail every active super member of the Abo about a new request."""
+    from app.templates import format_date
+
+    event = gb.event
+    sub = event.subscription
+    supers = (
+        db.query(Member)
+        .filter(
+            Member.subscription_id == sub.id,
+            Member.is_super.is_(True),
+            Member.is_active.is_(True),
+        )
+        .all()
+    )
+    await send_batch(
+        sub,
+        [
+            Mail(
+                s.email,
+                f"Gast-Anfrage {format_date(event.date)} – {sub.name}",
+                guest_request_email_body(
+                    s.name, gb.name, gb.count, event.date.strftime("%d.%m.%Y")
+                ),
+            )
+            for s in supers
+        ],
+    )
+
+
+def guest_max_share(event: Event) -> Decimal:
+    """What a guest pays at most: the share at min_participants."""
+    return price_tiers(event, limit=1)[0]["guest"]
+
+
+async def confirm_guest_booking(db: Session, gb: GuestBooking) -> None:
+    """Confirm a request and tell the guest (with max price + payee)."""
+    from app.templates import format_date, format_euro
+
+    gb.confirmed_at = utcnow()
+    db.commit()
+    event = gb.event
+    if not gb.email:
+        return
+    payee = payee_info(db, event.subscription)
+    await send_batch(
+        event.subscription,
+        [
+            Mail(
+                gb.email,
+                f"Gastbuchung bestätigt: {format_date(event.date)} – "
+                f"{event.subscription.name}",
+                guest_confirmed_email_body(
+                    gb.name,
+                    event.date.strftime("%d.%m.%Y"),
+                    event.start_time.strftime("%H:%M"),
+                    gb.count,
+                    format_euro(guest_max_share(event) * gb.count),
+                    payee["paypal"],
+                    payee["name"],
+                ),
+            )
+        ],
+    )
+
+
+async def reject_guest_booking(db: Session, gb: GuestBooking) -> list[Member]:
+    """Drop a request, tell the guest and refill the freed spots from the
+    waitlist. Returns the members promoted from the waitlist."""
+    from app.templates import format_date
+
+    event = gb.event
+    name, email = gb.name, gb.email
+    db.delete(gb)
+    db.commit()
+    if email:
+        await send_batch(
+            event.subscription,
+            [
+                Mail(
+                    email,
+                    f"Gastanfrage {format_date(event.date)} – "
+                    f"{event.subscription.name}",
+                    guest_rejected_email_body(name, event.date.strftime("%d.%m.%Y")),
+                )
+            ],
+        )
+    return await promote_from_waitlist(db, event)
 
 
 # ── Waitlist ───────────────────────────────────────────────────────────────
@@ -435,6 +552,19 @@ def settle_blocker(db: Session, event: Event) -> Optional[str]:
         return "Termin ist bereits abgerechnet"
     if event.date > clock.today(db):
         return "Termin liegt in der Zukunft"
+    pending = (
+        db.query(func.count(GuestBooking.id))
+        .filter(
+            GuestBooking.event_id == event.id,
+            GuestBooking.confirmed_at.is_(None),
+        )
+        .scalar()
+    )
+    if pending:
+        return (
+            f"Noch {pending} offene Gast-Anfrage{'n' if pending > 1 else ''} "
+            "– bitte bestätigen oder ablehnen"
+        )
     participants = count_booked(db, event.id)
     if participants < event.min_participants:
         return (

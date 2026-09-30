@@ -206,6 +206,16 @@ def upgrade(engine: Engine) -> None:
                 "VARCHAR(12) REFERENCES members(id)"
             )
 
+        # guest_bookings: confirmation by a super member (existing = confirmed)
+        if gb_cols and "confirmed_at" not in gb_cols:
+            conn.exec_driver_sql(
+                "ALTER TABLE guest_bookings ADD COLUMN confirmed_at DATETIME"
+            )
+            conn.exec_driver_sql(
+                "UPDATE guest_bookings SET confirmed_at = "
+                "COALESCE(created_at, datetime('now'))"
+            )
+
         # payments: ledger type + optional event reference
         payment_cols = _columns(conn, "payments")
         if "type" not in payment_cols:

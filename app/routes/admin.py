@@ -1090,6 +1090,44 @@ async def admin_delete_guest_booking(
 
 
 @router.post(
+    "/guest-booking/{gb_id}/confirm", dependencies=[Depends(require_admin)]
+)
+async def admin_confirm_guest_booking(
+    request: Request,
+    gb_id: str,
+    db: Session = Depends(get_db),
+):
+    gb = db.query(GuestBooking).filter(GuestBooking.id == gb_id).first()
+    if not gb:
+        return _redirect("Gastbuchung nicht gefunden", mt="error")
+    back = f"/admin/event/{gb.event_id}"
+    if gb.confirmed_at:
+        return _redirect("Gastbuchung ist bereits bestätigt", back, mt="error")
+    await services.confirm_guest_booking(db, gb)
+    return _redirect(f"Gastbuchung von {gb.name} bestätigt", back)
+
+
+@router.post(
+    "/guest-booking/{gb_id}/reject", dependencies=[Depends(require_admin)]
+)
+async def admin_reject_guest_booking(
+    request: Request,
+    gb_id: str,
+    db: Session = Depends(get_db),
+):
+    gb = db.query(GuestBooking).filter(GuestBooking.id == gb_id).first()
+    if not gb:
+        return _redirect("Gastbuchung nicht gefunden", mt="error")
+    back = f"/admin/event/{gb.event_id}"
+    if gb.confirmed_at:
+        return _redirect("Gastbuchung ist bereits bestätigt", back, mt="error")
+    name = gb.name
+    promoted = await services.reject_guest_booking(db, gb)
+    info = f" – {promoted[0].name} rückt nach" if promoted else ""
+    return _redirect(f"Gast-Anfrage von {name} abgelehnt{info}", back)
+
+
+@router.post(
     "/guest-booking/{gb_id}/paid", dependencies=[Depends(require_admin)]
 )
 async def admin_guest_paid(

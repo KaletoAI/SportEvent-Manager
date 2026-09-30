@@ -1,13 +1,20 @@
 {% extends "base.html" %}
-{% block title %}Buchung bestätigt{% endblock %}
-{% block nav_title %}Buchung bestätigt{% endblock %}
+{% block title %}{% if confirmed %}Buchung bestätigt{% else %}Anfrage eingegangen{% endif %}{% endblock %}
+{% block nav_title %}{% if confirmed %}Buchung bestätigt{% else %}Anfrage eingegangen{% endif %}{% endblock %}
 {% block content %}
 <div class="card narrow mt-1 center">
+    {% if confirmed %}
     <div class="emoji-big">✅</div>
     <h2>Danke, {{ name }}!</h2>
     <p>Deine Buchung für <strong>{{ event.date|date_de }}, {{ event.start_time|time_de }} Uhr</strong> ist bestätigt.</p>
+    {% else %}
+    <div class="emoji-big">⏳</div>
+    <h2>Danke, {{ name }}!</h2>
+    <p>Deine Anfrage für <strong>{{ event.date|date_de }}, {{ event.start_time|time_de }} Uhr</strong> ist eingegangen. Der Platz ist für dich reserviert, die Buchung muss aber noch von einem Plus-Mitglied bestätigt werden.</p>
+    <p class="msg msg-info">Sobald sie bestätigt ist, bekommst du eine E-Mail an {{ email }}. Diese Seite zeigt den aktuellen Stand – du kannst sie als Lesezeichen speichern.</p>
+    {% endif %}
     <p class="mt-1">
-        <strong>{{ count }} Person{% if count > 1 %}en{% endif %}</strong> gebucht.<br>
+        <strong>{{ count }} Person{% if count > 1 %}en{% endif %}</strong> {% if confirmed %}gebucht{% else %}angefragt{% endif %}.<br>
         <strong>Maximal: {{ total_price|euro }}</strong>
     </p>
     <p class="muted small">Der endgültige Betrag steht nach dem Termin fest (Terminkosten ÷ Teilnehmerzahl) und kann nur günstiger werden — der angezeigte Betrag gilt bei der Mindestteilnehmerzahl.</p>

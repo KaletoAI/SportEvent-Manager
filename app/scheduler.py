@@ -66,7 +66,10 @@ async def send_cancel_reminders(db) -> int:
         # dem Organisator abzusagen, damit der Platz frei wird)
         guest_bookings = (
             db.query(GuestBooking)
-            .filter(GuestBooking.event_id == event.id)
+            .filter(
+                GuestBooking.event_id == event.id,
+                GuestBooking.confirmed_at.isnot(None),
+            )
             .all()
         )
         mails += [

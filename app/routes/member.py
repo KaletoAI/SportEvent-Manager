@@ -394,7 +394,9 @@ async def dashboard(
     # Super members: pending cancellation requests + settleable events
     pending_requests = []
     settleable_events = []
+    guest_requests = []
     if member.is_super:
+        guest_requests = services.pending_guest_bookings(db, member.subscription_id)
         pending_requests = (
             db.query(Booking)
             .join(Event)
@@ -452,6 +454,7 @@ async def dashboard(
             "my_charges": my_charges,
             "cancel_state": cancel_state,
             "pending_requests": pending_requests,
+            "guest_requests": guest_requests,
             "settleable_events": settleable_events,
             "abo_guest_link": (
                 f"{public_base_url(request)}g/abo/{sub.guest_token}"
@@ -883,6 +886,57 @@ async def super_create_extra_event(
         db.rollback()
         return _redirect("An diesem Tag existiert bereits ein Termin", back, mt="error")
     return _redirect("Zusatztermin angelegt", back)
+
+
+def _own_guest_request(db: Session, gb_id: str, member: Member):
+    gb = db.query(GuestBooking).filter(GuestBooking.id == gb_id).first()
+    if not gb or gb.event.subscription_id != member.subscription_id:
+        return None
+    return gb
+
+
+def _guest_request_back(gb: GuestBooking, ret: str) -> str:
+    if ret == "dashboard":
+        return "/member/dashboard"
+    return f"/member/event/{gb.event_id}/participants"
+
+
+@router.post("/guest-booking/{gb_id}/confirm")
+async def super_confirm_guest_booking(
+    request: Request,
+    gb_id: str,
+    ret: str = Form(""),
+    member: Member = Depends(require_super),
+    db: Session = Depends(get_db),
+):
+    gb = _own_guest_request(db, gb_id, member)
+    if not gb:
+        return _redirect("Gastbuchung nicht gefunden", mt="error")
+    back = _guest_request_back(gb, ret)
+    if gb.confirmed_at:
+        return _redirect("Gastbuchung ist bereits bestätigt", back, mt="error")
+    await services.confirm_guest_booking(db, gb)
+    return _redirect(f"Gastbuchung von {gb.name} bestätigt", back)
+
+
+@router.post("/guest-booking/{gb_id}/reject")
+async def super_reject_guest_booking(
+    request: Request,
+    gb_id: str,
+    ret: str = Form(""),
+    member: Member = Depends(require_super),
+    db: Session = Depends(get_db),
+):
+    gb = _own_guest_request(db, gb_id, member)
+    if not gb:
+        return _redirect("Gastbuchung nicht gefunden", mt="error")
+    back = _guest_request_back(gb, ret)
+    if gb.confirmed_at:
+        return _redirect("Gastbuchung ist bereits bestätigt", back, mt="error")
+    name = gb.name
+    promoted = await services.reject_guest_booking(db, gb)
+    info = f" – {promoted[0].name} rückt nach" if promoted else ""
+    return _redirect(f"Gast-Anfrage von {name} abgelehnt{info}", back)
 
 
 @router.post("/guest-booking/{gb_id}/paid")

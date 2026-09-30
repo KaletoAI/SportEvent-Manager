@@ -279,6 +279,75 @@ def guest_settlement_email_body(
     return "\n".join(lines)
 
 
+def guest_request_email_body(
+    super_name: str, guest_name: str, count: int, event_date: str
+) -> str:
+    persons = f" ({count} Personen)" if count > 1 else ""
+    return "\n".join(
+        [
+            f"Hallo {super_name},",
+            "",
+            f"{guest_name}{persons} möchte als Gast am {event_date} mitspielen.",
+            "Die Mindestteilnehmerzahl ist erreicht — bitte bestätige die "
+            "Anfrage im Dashboard (Tab „Verwaltung“) oder lehne sie ab.",
+            "",
+            "Sportliche Grüße",
+            "SportAbo Manager",
+        ]
+    )
+
+
+def guest_confirmed_email_body(
+    guest_name: str,
+    event_date: str,
+    start_time: str,
+    count: int,
+    max_amount: str,
+    paypal: Optional[str],
+    payee_name: Optional[str] = None,
+) -> str:
+    persons = f" für {count} Personen" if count > 1 else ""
+    lines = [
+        f"Hallo {guest_name},",
+        "",
+        f"deine Gastbuchung{persons} für den Termin am {event_date} um "
+        f"{start_time} Uhr ist bestätigt — bis dann!",
+        "",
+        f"Maximal zahlst du {max_amount}; der endgültige Betrag steht nach "
+        "dem Termin fest (Terminkosten ÷ Teilnehmerzahl).",
+    ]
+    if paypal:
+        target = f"an {payee_name} per PayPal" if payee_name else "per PayPal"
+        lines += [
+            f"Bitte zahle nach dem Termin {target}:",
+            paypal,
+        ]
+    lines += [
+        "",
+        "Falls du nicht kommen kannst, gib bitte dem Organisator Bescheid, "
+        "damit dein Platz frei wird.",
+        "",
+        "Sportliche Grüße",
+        "SportAbo Manager",
+    ]
+    return "\n".join(lines)
+
+
+def guest_rejected_email_body(guest_name: str, event_date: str) -> str:
+    return "\n".join(
+        [
+            f"Hallo {guest_name},",
+            "",
+            f"deine Gastanfrage für den Termin am {event_date} konnte leider "
+            "nicht bestätigt werden. Die Buchung ist damit hinfällig, es "
+            "entstehen dir keine Kosten.",
+            "",
+            "Sportliche Grüße",
+            "SportAbo Manager",
+        ]
+    )
+
+
 def guest_reminder_email_body(
     guest_name: str, event_date: str, start_time: str, count: int
 ) -> str:

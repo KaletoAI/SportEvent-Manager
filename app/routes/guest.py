@@ -26,12 +26,6 @@ def _get_event(db: Session, token: str) -> Event:
     return event
 
 
-def _max_guest_share(event: Event):
-    """Displayed maximum: the event only takes place at min_participants
-    or more, so a guest never pays more than the share at the minimum."""
-    return services.price_tiers(event, limit=1)[0]["guest"]
-
-
 def _event_page(request: Request, db: Session, event: Event, msg: str, mt: str):
     if event.is_cancelled:
         return TemplateResponse(
@@ -51,7 +45,9 @@ def _event_page(request: Request, db: Session, event: Event, msg: str, mt: str):
             "subscription": event.subscription,
             "total_booked": total_booked,
             "available": available,
-            "max_share": _max_guest_share(event),
+            # the next booking would go beyond the minimum → request
+            "needs_approval": total_booked >= event.min_participants,
+            "max_share": services.guest_max_share(event),
             "cancelled": False,
             "expired": bool(event.settled_at) or event.date < clock.today(db),
             "msg": msg,
@@ -148,7 +144,16 @@ async def guest_booking(
     if services.count_booked(db, event.id) > event.max_participants:
         db.rollback()
         return back("Termin ist ausgebucht")
+    # Beyond the minimum a super member has to confirm (spot stays reserved)
+    pending = services.guest_needs_approval(db, event)
+    if pending:
+        gb.confirmed_at = None
     db.commit()
+    if pending:
+        await services.notify_guest_request(db, gb)
+        return flash_redirect(
+            "Anfrage gespeichert", f"/g/{token}/buchung/{gb.token}"
+        )
     return flash_redirect(
         "Buchung gespeichert", f"/g/{token}/buchung/{gb.token}"
     )
@@ -178,9 +183,10 @@ async def guest_confirmation(
             "name": gb.name,
             "email": gb.email,
             "count": gb.count,
+            "confirmed": gb.confirmed_at is not None,
             "event": event,
             "subscription": event.subscription,
-            "total_price": _max_guest_share(event) * gb.count,
+            "total_price": services.guest_max_share(event) * gb.count,
             "paypal": payee["paypal"],
             "payee_name": payee["name"],
         },

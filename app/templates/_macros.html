@@ -91,6 +91,22 @@
 {% endif %}
 {% endmacro %}
 
+{# Gast-Anfrage bestätigen / ablehnen (base = ".../guest-booking/<id>") #}
+{% macro guest_request_buttons(base, g, csrf_token, ret="") %}
+<form method="post" action="{{ base }}/confirm" class="inline"
+      data-confirm="Gastbuchung von {{ g.name }} bestätigen? Der Gast bekommt eine E-Mail.">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    {% if ret %}<input type="hidden" name="ret" value="{{ ret }}">{% endif %}
+    <button type="submit" class="btn btn-success btn-sm">Bestätigen</button>
+</form>
+<form method="post" action="{{ base }}/reject" class="inline"
+      data-confirm="Gast-Anfrage von {{ g.name }} ablehnen? Die Buchung wird gelöscht, der Gast bekommt eine E-Mail.">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    {% if ret %}<input type="hidden" name="ret" value="{{ ret }}">{% endif %}
+    <button type="submit" class="btn btn-outline-danger btn-sm">Ablehnen</button>
+</form>
+{% endmacro %}
+
 {# Gastlink mit Kopieren-Button #}
 {% macro copy_link(link, id="guest-link") %}
 <div class="copy-row mt-1">

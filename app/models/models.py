@@ -343,6 +343,13 @@ class GuestBooking(Base):
     paid_member_id: Mapped[Optional[str]] = mapped_column(
         ForeignKey("members.id"), nullable=True
     )
+    # None = request: link bookings beyond min_participants wait for a
+    # super member's confirmation (the spots are reserved meanwhile).
+    # Defaults to confirmed; passing None to the constructor does NOT
+    # override the default — clear it after the flush (see guest route).
+    confirmed_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime, nullable=True, default=utcnow
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
     event: Mapped["Event"] = relationship()
