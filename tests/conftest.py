@@ -189,3 +189,12 @@ def member_login(client: TestClient, email="anna@example.com") -> str:
     assert resp.status_code == 302, resp.text
     assert resp.headers["location"] == "/member/dashboard", resp.headers["location"]
     return csrf
+
+
+def logout(client: TestClient, role: str = "member") -> None:
+    """Logout is POST + CSRF (a GET must not log anyone out)."""
+    client.post(
+        f"/{role}/logout",
+        data={"csrf_token": client.cookies.get("csrf_token")},
+        follow_redirects=False,
+    )

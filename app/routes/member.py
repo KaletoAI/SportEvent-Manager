@@ -267,12 +267,20 @@ async def login_with_token(
     return resp
 
 
-@router.get("/logout")
+@router.post("/logout")
 async def logout(request: Request, db: Session = Depends(get_db)):
+    """POST only (router CSRF check): a GET link or <img> must not be able
+    to log anyone out."""
     destroy_session(db, request.cookies.get(SESSION_COOKIE))
     resp = RedirectResponse(url="/member/login", status_code=302)
     clear_session_cookie(resp)
     return resp
+
+
+@router.get("/logout")
+async def logout_get():
+    """Old links/bookmarks: harmless, just back to the start page."""
+    return RedirectResponse(url="/member/dashboard", status_code=302)
 
 
 # ── Dashboard ──────────────────────────────────────────────────────────────

@@ -1,8 +1,9 @@
 {% extends "base.html" %}
+{% import "_macros.html" as ui %}
 {% block title %}Admin-Übersicht — SportAbo{% endblock %}
 {% block nav_title %}SportAbo Admin{% endblock %}
 {% block nav_links %}
-<a href="/admin/logout">Logout</a>
+{{ ui.logout("/admin/logout", csrf_token) }}
 {% endblock %}
 {% block content %}
 <div class="card">

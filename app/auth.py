@@ -3,7 +3,7 @@
 import hmac
 import secrets
 import time as time_module
-from collections import defaultdict, deque
+from collections import deque
 from datetime import timedelta
 from typing import Optional
 
@@ -93,7 +93,13 @@ def set_session_cookie(response: Response, token: str) -> None:
 
 
 def clear_session_cookie(response: Response) -> None:
-    response.delete_cookie(SESSION_COOKIE)
+    # Same attributes as set_session_cookie, so the deletion is just as strict
+    response.delete_cookie(
+        SESSION_COOKIE,
+        httponly=True,
+        samesite="lax",
+        secure=settings.cookie_secure,
+    )
 
 
 def _login_redirect(url: str) -> HTTPException:
@@ -153,7 +159,22 @@ def require_super(member: Member = Depends(require_member)) -> Member:
 
 # ── Rate limiting (in-memory, resets on restart) ───────────────────────────
 
-_attempts: dict[str, deque] = defaultdict(deque)
+_attempts: dict[str, deque] = {}
+# Keys contain client input (IPs, email addresses) → bound the memory:
+# keys idle longer than the TTL (> every window in use) are dropped, and
+# above MAX_RATE_LIMIT_KEYS the least recently used ones go.
+MAX_RATE_LIMIT_KEYS = 10_000
+RATE_LIMIT_KEY_TTL = 24 * 3600
+
+
+def _prune_rate_limit_keys(now: float) -> None:
+    for key in [k for k, dq in _attempts.items() if now - dq[-1] > RATE_LIMIT_KEY_TTL]:
+        del _attempts[key]
+    # make room for a while (10 %), not just one key per request
+    excess = len(_attempts) - int(MAX_RATE_LIMIT_KEYS * 0.9)
+    if excess > 0:
+        for key in sorted(_attempts, key=lambda k: _attempts[k][-1])[:excess]:
+            del _attempts[key]
 
 
 def check_rate_limit(
@@ -161,7 +182,11 @@ def check_rate_limit(
 ) -> None:
     """Raise 429 when `key` was used max_attempts times within the window."""
     now = time_module.monotonic()
-    attempts = _attempts[key]
+    attempts = _attempts.get(key)
+    if attempts is None:
+        if len(_attempts) >= MAX_RATE_LIMIT_KEYS:
+            _prune_rate_limit_keys(now)
+        attempts = _attempts[key] = deque()
     while attempts and now - attempts[0] > window_seconds:
         attempts.popleft()
     if len(attempts) >= max_attempts:

@@ -13,6 +13,7 @@ Pricing model (cost sharing with frozen budgets):
   the minimum is refused (cancel the event instead).
 """
 
+import re
 import secrets
 from datetime import date, time, timedelta
 from decimal import Decimal, ROUND_HALF_UP
@@ -45,6 +46,16 @@ from app.models.models import (
 
 
 # ── Input normalisation ────────────────────────────────────────────────────
+
+
+_CONTROL_CHARS = re.compile(r"[\x00-\x1f\x7f]+")
+
+
+def clean_name(name: str) -> str:
+    """One line of plain text: control characters (CR/LF, tabs, NUL …)
+    become a space. Names end up in mail bodies — a line break there
+    would let a guest append their own "instructions" to a real app mail."""
+    return " ".join(_CONTROL_CHARS.sub(" ", name).split())
 
 
 def normalize_email(email: str) -> str:
@@ -268,7 +279,9 @@ async def notify_guest_request(db: Session, gb: GuestBooking) -> None:
                 s.email,
                 f"Gast-Anfrage {format_date(event.date)} – {sub.name}",
                 guest_request_email_body(
-                    s.name, gb.name, gb.count, event.date.strftime("%d.%m.%Y")
+                    # defensiv auch für ältere Buchungen vor clean_name
+                    s.name, clean_name(gb.name), gb.count,
+                    event.date.strftime("%d.%m.%Y"),
                 ),
             )
             for s in supers

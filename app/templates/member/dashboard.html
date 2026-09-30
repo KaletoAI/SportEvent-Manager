@@ -3,7 +3,7 @@
 {% block title %}{{ subscription.name }} — {{ member.name }}{% endblock %}
 {% block nav_title %}Hallo {{ member.name }}{% if member.is_super %} ⭐{% endif %}{% endblock %}
 {% block nav_links %}
-<a href="/member/logout">Logout</a>
+{{ ui.logout("/member/logout", csrf_token) }}
 {% endblock %}
 {% block content %}
 {% if member.is_super and pending_requests %}

@@ -141,7 +141,7 @@ def test_money_inputs_accept_cents():
 def test_nav_logout_is_not_called_abmelden(client, seed):
     member_login(client)
     html = client.get("/member/dashboard").text
-    assert '<a href="/member/logout">Logout</a>' in html
+    assert '<button type="submit">Logout</button>' in html
 
 
 def test_time_inputs_instead_of_hour_minute_fields(client, seed):

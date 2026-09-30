@@ -2,7 +2,7 @@
 
 from datetime import date, timedelta
 
-from conftest import member_login
+from conftest import member_login, logout
 
 from app.models.models import Booking, Event
 
@@ -74,7 +74,7 @@ def test_super_approves_cancel_request(client, db, seed):
     _unbook(client, csrf, event.id)  # erzeugt Anfrage
     booking = db.query(Booking).filter(Booking.event_id == event.id).one()
 
-    client.get("/member/logout")
+    logout(client)
     super_csrf = member_login(client, email="sina@example.com")
     # Anfrage sichtbar im Dashboard
     resp = client.get("/member/dashboard")
@@ -95,7 +95,7 @@ def test_super_rejects_cancel_request(client, db, seed):
     _unbook(client, csrf, event.id)
     booking = db.query(Booking).filter(Booking.event_id == event.id).one()
 
-    client.get("/member/logout")
+    logout(client)
     super_csrf = member_login(client, email="sina@example.com")
     resp = client.post(
         f"/member/cancel-request/{booking.id}/reject",

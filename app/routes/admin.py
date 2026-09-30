@@ -111,7 +111,7 @@ async def mfa_setup_page(
 ):
     if mfa.is_enrolled(db):
         return RedirectResponse(url="/admin/dashboard", status_code=302)
-    secret = mfa.pending_secret(db)
+    secret = mfa.pending_secret(db, session)
     return TemplateResponse(
         "admin/mfa_setup.html",
         {
@@ -134,7 +134,7 @@ async def mfa_qr(
     if mfa.is_enrolled(db):
         return Response(status_code=404)
     return Response(
-        mfa.qr_svg(mfa.pending_secret(db)),
+        mfa.qr_svg(mfa.pending_secret(db, session)),
         media_type="image/svg+xml",
         headers={"Cache-Control": "no-store"},
     )
@@ -159,12 +159,20 @@ async def mfa_setup_confirm(
     return _redirect("Zwei-Faktor-Anmeldung ist aktiv")
 
 
-@router.get("/logout")
+@router.post("/logout")
 async def logout(request: Request, db: Session = Depends(get_db)):
+    """POST only (router CSRF check): a GET link or <img> must not be able
+    to log anyone out."""
     destroy_session(db, request.cookies.get(SESSION_COOKIE))
     resp = RedirectResponse(url="/admin/login", status_code=302)
     clear_session_cookie(resp)
     return resp
+
+
+@router.get("/logout")
+async def logout_get():
+    """Old links/bookmarks: harmless, just back to the start page."""
+    return RedirectResponse(url="/admin/dashboard", status_code=302)
 
 
 # ── Subscription CRUD ──────────────────────────────────────────────────────
@@ -193,7 +201,7 @@ def _apply_subscription_form(sub: Subscription, f: dict) -> Optional[str]:
         return "Ein Abo darf höchstens drei Jahre umfassen"
     if f["min_participants"] > f["max_participants"]:
         return "Mindestzahl darf das Maximum nicht übersteigen"
-    sub.name = f["name"].strip()
+    sub.name = services.clean_name(f["name"])
     sub.description = f["description"]
     sub.weekday = f["weekday"]
     sub.start_time = start
@@ -548,7 +556,7 @@ async def create_member(
     sub = db.query(Subscription).filter(Subscription.id == sub_id).first()
     if not sub:
         return _redirect("Abo nicht gefunden", mt="error")
-    name = name.strip()
+    name = services.clean_name(name)
     email = services.normalize_email(email)
     paypal_address = paypal_address.strip()
     existing = (
@@ -710,7 +718,7 @@ async def update_member(
     member = db.query(Member).filter(Member.id == member_id).first()
     if not member:
         return _redirect("Mitglied nicht gefunden", mt="error")
-    name = name.strip()
+    name = services.clean_name(name)
     email = services.normalize_email(email)
     paypal_address = paypal_address.strip()
     duplicate = (
@@ -1128,7 +1136,7 @@ async def admin_book_guest(
     if not event:
         return _redirect("Termin nicht gefunden", mt="error")
     back = f"/admin/event/{event_id}"
-    name = name.strip()
+    name = services.clean_name(name)
     email = services.normalize_email(email)
     if event.settled_at:
         return _redirect("Termin ist bereits abgerechnet", back, mt="error")

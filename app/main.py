@@ -48,7 +48,11 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="SportAbo Manager", docs_url=None, redoc_url=None, lifespan=lifespan
+    title="SportAbo Manager",
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,  # no route schema for the public
+    lifespan=lifespan,
 )
 
 # Create missing tables, then apply in-place column upgrades

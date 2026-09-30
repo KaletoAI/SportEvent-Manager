@@ -1,6 +1,6 @@
 """Auth: sessions, magic-link/code login, rate limiting, CSRF."""
 
-from conftest import ADMIN_PW, admin_login, get_csrf, member_login
+from conftest import ADMIN_PW, admin_login, get_csrf, member_login, logout
 
 from app.models.models import Member, UserSession
 
@@ -11,7 +11,7 @@ def test_admin_login_and_logout(client, db):
     resp = client.get("/admin/dashboard")
     assert resp.status_code == 200
 
-    client.get("/admin/logout", follow_redirects=False)
+    logout(client, "admin")
     db.expire_all()
     assert db.query(UserSession).count() == 0
     resp = client.get("/admin/dashboard", follow_redirects=False)
@@ -58,7 +58,7 @@ def test_member_token_login_flow(client, db, seed):
     assert resp.status_code == 302
     assert resp.headers["location"] == "/member/dashboard"
     # Token ist einmalig
-    client.get("/member/logout")
+    logout(client)
     resp = client.get(f"/member/login/t/{token}", follow_redirects=False)
     assert "ung%C3%BCltig" in resp.headers["location"]
 
@@ -150,7 +150,7 @@ def test_code_login_flow(client, db, seed):
     assert resp.headers["location"] == "/member/dashboard"
 
     # Code ist einmalig
-    client.get("/member/logout")
+    logout(client)
     resp = client.post(
         "/member/login/code",
         data={"email": "anna@example.com", "code": code, "csrf_token": csrf},
@@ -192,7 +192,7 @@ def test_login_page_redirects_when_already_logged_in(client, db, seed):
     assert resp.status_code == 302
     assert resp.headers["location"] == "/member/dashboard"
 
-    client.get("/member/logout")
+    logout(client)
     admin_login(client)
     resp = client.get("/admin/login", follow_redirects=False)
     assert resp.status_code == 302

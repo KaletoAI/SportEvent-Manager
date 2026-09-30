@@ -4,7 +4,7 @@
 {% block nav_title %}{{ subscription.name }}{% endblock %}
 {% block nav_links %}
 {{ ui.nav_home("/admin/dashboard") }}
-<a href="/admin/logout">Logout</a>
+{{ ui.logout("/admin/logout", csrf_token) }}
 {% endblock %}
 {% block content %}
 <div class="stat-grid">

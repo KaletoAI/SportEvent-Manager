@@ -115,6 +115,9 @@
 </div>
 {% endmacro %}
 
+{# Nav: Logout nur per POST (CSRF) — sieht aus wie die anderen Nav-Links #}
+{% macro logout(url, csrf_token) %}<form method="post" action="{{ url }}" class="nav-logout"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button type="submit">Logout</button></form>{% endmacro %}
+
 {# Nav: Symbol-Links (Zurück / Übersicht) mit Beschriftung für Screenreader #}
 {% macro nav_back(url, label="Zurück") %}<a href="{{ url }}" class="nav-icon" title="{{ label }}" aria-label="{{ label }}">←</a>{% endmacro %}
 {% macro nav_home(url) %}<a href="{{ url }}" class="nav-icon" title="Übersicht" aria-label="Übersicht">🏠</a>{% endmacro %}

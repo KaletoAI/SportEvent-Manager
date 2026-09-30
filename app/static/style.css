@@ -273,7 +273,8 @@ nav > strong {
     white-space: nowrap;
 }
 .nav-links { display: flex; align-items: center; gap: 0.35rem; flex-shrink: 0; }
-.nav-links a, .nav-icon {
+.nav-logout { display: contents; }
+.nav-links a, .nav-icon, .nav-logout button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -289,7 +290,7 @@ nav > strong {
     text-decoration: none;
     cursor: pointer;
 }
-.nav-links a:hover, .nav-icon:hover { color: var(--primary); border-color: var(--primary); }
+.nav-links a:hover, .nav-icon:hover, .nav-logout button:hover { color: var(--primary); border-color: var(--primary); }
 .nav-icon { padding: 0.35rem 0.5rem; font-size: 1rem; }
 
 /* ── Stat tiles ────────────────────────────────────────────────────── */
@@ -458,7 +459,7 @@ details > summary::marker { color: var(--primary); }
     .card { padding: 1rem; }
     .form-row { flex-direction: column; gap: 0; }
     nav { padding: 0.4rem 0.5rem; }
-    .nav-links a { padding: 0.35rem 0.55rem; }
+    .nav-links a, .nav-logout button { padding: 0.35rem 0.55rem; }
 
     /* Touch-Ziele mindestens 44px */
     .btn, .btn-sm { min-height: 44px; padding: 0.6rem 0.9rem; font-size: 0.95rem; }

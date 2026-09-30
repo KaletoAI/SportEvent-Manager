@@ -5,7 +5,7 @@
 {% block nav_links %}
 {% if subscription %}{{ ui.nav_back("/admin/subscription/" ~ subscription.id, "Zurück zum Abo") }}{% endif %}
 {{ ui.nav_home("/admin/dashboard") }}
-<a href="/admin/logout">Logout</a>
+{{ ui.logout("/admin/logout", csrf_token) }}
 {% endblock %}
 {% block content %}
 <div class="card">

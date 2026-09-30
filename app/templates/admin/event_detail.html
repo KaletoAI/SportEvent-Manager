@@ -5,7 +5,7 @@
 {% block nav_links %}
 {{ ui.nav_back("/admin/subscription/" ~ event.subscription_id, "Zurück zum Abo") }}
 {{ ui.nav_home("/admin/dashboard") }}
-<a href="/admin/logout">Logout</a>
+{{ ui.logout("/admin/logout", csrf_token) }}
 {% endblock %}
 {% block content %}
 <div class="stat-grid">

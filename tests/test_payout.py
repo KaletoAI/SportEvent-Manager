@@ -2,7 +2,7 @@
 
 from decimal import Decimal
 
-from conftest import admin_login
+from conftest import admin_login, logout
 
 from app import services
 from app.models.models import Member, Payment
@@ -145,7 +145,7 @@ def test_dashboard_banner_skipped_for_payee(client, db, seed):
     assert "zahle per PayPal" not in resp.text
 
     # Sina (nicht Empfängerin) sieht den Banner mit Annas Adresse
-    client.get("/member/logout")
+    logout(client)
     member_login(client, email="sina@example.com")
     resp = client.get("/member/dashboard")
     assert "anna@pay.me" in resp.text

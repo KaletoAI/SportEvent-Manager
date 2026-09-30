@@ -126,7 +126,7 @@ async def guest_booking(
         3600,
         "Zu viele Buchungen. Bitte später erneut versuchen.",
     )
-    name = name.strip()
+    name = services.clean_name(name)
     email = services.normalize_email(email)
     if not name or len(name) > 100:
         return back("Bitte gib deinen Namen an (höchstens 100 Zeichen)")

@@ -10,7 +10,7 @@ from sqlalchemy import create_engine
 from app import mfa
 from app.config import settings
 from app.database import SessionLocal
-from app.models.models import Base, UserSession
+from app.models.models import AppSetting, Base, UserSession
 from app.schema_upgrade import upgrade
 from tests.conftest import ADMIN_PW, get_csrf
 
@@ -37,7 +37,10 @@ def _enroll(client) -> str:
     assert page.status_code == 200
     db = SessionLocal()
     try:
-        secret = mfa._get(db, mfa.PENDING_KEY)
+        (row,) = db.query(AppSetting).filter(
+            AppSetting.key.like(mfa.PENDING_KEY + ":%")
+        ).all()
+        secret = row.value
     finally:
         db.close()
     assert secret and secret in page.text.replace(" ", "")

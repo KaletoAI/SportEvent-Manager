@@ -104,13 +104,17 @@ def TemplateResponse(
     template = _env.get_template(template_name)
     html = template.render(**context)
     response = HTMLResponse(content=html, status_code=status_code)
+    # Pages carry the CSRF token and personal data: never store them in a
+    # (shared) browser or proxy cache.
+    response.headers["Cache-Control"] = "no-store"
     if csrf_cookie_missing:
-        # Readable by the page's own forms only via template injection;
-        # not httponly so it survives without server-side state.
+        # The token reaches the forms via the template; no JS reads the
+        # cookie (double-submit compares it server-side) → httponly.
         response.set_cookie(
             "csrf_token",
             csrf_token,
             max_age=86400 * 30,
+            httponly=True,
             samesite="lax",
             secure=settings.cookie_secure,
         )

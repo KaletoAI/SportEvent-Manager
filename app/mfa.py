@@ -88,12 +88,25 @@ def verify(db: Session, code: str) -> bool:
     return ok
 
 
-def pending_secret(db: Session) -> str:
-    """Secret shown on the setup page; stays the same until confirmed."""
-    secret = _get(db, PENDING_KEY)
+def _pending_key(session: UserSession) -> str:
+    return f"{PENDING_KEY}:{session.id}"
+
+
+def _drop_pending(db: Session) -> None:
+    """Remove the setup secrets of all sessions. Caller commits."""
+    db.query(AppSetting).filter(AppSetting.key.like(PENDING_KEY + "%")).delete(
+        synchronize_session=False
+    )
+
+
+def pending_secret(db: Session, session: UserSession) -> str:
+    """Secret shown on the setup page; stays the same until confirmed.
+    Bound to the admin session that opened the page: someone else who knows
+    the password can't slip their own secret into the real admin's setup."""
+    secret = _get(db, _pending_key(session))
     if not secret:
         secret = pyotp.random_base32()
-        _set(db, PENDING_KEY, secret)
+        _set(db, _pending_key(session), secret)
         db.commit()
     return secret
 
@@ -108,12 +121,12 @@ def qr_svg(secret: str) -> bytes:
 def confirm_setup(db: Session, code: str, session: UserSession) -> bool:
     """Activate the pending secret if the code matches. All other admin
     sessions (password-only) end; the current one counts as verified."""
-    secret = _get(db, PENDING_KEY)
+    secret = _get(db, _pending_key(session))
     if not secret or not _accept(db, secret, code):
         db.rollback()
         return False
     _set(db, SECRET_KEY, secret)
-    _set(db, PENDING_KEY, None)
+    _drop_pending(db)
     db.query(UserSession).filter(
         UserSession.is_admin.is_(True), UserSession.id != session.id
     ).delete()
@@ -124,7 +137,8 @@ def confirm_setup(db: Session, code: str, session: UserSession) -> bool:
 
 def reset(db: Session) -> None:
     """Emergency reset (lost phone): remove MFA and end all admin sessions."""
-    for key in (SECRET_KEY, PENDING_KEY, LAST_STEP_KEY):
+    for key in (SECRET_KEY, LAST_STEP_KEY):
         _set(db, key, None)
+    _drop_pending(db)
     db.query(UserSession).filter(UserSession.is_admin.is_(True)).delete()
     db.commit()

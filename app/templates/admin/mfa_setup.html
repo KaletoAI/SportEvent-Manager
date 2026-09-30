@@ -1,8 +1,9 @@
 {% extends "base.html" %}
+{% import "_macros.html" as ui %}
 {% block title %}Zwei-Faktor-Anmeldung einrichten — SportAbo{% endblock %}
 {% block nav_title %}Zwei-Faktor einrichten{% endblock %}
 {% block nav_links %}
-<a href="/admin/logout">Logout</a>
+{{ ui.logout("/admin/logout", csrf_token) }}
 {% endblock %}
 {% block content %}
 <div class="card narrow mt-1">
