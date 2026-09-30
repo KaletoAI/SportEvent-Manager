@@ -133,6 +133,20 @@ def demo_context() -> dict:
     return ctx
 
 
+def enable_demo_mfa() -> None:
+    """MFA in der Demo-DB einschalten, damit die Login-Seite das Codefeld
+    zeigt (Zufallsschlüssel, niemand kann sich damit anmelden)."""
+    import pyotp
+
+    from app import mfa
+    from app.database import SessionLocal
+
+    db = SessionLocal()
+    mfa._set(db, mfa.SECRET_KEY, pyotp.random_base32())
+    db.commit()
+    db.close()
+
+
 def main() -> None:
     from playwright.sync_api import sync_playwright
 
@@ -257,6 +271,19 @@ def main() -> None:
             shot("01-admin-login", "/admin/login")
 
             login_as(ctx["admin_token"])
+            # Zwei-Faktor-Einrichtung (in der Demo noch nicht eingerichtet).
+            # QR-Code und Schlüssel werden unkenntlich gemacht: sie gehören
+            # zwar nur zur Wegwerf-Demo-DB, sollen im Handbuch aber nicht
+            # scannbar sein und nicht mit einem echten Schlüssel verwechselt
+            # werden (CSSOM statt style-Attribut, das erlaubt die CSP).
+            def mask_mfa_secret():
+                page.evaluate(
+                    "document.querySelector('.qr-code').style.filter = 'blur(9px)';"
+                    "document.querySelector('.secret-key').textContent ="
+                    " 'XXXX XXXX XXXX XXXX XXXX XXXX XXXX XXXX';"
+                )
+
+            shot("01c-admin-mfa-setup", "/admin/mfa/setup", prepare=mask_mfa_secret)
 
             def fill_subscription_form():
                 page.fill("#name", "Beachvolleyball Dienstag")
@@ -411,6 +438,14 @@ def main() -> None:
 
             # Der Abo-Gastlink vor Beginn des Buchungsfensters
             shot_clip("19-gast-abo-link", f"/g/abo/{ctx['abo_guest_token']}", 720)
+
+            # ── Admin-Login mit Zwei-Faktor ──────────────────────────────
+            # Ganz zum Schluss: sobald MFA eingerichtet ist, sperrt die App
+            # die (ohne Code angelegte) Admin-Session der Screenshots.
+            print("Admin-MFA:")
+            enable_demo_mfa()
+            bctx.clear_cookies()
+            shot_clip("01b-admin-login-mfa", "/admin/login", 400)
 
             browser.close()
     finally:

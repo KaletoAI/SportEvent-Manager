@@ -314,6 +314,37 @@ Gastbuchungen und dem Bezahlt-Haken.</p>
   </figure>
 </div>
 
+<h3>Admin-Zugang: Passwort und Code</h3>
+<p>Der Admin-Bereich ist mit einer <strong>Zwei-Faktor-Anmeldung</strong>
+geschützt: Zum Passwort kommt ein 6-stelliger Code aus einer
+Authenticator-App (z. B. Aegis, Google Authenticator oder 1Password), der
+alle 30 Sekunden wechselt. Beides steht in einem Formular; bei einem Fehler
+sagt die Seite absichtlich nur „Passwort oder Code falsch“.</p>
+
+<div class="figrow">
+  <figure>
+    <img src="screenshots/01b-admin-login-mfa.png" alt="Admin-Login mit Passwort und Code">
+    <figcaption>Der Admin-Login: Passwort und Code aus der App</figcaption>
+  </figure>
+  <figure>
+    <img src="screenshots/01c-admin-mfa-setup.png" alt="Einrichtung der Zwei-Faktor-Anmeldung mit QR-Code">
+    <figcaption>Einmalige Einrichtung per QR-Code (hier unkenntlich gemacht)</figcaption>
+  </figure>
+</div>
+
+<p><strong>Einrichtung:</strong> Beim allerersten Login genügt das Passwort —
+danach zeigt die App nur die Einrichtungsseite. Dort den QR-Code mit der
+Authenticator-App scannen (oder den Schlüssel abtippen) und mit dem
+aktuellen Code bestätigen. Ab dann ist der Code bei jedem Login Pflicht,
+und alle älteren Admin-Sitzungen werden beendet.</p>
+
+<div class="warn">
+<strong>Handy verloren?</strong>
+Ohne App kein Admin-Zugang — die Zwei-Faktor-Anmeldung lässt sich dann nur
+auf dem Server zurücksetzen. Am besten eine App mit Backup nutzen (z. B. Aegis
+oder 1Password).
+</div>
+
 <h2 id="mitglied">3. Die App als Mitglied benutzen</h2>
 
 <h3>Anmelden — ohne Passwort</h3>
