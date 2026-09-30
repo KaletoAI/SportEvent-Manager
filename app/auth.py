@@ -24,12 +24,16 @@ CSRF_COOKIE = "csrf_token"
 
 
 def create_session(
-    db: Session, member_id: Optional[str] = None, is_admin: bool = False
+    db: Session,
+    member_id: Optional[str] = None,
+    is_admin: bool = False,
+    mfa_verified: bool = False,
 ) -> UserSession:
     session = UserSession(
         token=secrets.token_urlsafe(48),
         member_id=member_id,
         is_admin=is_admin,
+        mfa_verified=mfa_verified,
         expires_at=utcnow() + timedelta(days=settings.session_max_age_days),
     )
     db.add(session)
@@ -98,11 +102,27 @@ def _login_redirect(url: str) -> HTTPException:
     )
 
 
-def require_admin(request: Request, db: Session = Depends(get_db)) -> UserSession:
-    """FastAPI dependency: valid admin session or redirect to login."""
+def require_admin_password(
+    request: Request, db: Session = Depends(get_db)
+) -> UserSession:
+    """FastAPI dependency: admin session, second factor not checked — only
+    for the MFA setup pages."""
     session = get_session(db, request.cookies.get(SESSION_COOKIE))
     if not session or not session.is_admin:
         raise _login_redirect("/admin/login")
+    return session
+
+
+def require_admin(request: Request, db: Session = Depends(get_db)) -> UserSession:
+    """FastAPI dependency: valid admin session (with second factor where
+    MFA is required) or redirect to login / MFA setup."""
+    from app import mfa
+
+    session = require_admin_password(request, db)
+    if mfa.required(db) and not session.mfa_verified:
+        if mfa.is_enrolled(db):
+            raise _login_redirect("/admin/login")
+        raise _login_redirect("/admin/mfa/setup")
     return session
 
 

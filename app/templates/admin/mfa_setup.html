@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Zwei-Faktor-Anmeldung einrichten — SportAbo{% endblock %}
+{% block nav_title %}Zwei-Faktor einrichten{% endblock %}
+{% block nav_links %}
+<a href="/admin/logout">Logout</a>
+{% endblock %}
+{% block content %}
+<div class="card narrow mt-1">
+    <h2>Zwei-Faktor-Anmeldung einrichten</h2>
+    <p>Der Admin-Zugang braucht zusätzlich zum Passwort einen Code aus einer Authenticator-App (z. B. Aegis, Google Authenticator, 1Password).</p>
+    <p><strong>1.</strong> In der App ein neues Konto hinzufügen und diesen QR-Code scannen:</p>
+    <div class="center mt-1">
+        <img src="/admin/mfa/qr.svg" alt="QR-Code für die Authenticator-App" class="qr-code" width="240" height="240">
+    </div>
+    <p class="muted small center">Scannen nicht möglich? Schlüssel von Hand eingeben:<br>
+        <code class="secret-key">{{ secret_grouped }}</code></p>
+    <p><strong>2.</strong> Den 6-stelligen Code aus der App hier eintragen:</p>
+    <form method="post" action="/admin/mfa/setup">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="form-group">
+            <label for="code">Code</label>
+            <input type="text" id="code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,7}" maxlength="7" required autofocus>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Aktivieren</button>
+    </form>
+    <p class="msg msg-info mt-1">Nach dem Aktivieren werden alle anderen Admin-Sitzungen beendet. Handy verloren? Die MFA lässt sich nur über den Server zurücksetzen (<code>scripts/reset_admin_mfa.py</code>).</p>
+</div>
+{% endblock %}

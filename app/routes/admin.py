@@ -7,12 +7,12 @@ from decimal import Decimal
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Form, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, Response
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app import clock, services
+from app import clock, mfa, services
 from app.auth import (
     SESSION_COOKIE,
     check_login_rate_limit,
@@ -21,6 +21,7 @@ from app.auth import (
     destroy_session,
     get_session,
     require_admin,
+    require_admin_password,
     set_session_cookie,
 )
 from app.config import settings
@@ -55,28 +56,107 @@ def _redirect(msg: str, url: str = "/admin/dashboard", mt: str = "success"):
 async def login_page(request: Request, db: Session = Depends(get_db)):
     # Bereits eingeloggt → direkt ins Dashboard
     session = get_session(db, request.cookies.get(SESSION_COOKIE))
-    if session and session.is_admin:
+    if session and session.is_admin and (
+        session.mfa_verified or not mfa.required(db)
+    ):
         return RedirectResponse(url="/admin/dashboard", status_code=302)
-    return TemplateResponse("admin/login.html", {"request": request})
+    return TemplateResponse(
+        "admin/login.html",
+        {"request": request, "mfa_enrolled": mfa.is_enrolled(db)},
+    )
 
 
 @router.post("/login")
 async def login(
     request: Request,
     password: str = Form(...),
+    code: str = Form("", max_length=20),
     db: Session = Depends(get_db),
 ):
+    """Password + TOTP code in one form: a failed attempt doesn't reveal
+    which of the two was wrong. Without enrolled MFA the password alone
+    opens a session that (in production) only reaches the setup page."""
     check_login_rate_limit(request, "admin")
-    if hmac.compare_digest(password, settings.admin_password):
-        session = create_session(db, is_admin=True)
-        resp = RedirectResponse(url="/admin/dashboard", status_code=302)
+    enrolled = mfa.is_enrolled(db)
+    password_ok = hmac.compare_digest(password, settings.admin_password)
+    if password_ok and (not enrolled or mfa.verify(db, code)):
+        session = create_session(db, is_admin=True, mfa_verified=enrolled)
+        target = "/admin/dashboard"
+        if not enrolled and mfa.required(db):
+            target = "/admin/mfa/setup"
+        resp = RedirectResponse(url=target, status_code=302)
         set_session_cookie(resp, session.token)
         return resp
     return TemplateResponse(
         "admin/login.html",
-        {"request": request, "error": "Falsches Passwort"},
+        {
+            "request": request,
+            "mfa_enrolled": enrolled,
+            "error": "Passwort oder Code falsch" if enrolled else "Falsches Passwort",
+        },
         status_code=401,
     )
+
+
+# ── MFA-Einrichtung ────────────────────────────────────────────────────────
+
+
+@router.get("/mfa/setup")
+async def mfa_setup_page(
+    request: Request,
+    msg: str = "",
+    mt: str = "success",
+    session=Depends(require_admin_password),
+    db: Session = Depends(get_db),
+):
+    if mfa.is_enrolled(db):
+        return RedirectResponse(url="/admin/dashboard", status_code=302)
+    secret = mfa.pending_secret(db)
+    return TemplateResponse(
+        "admin/mfa_setup.html",
+        {
+            "request": request,
+            # in Vierergruppen zum Abtippen
+            "secret_grouped": " ".join(
+                secret[i:i + 4] for i in range(0, len(secret), 4)
+            ),
+            "msg": msg,
+            "msg_type": mt,
+        },
+    )
+
+
+@router.get("/mfa/qr.svg")
+async def mfa_qr(
+    session=Depends(require_admin_password),
+    db: Session = Depends(get_db),
+):
+    if mfa.is_enrolled(db):
+        return Response(status_code=404)
+    return Response(
+        mfa.qr_svg(mfa.pending_secret(db)),
+        media_type="image/svg+xml",
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+@router.post("/mfa/setup")
+async def mfa_setup_confirm(
+    request: Request,
+    code: str = Form("", max_length=20),
+    session=Depends(require_admin_password),
+    db: Session = Depends(get_db),
+):
+    check_login_rate_limit(request, "admin")
+    if mfa.is_enrolled(db):
+        return RedirectResponse(url="/admin/dashboard", status_code=302)
+    if not mfa.confirm_setup(db, code, session):
+        return _redirect(
+            "Code stimmt nicht – bitte den aktuellen Code aus der App eingeben",
+            "/admin/mfa/setup",
+            mt="error",
+        )
+    return _redirect("Zwei-Faktor-Anmeldung ist aktiv")
 
 
 @router.get("/logout")

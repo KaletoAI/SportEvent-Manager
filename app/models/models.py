@@ -416,6 +416,10 @@ class UserSession(Base):
         ForeignKey("members.id"), nullable=True
     )
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # Admin session created with password + TOTP code (see app/mfa.py)
+    mfa_verified: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 

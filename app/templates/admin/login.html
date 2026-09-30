@@ -8,8 +8,14 @@
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <div class="form-group">
             <label for="password">Passwort</label>
-            <input type="password" id="password" name="password" required autofocus>
+            <input type="password" id="password" name="password" autocomplete="current-password" required autofocus>
         </div>
+        {% if mfa_enrolled %}
+        <div class="form-group">
+            <label for="code">Code aus der Authenticator-App</label>
+            <input type="text" id="code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,7}" maxlength="7" required>
+        </div>
+        {% endif %}
         <button type="submit" class="btn btn-primary btn-block">Anmelden</button>
     </form>
 </div>

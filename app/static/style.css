@@ -7,6 +7,7 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
+    --qr-bg: #ffffff;  /* QR-Codes brauchen hellen Grund, auch im Dark Mode */
     color-scheme: light;
     --bg: #f8fafc;
     --card: #ffffff;
@@ -53,6 +54,7 @@
    überschreibt sie pro Gerät). Auf den hellen Aktionsfarben steht
    dunkle Schrift — weiße Schrift hätte dort nur 1,7–3,2:1 Kontrast. */
 :root[data-theme="dark"] {
+    --qr-bg: #ffffff;
     color-scheme: dark;
     --bg: #0b1220;
     --card: #131c30;
@@ -352,6 +354,8 @@ nav > strong {
 .mb-0 { margin-bottom: 0; }
 .inline { display: inline; }
 .center { text-align: center; }
+.qr-code { background: var(--qr-bg); padding: 0.5rem; border-radius: 8px; max-width: 100%; height: auto; }
+.secret-key { font-family: ui-monospace, monospace; font-size: 1rem; letter-spacing: 0.05em; user-select: all; }
 .copy-row { display: flex; gap: 0.5rem; align-items: center; }
 .copy-row input { flex: 1; font-size: 0.85rem; }
 .paid-form { display: flex; gap: 0.35rem; align-items: center; flex-wrap: nowrap; }

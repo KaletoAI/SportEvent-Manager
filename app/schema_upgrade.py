@@ -158,6 +158,14 @@ def upgrade(engine: Engine) -> None:
                 "DEFAULT ''"
             )
 
+        # sessions: admin MFA flag (existing admin sessions = unverified)
+        session_cols = _columns(conn, "sessions")
+        if session_cols and "mfa_verified" not in session_cols:
+            conn.exec_driver_sql(
+                "ALTER TABLE sessions ADD COLUMN mfa_verified BOOLEAN "
+                "NOT NULL DEFAULT 0"
+            )
+
         # login_tokens: 6-digit code (table may predate the column)
         lt_cols = _columns(conn, "login_tokens")
         if lt_cols and "code" not in lt_cols:
