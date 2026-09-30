@@ -79,6 +79,11 @@
             </div>
         </div>
         <p class="muted small">Beispiel: 48 / 0 = bis 48 Stunden vor Beginn frei abmeldbar, danach bis zum Beginn nur mit Freigabe durch ein Super-Mitglied.</p>
+        <div class="form-group">
+            <label for="guest_days_ahead">Gast-Link: Termin buchbar ab (Tage vorher)</label>
+            <input type="number" id="guest_days_ahead" inputmode="numeric" name="guest_days_ahead" min="0" max="365" value="{{ subscription.guest_days_ahead if subscription else 5 }}" required>
+        </div>
+        <p class="muted small">Der Abo-Gast-Link zeigt immer den nächsten Termin; Gäste können ihn erst so viele Tage vorher buchen.</p>
         <div class="form-row">
             <div class="form-group">
                 <label for="payout_mode">Zahlungen gehen an</label>

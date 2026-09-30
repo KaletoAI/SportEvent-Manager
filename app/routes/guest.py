@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app import clock, services
 from app.auth import check_rate_limit
 from app.database import get_db
-from app.models.models import Event, GuestBooking
+from app.models.models import Event, GuestBooking, Subscription
 from app.templates import TemplateResponse
 from app.web import client_ip, flash_redirect
 
@@ -32,16 +32,7 @@ def _max_guest_share(event: Event):
     return services.price_tiers(event, limit=1)[0]["guest"]
 
 
-@router.get("/{token}")
-async def guest_event_page(
-    request: Request,
-    token: str,
-    msg: str = "",
-    mt: str = "success",
-    db: Session = Depends(get_db),
-):
-    """Public guest booking page for an event."""
-    event = _get_event(db, token)
+def _event_page(request: Request, db: Session, event: Event, msg: str, mt: str):
     if event.is_cancelled:
         return TemplateResponse(
             "guest/event.html",
@@ -67,6 +58,54 @@ async def guest_event_page(
             "msg_type": mt,
         },
     )
+
+
+@router.get("/abo/{guest_token}")
+async def guest_abo_page(
+    request: Request,
+    guest_token: str,
+    msg: str = "",
+    mt: str = "success",
+    db: Session = Depends(get_db),
+):
+    """Abo-wide guest link: shows the next event, bookable from
+    `guest_days_ahead` days before its date."""
+    sub = (
+        db.query(Subscription)
+        .filter(Subscription.guest_token == guest_token)
+        .first()
+    )
+    if not sub:
+        raise HTTPException(status_code=404, detail="Link nicht gefunden")
+    today = clock.today(db)
+    event = services.next_guest_event(db, sub, today)
+    if event and services.guest_bookable_from(sub, event) <= today:
+        return _event_page(request, db, event, msg, mt)
+    return TemplateResponse(
+        "guest/abo.html",
+        {
+            "request": request,
+            "subscription": sub,
+            "event": event,
+            "bookable_from": (
+                services.guest_bookable_from(sub, event) if event else None
+            ),
+            "msg": msg,
+            "msg_type": mt,
+        },
+    )
+
+
+@router.get("/{token}")
+async def guest_event_page(
+    request: Request,
+    token: str,
+    msg: str = "",
+    mt: str = "success",
+    db: Session = Depends(get_db),
+):
+    """Public guest booking page for an event."""
+    return _event_page(request, db, _get_event(db, token), msg, mt)
 
 
 @router.post("/{token}/book")

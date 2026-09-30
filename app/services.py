@@ -192,6 +192,32 @@ def create_extra_event(
     return event
 
 
+# ── Abo guest link ─────────────────────────────────────────────────────────
+
+
+def next_guest_event(
+    db: Session, subscription: Subscription, today: date
+) -> Optional[Event]:
+    """The event the Abo-wide guest link points to: the next one that is
+    neither cancelled nor settled (extra events included)."""
+    return (
+        db.query(Event)
+        .filter(
+            Event.subscription_id == subscription.id,
+            Event.is_cancelled.is_(False),
+            Event.settled_at.is_(None),
+            Event.date >= today,
+        )
+        .order_by(Event.date, Event.start_time)
+        .first()
+    )
+
+
+def guest_bookable_from(subscription: Subscription, event: Event) -> date:
+    """First day guests can book `event` via the Abo-wide link."""
+    return event.date - timedelta(days=subscription.guest_days_ahead)
+
+
 # ── Waitlist ───────────────────────────────────────────────────────────────
 
 

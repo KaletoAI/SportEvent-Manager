@@ -453,6 +453,11 @@ async def dashboard(
             "cancel_state": cancel_state,
             "pending_requests": pending_requests,
             "settleable_events": settleable_events,
+            "abo_guest_link": (
+                f"{public_base_url(request)}g/abo/{sub.guest_token}"
+                if member.is_super
+                else ""
+            ),
             "msg": msg,
             "msg_type": mt,
         },

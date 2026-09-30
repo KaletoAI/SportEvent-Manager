@@ -72,6 +72,17 @@
     <p class="muted">Noch keine Termine. Klicke auf „Termine generieren“.</p>
     {% endif %}
 </div>
+
+<div class="card">
+    <h2>Gast-Link fürs ganze Abo</h2>
+    <p class="muted small">Ein fester Link für die ganze Saison: Er zeigt immer den nächsten Termin, buchbar ab {{ subscription.guest_days_ahead }} Tag{% if subscription.guest_days_ahead != 1 %}en{% endif %} vorher (einstellbar unter „Bearbeiten“).</p>
+    {{ ui.copy_link(abo_guest_link, "abo-guest-link") }}
+    <form method="post" action="/admin/subscription/{{ subscription.id }}/guest-link/renew" class="mt-1"
+          data-confirm="Neuen Gast-Link erzeugen? Der bisherige Link funktioniert danach nicht mehr.">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="btn btn-outline-danger btn-sm">Link neu erzeugen</button>
+    </form>
+</div>
 </section>
 
 <section class="tab-panel" id="tab-zusatz">

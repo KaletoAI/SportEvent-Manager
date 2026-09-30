@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Gastbuchung — {{ subscription.name }}{% endblock %}
+{% block nav_title %}Gastbuchung{% endblock %}
+{% block content %}
+<div class="card narrow mt-1">
+    <h2>{{ subscription.name }}</h2>
+    {% if event %}
+    <p>Nächster Termin: <strong>{{ event.date|date_de }}</strong>, {{ event.start_time|time_de }} – {{ event.end_time|time_de }}</p>
+    <p class="msg msg-info">Als Gast ist der Termin buchbar ab <strong>{{ bookable_from|date_de }}</strong>. Schau dann einfach wieder über diesen Link vorbei.</p>
+    {% else %}
+    <p>Keine weiteren Termine in diesem Abo.</p>
+    {% endif %}
+</div>
+<p class="muted small center">Wie das Ganze funktioniert, steht in der
+<a href="/hilfe/kurzreferenz">Kurzreferenz</a>.</p>
+{% endblock %}

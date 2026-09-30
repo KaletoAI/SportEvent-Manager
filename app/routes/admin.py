@@ -1,6 +1,7 @@
 """Admin routes: login, subscription management, events, settlement, stats."""
 
 import hmac
+import secrets
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Optional
@@ -125,6 +126,7 @@ def _apply_subscription_form(sub: Subscription, f: dict) -> Optional[str]:
     sub.min_participants = f["min_participants"]
     sub.cancel_hours_free = f["cancel_hours_free"]
     sub.cancel_hours_approval = f["cancel_hours_approval"]
+    sub.guest_days_ahead = f["guest_days_ahead"]
     sub.paypal_address = f["paypal_address"].strip()
     sub.payout_mode = (
         f["payout_mode"] if f["payout_mode"] in ("central", "member") else "central"
@@ -152,6 +154,7 @@ async def create_subscription(
     cancel_hours_approval: int = Form(0, ge=0, le=24 * 60),
     paypal_address: str = Form("", max_length=200),
     payout_mode: str = Form("central"),
+    guest_days_ahead: int = Form(5, ge=0, le=365),
     db: Session = Depends(get_db),
 ):
     form = dict(locals())
@@ -204,6 +207,7 @@ async def update_subscription(
     cancel_hours_approval: int = Form(0, ge=0, le=24 * 60),
     paypal_address: str = Form("", max_length=200),
     payout_mode: str = Form("central"),
+    guest_days_ahead: int = Form(5, ge=0, le=365),
     db: Session = Depends(get_db),
 ):
     form = dict(locals())
@@ -242,6 +246,27 @@ async def delete_subscription(
     name = sub.name
     services.delete_subscription(db, sub)
     return _redirect(f"Abo „{name}“ und alle zugehörigen Daten gelöscht")
+
+
+@router.post(
+    "/subscription/{sub_id}/guest-link/renew",
+    dependencies=[Depends(require_admin)],
+)
+async def renew_guest_link(
+    request: Request,
+    sub_id: str,
+    db: Session = Depends(get_db),
+):
+    """Replace the Abo-wide guest link; the old one stops working."""
+    sub = db.query(Subscription).filter(Subscription.id == sub_id).first()
+    if not sub:
+        return _redirect("Abo nicht gefunden", mt="error")
+    sub.guest_token = secrets.token_urlsafe(24)
+    db.commit()
+    return _redirect(
+        "Neuer Gast-Link erzeugt — der alte funktioniert nicht mehr",
+        f"/admin/subscription/{sub_id}",
+    )
 
 
 # ── Event Generation ─────────────────────────────────────────────────────
@@ -380,6 +405,7 @@ async def subscription_detail(
             "events": events,
             "members": members,
             "booked_by_event": booked_by_event,
+            "abo_guest_link": f"{public_base_url(request)}g/abo/{sub.guest_token}",
             "today": today,
             "date_override": clock.get_override(db),
             "msg": msg,

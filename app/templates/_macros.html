@@ -92,10 +92,10 @@
 {% endmacro %}
 
 {# Gastlink mit Kopieren-Button #}
-{% macro copy_link(link) %}
+{% macro copy_link(link, id="guest-link") %}
 <div class="copy-row mt-1">
-    <input type="text" id="guest-link" value="{{ link }}" readonly data-select-all aria-label="Gastlink">
-    <button type="button" class="btn btn-outline btn-sm" data-copy="#guest-link">Kopieren</button>
+    <input type="text" id="{{ id }}" value="{{ link }}" readonly data-select-all aria-label="Gastlink">
+    <button type="button" class="btn btn-outline btn-sm" data-copy="#{{ id }}">Kopieren</button>
 </div>
 {% endmacro %}
 

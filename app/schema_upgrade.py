@@ -87,6 +87,27 @@ def upgrade(engine: Engine) -> None:
                 "WHERE subscriptions.id = events.subscription_id)"
             )
 
+        # subscriptions: Abo-wide guest link + booking window
+        if "guest_token" not in sub_cols:
+            conn.exec_driver_sql(
+                "ALTER TABLE subscriptions ADD COLUMN guest_token VARCHAR(64)"
+            )
+            rows = conn.exec_driver_sql("SELECT id FROM subscriptions").fetchall()
+            for (sub_id,) in rows:
+                conn.exec_driver_sql(
+                    "UPDATE subscriptions SET guest_token = ? WHERE id = ?",
+                    (secrets.token_urlsafe(24), sub_id),
+                )
+            conn.exec_driver_sql(
+                "CREATE UNIQUE INDEX IF NOT EXISTS ix_subscriptions_guest_token "
+                "ON subscriptions (guest_token)"
+            )
+        if "guest_days_ahead" not in sub_cols:
+            conn.exec_driver_sql(
+                "ALTER TABLE subscriptions ADD COLUMN guest_days_ahead INTEGER "
+                "NOT NULL DEFAULT 5"
+            )
+
         # members: super-member flag
         member_cols = _columns(conn, "members")
         if "is_super" not in member_cols:

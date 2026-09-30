@@ -97,6 +97,15 @@ class Subscription(Base):
         String(10), nullable=False, default="central"
     )
 
+    # Abo-wide guest link (/g/abo/{guest_token}): always shows the next
+    # open event, bookable from guest_days_ahead days before its date.
+    guest_token: Mapped[str] = mapped_column(
+        String(64), nullable=False, unique=True, default=_public_token
+    )
+    guest_days_ahead: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=5
+    )
+
     # Email sender config
     email_sender: Mapped[Optional[str]] = mapped_column(
         String(200), nullable=True, default=""

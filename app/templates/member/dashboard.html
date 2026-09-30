@@ -291,6 +291,12 @@
 {% endif %}
 
 <div class="card">
+    <h2>Gast-Link fürs ganze Abo</h2>
+    <p class="muted small">Ein fester Link für die ganze Saison — z. B. für die Gruppe. Er zeigt immer den nächsten Termin, für Gäste buchbar ab {{ subscription.guest_days_ahead }} Tag{% if subscription.guest_days_ahead != 1 %}en{% endif %} vorher.</p>
+    {{ ui.copy_link(abo_guest_link, "abo-guest-link") }}
+</div>
+
+<div class="card">
     <h2>Zusatztermin anlegen</h2>
     <p class="muted small">Zusatztermine fallen nicht in den Abo-Gesamtpreis: eigenes Budget, alle Teilnehmer zahlen den gleichen Anteil.</p>
     {{ ui.extra_event_form("/member/extra-event", subscription, csrf_token) }}
