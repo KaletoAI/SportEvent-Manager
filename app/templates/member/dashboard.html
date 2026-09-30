@@ -169,6 +169,32 @@
     {% endif %}
 </div>
 
+<div class="card" id="calendar-card">
+    <h2>📆 Kalender-Abo</h2>
+    <p class="muted small">Deine Anmeldungen automatisch im eigenen Kalender: aus allen Abos, Absagen inklusive. Klappt mit Proton, Google, Apple, Outlook, Thunderbird und jedem Kalender, der „Abonnieren per URL“ (iCal) kann.</p>
+    {{ ui.copy_link(calendar_url, id="calendar-link", label="Kalender-Link") }}
+    <div class="actions mt-1">
+        <a class="btn btn-primary btn-sm" href="{{ calendar_webcal }}">In Kalender-App öffnen</a>
+        <a class="btn btn-outline btn-sm" href="https://calendar.google.com/calendar/r?cid={{ calendar_webcal|urlencode }}" target="_blank" rel="noopener">Google Kalender</a>
+    </div>
+    <details class="mt-1">
+        <summary>So geht's in deinem Kalender</summary>
+        <ul class="small hint-list">
+            <li><strong>Proton Calendar</strong> (Web): links bei „Andere Kalender“ auf „+“ → „Kalender von URL hinzufügen“ (Add calendar from URL), Link einfügen.</li>
+            <li><strong>Google Kalender</strong>: Button oben, oder am Computer „Weitere Kalender“ → „+“ → „Per URL“.</li>
+            <li><strong>iPhone, Mac, Outlook</strong>: „In Kalender-App öffnen“ antippen und bestätigen.</li>
+            <li><strong>Thunderbird</strong>: „Neuer Kalender“ → „Im Netzwerk“ → Link einfügen.</li>
+        </ul>
+        <p class="muted small">Neue Anmeldungen erscheinen nicht sofort: Kalender-Apps holen den Link nur in Abständen neu, Proton etwa alle 16 Stunden, Google alle paar Stunden. Maßgeblich ist immer die Liste hier.</p>
+        <p class="muted small">Der Link ist persönlich: Wer ihn hat, sieht deine Termine. Ist er in falsche Hände geraten, erzeuge einen neuen, dann funktioniert der alte nicht mehr.</p>
+        <form method="post" action="/member/calendar/renew"
+              data-confirm="Neuen Kalender-Link erzeugen? Der alte funktioniert dann nicht mehr, du musst den Kalender neu abonnieren.">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="btn btn-outline-danger btn-sm">Neuen Link erzeugen</button>
+        </form>
+    </details>
+</div>
+
 <div class="card">
     <h2>Vergangene Termine</h2>
     {% if past_events %}

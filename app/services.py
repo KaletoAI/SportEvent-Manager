@@ -13,6 +13,7 @@ Pricing model (cost sharing with frozen budgets):
   the minimum is refused (cancel the event instead).
 """
 
+import secrets
 from datetime import date, time, timedelta
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Optional
@@ -637,6 +638,18 @@ def upsert_person(
         )
         db.add(person)
     return person
+
+
+def calendar_token(db: Session, member: Member, renew: bool = False) -> str:
+    """Secret of the member's personal iCal feed (one per person/email,
+    shared by all memberships). Created on first use; `renew` replaces it
+    so the old feed URL stops working. Caller commits."""
+    person = db.query(Person).filter(Person.email == member.email).first()
+    if person is None:
+        person = upsert_person(db, member.name, member.email, member.paypal_address)
+    if renew or not person.calendar_token:
+        person.calendar_token = secrets.token_urlsafe(24)
+    return person.calendar_token
 
 
 # ── Payout target ──────────────────────────────────────────────────────────

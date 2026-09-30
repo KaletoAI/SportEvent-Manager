@@ -365,7 +365,11 @@ def main() -> None:
             login_as(ctx["member_token"])
             shot_split(("07-member-termine-1", "07-member-termine-2"),
                        "/member/dashboard", prepare=tab("📅 Termine"))
-            shot("08-member-meine", "/member/dashboard", prepare=tab("✅ Meine"))
+            shot_element("08-member-meine", "/member/dashboard", "#my-bookings",
+                         prepare=tab("✅ Meine"))
+
+            shot_element("08b-member-kalender", "/member/dashboard",
+                         "#calendar-card", prepare=tab("✅ Meine"))
             shot("09-member-konto", "/member/dashboard", prepare=tab("💶 Konto"))
 
             # Der Kontoauszug als eigenes Bild (auf dem Handy eine Karte je Buchung)

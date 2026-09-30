@@ -179,6 +179,16 @@ def upgrade(engine: Engine) -> None:
                 "NOT NULL DEFAULT 0"
             )
 
+        # persons: secret of the personal iCal feed (created lazily)
+        if "calendar_token" not in _columns(conn, "persons"):
+            conn.exec_driver_sql(
+                "ALTER TABLE persons ADD COLUMN calendar_token VARCHAR(64)"
+            )
+            conn.exec_driver_sql(
+                "CREATE UNIQUE INDEX IF NOT EXISTS ix_persons_calendar_token "
+                "ON persons (calendar_token)"
+            )
+
         # persons directory: one-time backfill from existing members
         (persons_count,) = conn.exec_driver_sql(
             "SELECT COUNT(*) FROM persons"

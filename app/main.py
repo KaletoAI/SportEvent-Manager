@@ -14,7 +14,7 @@ from app.auth import verify_csrf
 from app.config import settings
 from app.database import engine
 from app.models.models import Base
-from app.routes import admin, guest, member
+from app.routes import admin, calendar, guest, member
 from app.routes import help as help_routes
 from app.scheduler import scheduler_loop
 from app.schema_upgrade import upgrade
@@ -98,6 +98,9 @@ app.include_router(member.router, prefix="/member", tags=["member"], dependencie
 app.include_router(guest.router, prefix="/g", tags=["guest"], dependencies=csrf)
 app.include_router(
     help_routes.router, prefix="/hilfe", tags=["help"], dependencies=csrf
+)
+app.include_router(
+    calendar.router, prefix="/kalender", tags=["calendar"], dependencies=csrf
 )
 
 

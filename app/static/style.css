@@ -370,6 +370,7 @@ nav > strong {
 .muted { color: var(--text-muted); }
 .small { font-size: 0.85rem; }
 .mt-1 { margin-top: 1rem; }
+.hint-list { padding-left: 1.25rem; margin: 0.5rem 0; }
 .mb-0 { margin-bottom: 0; }
 .inline { display: inline; }
 .center { text-align: center; }

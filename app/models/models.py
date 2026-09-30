@@ -153,6 +153,11 @@ class Person(Base):
     paypal_address: Mapped[Optional[str]] = mapped_column(
         String(200), nullable=True, default=""
     )
+    # Secret of the personal iCal feed (/kalender/{token}.ics) — one per
+    # person, covers the bookings of all active memberships. Created lazily.
+    calendar_token: Mapped[Optional[str]] = mapped_column(
+        String(64), nullable=True, unique=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 

@@ -409,6 +409,12 @@ async def dashboard(
     past_bookings.reverse()
     booking_weeks = [w for w in booking_weeks if w["bookings"]]
 
+    # Kalender-Abo: persönlicher iCal-Feed (ein Link pro Person, alle Abos)
+    cal_token = services.calendar_token(db, member)
+    db.commit()
+    calendar_url = f"{public_base_url(request)}kalender/{cal_token}.ics"
+    calendar_webcal = "webcal://" + calendar_url.split("://", 1)[1]
+
     # Cancellation deadlines per upcoming event (hours before start)
     sub = member.subscription
     now = clock.now(db)
@@ -476,6 +482,8 @@ async def dashboard(
             "booking_weeks": booking_weeks,
             "past_bookings": past_bookings,
             "multi_abo": bool(other_memberships),
+            "calendar_url": calendar_url,
+            "calendar_webcal": calendar_webcal,
             "booked_event_ids": booked_event_ids,
             "free_by_event": free_by_event,
             "payments": payments,
@@ -625,6 +633,19 @@ async def unbook_event(
     return _redirect(
         f"Abmelden nicht mehr möglich (Frist: {sub.cancel_hours_approval} Stunden vor Termin)",
         mt="error",
+    )
+
+
+@router.post("/calendar/renew")
+async def renew_calendar_link(
+    member: Member = Depends(require_member),
+    db: Session = Depends(get_db),
+):
+    """Replace the personal calendar feed link; the old one stops working."""
+    services.calendar_token(db, member, renew=True)
+    db.commit()
+    return _redirect(
+        "Neuer Kalender-Link erzeugt — trage ihn in deiner Kalender-App neu ein"
     )
 
 
