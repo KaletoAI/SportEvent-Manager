@@ -123,6 +123,7 @@ def test_super_confirms_request(client, db, seed, ev, outbox):
     csrf = member_login(client, "sina@example.com")
     dash = client.get("/member/dashboard")
     assert "Gast-Anfragen" in dash.text
+    assert "Verwaltung (1)" in dash.text
     assert f"/member/guest-booking/{gb.id}/confirm" in dash.text
     resp = client.post(
         f"/member/guest-booking/{gb.id}/confirm",

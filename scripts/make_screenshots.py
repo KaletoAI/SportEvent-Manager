@@ -125,6 +125,7 @@ def demo_context() -> dict:
         "minus_token": create_session(db, member_id=minus.id).token,
         "next_event_id": upcoming[0].id,
         "next_event_token": upcoming[0].public_token,
+        "abo_guest_token": sub.guest_token,
         "full_event_id": upcoming[1].id,
         "settled_event_id": past[0].id,
     }
@@ -277,19 +278,21 @@ def main() -> None:
 
             shot_split(("02-admin-abo-formular-1", "02-admin-abo-formular-2"),
                        "/admin/subscription/new", prepare=fill_subscription_form)
-            shot_split(("03-admin-abo-detail-1", "03-admin-abo-detail-2"),
-                       f"/admin/subscription/{ctx['sub_id']}")
-            shot("04-admin-mitglied-formular",
-                 f"/admin/subscription/{ctx['sub_id']}/members/new")
             def neutral_guest_link():
-                """Der Gastlink enthält die Adresse des Testservers
+                """Die Gastlinks enthalten die Adresse des Testservers
                 (127.0.0.1:<Port>). Fürs Handbuch durch die Produktiv-Domain
                 ersetzen — rein kosmetisch, das Feld wird nicht abgeschickt."""
-                page.eval_on_selector(
-                    "#guest-link",
-                    "el => el.value = el.value.replace("
-                    f"/^https?:\\/\\/[^/]+/, '{PUBLIC_DOMAIN}')",
+                page.eval_on_selector_all(
+                    "#guest-link, #abo-guest-link",
+                    "els => els.forEach(el => el.value = el.value.replace("
+                    f"/^https?:\\/\\/[^/]+/, '{PUBLIC_DOMAIN}'))",
                 )
+
+            shot_split(("03-admin-abo-detail-1", "03-admin-abo-detail-2"),
+                       f"/admin/subscription/{ctx['sub_id']}",
+                       prepare=neutral_guest_link)
+            shot("04-admin-mitglied-formular",
+                 f"/admin/subscription/{ctx['sub_id']}/members/new")
 
             # Die Terminseite hat Tabs: Übersicht (Aktionen, Preisstaffel,
             # Gastlink) und die Anmeldungen der Mitglieder
@@ -362,8 +365,19 @@ def main() -> None:
             # Maximalpreises — dafür reicht eine einzelne Terminkarte.
             shot_element("13-super-preisstaffel", "/member/dashboard",
                          ".event-item", prepare=tab("📅 Termine"))
+            def verwaltung():
+                tab("⚙️ Verwaltung")()
+                neutral_guest_link()
+
             shot_split(("14-super-verwaltung-1", "14-super-verwaltung-2"),
-                       "/member/dashboard", prepare=tab("⚙️ Verwaltung"))
+                       "/member/dashboard", prepare=verwaltung)
+            # Die Gast-Anfragen als eigenes Bild
+            shot_element("14b-super-gast-anfragen", "/member/dashboard",
+                         "div.card:has(h2:text-is('Gast-Anfragen'))",
+                         prepare=verwaltung)
+            shot_element("14c-super-abo-link", "/member/dashboard",
+                         "div.card:has(h2:text-is('Gast-Link fürs ganze Abo'))",
+                         prepare=verwaltung)
             shot("15-super-teilnehmer",
                  f"/member/event/{ctx['settled_event_id']}/participants")
 
@@ -389,10 +403,14 @@ def main() -> None:
             page.fill("#name", "Kim Roth")
             page.fill("#email", "kim.roth@example.com")
             page.fill("#count", "2")
-            page.get_by_role("button", name="Verbindlich buchen").first.click()
+            # Die Mindestzahl ist erreicht → die Buchung wird zur Anfrage
+            page.locator("form[action$='/book'] button[type=submit]").click()
             page.wait_for_load_state("networkidle")
             time.sleep(0.35)
             capture("18-gast-bestaetigung")
+
+            # Der Abo-Gastlink vor Beginn des Buchungsfensters
+            shot_clip("19-gast-abo-link", f"/g/abo/{ctx['abo_guest_token']}", 720)
 
             browser.close()
     finally:

@@ -238,7 +238,7 @@ folgenden Angaben. Am besten schickst du sie ihm als komplette Liste.</p>
 <tr><td class="nowrap">Wochentag</td><td>An welchem Wochentag die Termine liegen. Ein Abo hat genau einen Wochentag.</td><td>Dienstag</td></tr>
 <tr><td class="nowrap">Beginn</td><td>Uhrzeit als Stunde und Minute.</td><td>18:30</td></tr>
 <tr><td class="nowrap">Dauer</td><td>Länge eines Termins in Minuten. Daraus errechnet die App das Ende.</td><td>120</td></tr>
-<tr><td class="nowrap">Min. Teilnehmer</td><td>Ab wie vielen Leuten der Termin stattfindet. Darunter wird abgesagt statt abgerechnet.</td><td>4</td></tr>
+<tr><td class="nowrap">Min. Teilnehmer</td><td>Ab wie vielen Leuten der Termin stattfindet. Darunter wird abgesagt statt abgerechnet. Link-Gäste darüber hinaus muss ein Super-Mitglied bestätigen.</td><td>4</td></tr>
 <tr><td class="nowrap">Max. Teilnehmer</td><td>Wie viele Plätze es gibt. Mitglieder <em>und</em> deren Gäste <em>und</em> Link-Gäste zählen mit.</td><td>8</td></tr>
 <tr><td class="nowrap">Erster Termin ab</td><td>Startdatum des Zeitraums. Die App erzeugt alle Termine dieses Wochentags darin.</td><td>07.04.2026</td></tr>
 <tr><td class="nowrap">Letzter Termin bis</td><td>Enddatum des Zeitraums.</td><td>29.09.2026</td></tr>
@@ -246,6 +246,7 @@ folgenden Angaben. Am besten schickst du sie ihm als komplette Liste.</p>
 <tr><td class="nowrap">Normalpreis gesamt</td><td>Dasselbe für Gäste, üblicherweise höher.</td><td>624,00 €</td></tr>
 <tr><td class="nowrap">Abmelden ohne Freigabe</td><td>Bis wie viele <strong>Stunden</strong> vor Beginn man sich frei abmelden darf.</td><td>48</td></tr>
 <tr><td class="nowrap">Abmelden mit Freigabe</td><td>Bis wie viele Stunden vorher eine Abmeldung noch möglich ist, aber ein Super-Mitglied zustimmen muss. <code>0</code> = bis zum Beginn.</td><td>12</td></tr>
+<tr><td class="nowrap">Gast-Link: buchbar ab</td><td>Wie viele <strong>Tage</strong> vor einem Termin Gäste ihn über den Abo-Gastlink buchen können (siehe Kapitel 5).</td><td>5</td></tr>
 <tr><td class="nowrap">Zahlungen gehen an</td><td>Entweder eine zentrale Kasse oder das Mitglied, das das Geld ausgelegt hat („Vorstrecker“, siehe unten).</td><td>Vorstrecker</td></tr>
 <tr><td class="nowrap">PayPal-Adresse</td><td>Die zentrale Adresse. Wird auch als Rückfallebene benutzt, wenn im Vorstrecker-Modus kein Mitglied infrage kommt.</td><td>kasse@example.com</td></tr>
 </tbody>
@@ -283,6 +284,10 @@ Zeitraums. Danach trägt er die Mitglieder ein.</p>
 <strong>PayPal-Adresse</strong> (nötig, wenn diese Person als Vorstrecker
 infrage kommen soll), ein <strong>Startguthaben</strong> und die Angabe, ob
 die Person <strong>Super-Mitglied</strong> sein soll.</p>
+
+<p>Auf der Abo-Seite steht außerdem der <strong>Gast-Link fürs ganze
+Abo</strong> zum Kopieren. Mit <em>Link neu erzeugen</em> wird er ersetzt —
+der alte funktioniert dann nicht mehr, falls er in falsche Hände geraten ist.</p>
 
 <div class="tip">
 <strong>Personen-Verzeichnis</strong>
@@ -532,13 +537,46 @@ Teilnehmern pro Person kostet.</p>
 <div class="figrow">
   <figure>
     <img src="screenshots/14-super-verwaltung-1.png" alt="Verwaltungstab mit Abmelde-Anfragen und abzurechnenden Terminen">
-    <figcaption>Abmelde-Anfragen und abzurechnende Termine</figcaption>
+    <figcaption>Gast- und Abmelde-Anfragen, abzurechnende Termine</figcaption>
   </figure>
   <figure>
     <img src="screenshots/14-super-verwaltung-2.png" alt="Formular für einen Zusatztermin">
     <figcaption>Zusatztermin anlegen</figcaption>
   </figure>
 </div>
+
+<h4>Gast-Anfragen bestätigen oder ablehnen</h4>
+<p>Gäste, die über einen Gastlink buchen, sind nur bis zur
+<strong>Mindestteilnehmerzahl</strong> sofort dabei. Wer danach bucht, stellt
+eine <strong>Anfrage</strong>: Der Platz ist reserviert, du bekommst eine
+E-Mail, und die Anfrage erscheint hier (und in der Teilnehmerliste des
+Termins). <strong>Bestätigen</strong> schickt dem Gast eine Bestätigung mit
+Maximalpreis und PayPal-Adresse, <strong>Ablehnen</strong> löscht die Buchung,
+informiert den Gast und lässt jemanden von der Warteliste nachrücken.
+Gäste, die Mitglieder selbst mitanmelden, brauchen keine Bestätigung. (Auf
+den Gastseiten heißen Super-Mitglieder „Plus-Mitglied“.)</p>
+
+<figure class="wide">
+  <img src="screenshots/14b-super-gast-anfragen.png" alt="Offene Gast-Anfrage mit Bestätigen und Ablehnen">
+  <figcaption>Eine offene Gast-Anfrage</figcaption>
+</figure>
+
+<div class="note">
+<strong>Offene Anfragen blockieren die Abrechnung.</strong>
+Solange zu einem Termin noch eine Gast-Anfrage offen ist, lässt er sich nicht
+abrechnen — auch nicht automatisch. So geht keine Anfrage unter.
+</div>
+
+<h4>Der Gast-Link fürs ganze Abo</h4>
+<p>Statt für jeden Termin einen eigenen Link zu verschicken, kannst du den
+<strong>Abo-Gastlink</strong> einmal in die Gruppe stellen. Er gilt die ganze
+Saison und zeigt immer den nächsten Termin — buchbar ab einigen Tagen vorher
+(Standard: 5).</p>
+
+<figure class="wide">
+  <img src="screenshots/14c-super-abo-link.png" alt="Abo-Gastlink mit Kopieren-Knopf">
+  <figcaption>Den Abo-Gastlink findest du ebenfalls unter ⚙️ Verwaltung</figcaption>
+</figure>
 
 <h4>Abmelde-Anfragen freigeben oder ablehnen</h4>
 <p>Meldet sich jemand nach Ablauf der freien Frist ab, landet die Anfrage
@@ -615,18 +653,29 @@ der Person, die das Geld bekommen hat.</p>
 <h2 id="gast">5. Als Gast buchen — ohne Konto</h2>
 
 <p>Gäste brauchen weder Konto noch Anmeldung. Ein Mitglied schickt dir einen
-Link zu einem bestimmten Termin — den öffnest du und buchst direkt.</p>
+Link — den öffnest du und buchst direkt. Es gibt zwei Arten:</p>
+<ul>
+  <li><strong>Termin-Link:</strong> gilt für genau einen Termin.</li>
+  <li><strong>Abo-Link:</strong> gilt die ganze Saison und zeigt immer den
+      nächsten Termin. Buchen kannst du ihn ab einigen Tagen vorher (meist 5) —
+      davor zeigt die Seite, ab wann es losgeht.</li>
+</ul>
 
 <div class="figrow">
   <figure>
     <img src="screenshots/17-gast-buchung.png" alt="Öffentliche Gastbuchungsseite">
-    <figcaption>Die Gastseite: Datum, freie Plätze, Maximalpreis</figcaption>
+    <figcaption>Die Gastseite — hier ist die Mindestzahl schon erreicht, die Buchung wird zur Anfrage</figcaption>
   </figure>
   <figure>
-    <img src="screenshots/18-gast-bestaetigung.png" alt="Bestätigung nach der Gastbuchung">
-    <figcaption>Bestätigung mit Betrag und Zahlungsziel</figcaption>
+    <img src="screenshots/18-gast-bestaetigung.png" alt="Anfrage eingegangen nach der Gastbuchung">
+    <figcaption>Anfrage eingegangen: wartet auf Bestätigung</figcaption>
   </figure>
 </div>
+
+<figure class="wide">
+  <img src="screenshots/19-gast-abo-link.png" alt="Abo-Gastlink vor Beginn des Buchungsfensters">
+  <figcaption>Der Abo-Link, bevor der nächste Termin buchbar ist</figcaption>
+</figure>
 
 <h3>So läuft es ab</h3>
 <ol>
@@ -635,7 +684,11 @@ Link zu einem bestimmten Termin — den öffnest du und buchst direkt.</p>
   <li><strong>Formular ausfüllen.</strong> Name, E-Mail und die Zahl der
       Personen, die du mitbringst — du selbst zählst mit.</li>
   <li><strong>Bestätigung lesen.</strong> Sie nennt den Höchstbetrag und die
-      PayPal-Adresse, an die du nach dem Termin zahlst.</li>
+      PayPal-Adresse, an die du nach dem Termin zahlst. Ist die
+      Mindestteilnehmerzahl schon erreicht, ist deine Buchung zunächst eine
+      <strong>Anfrage</strong>: Dein Platz ist reserviert, ein Plus-Mitglied
+      bestätigt sie, und du bekommst dann eine E-Mail. Die Bestätigungsseite
+      zeigt jederzeit den aktuellen Stand.</li>
   <li><strong>Nach dem Termin zahlen.</strong> Du bekommst eine E-Mail mit dem
       endgültigen Betrag — der kann nur niedriger sein als der angezeigte
       Maximalbetrag. Bitte gib Name und Termindatum im Verwendungszweck an.</li>
@@ -650,14 +703,14 @@ hat — sonst bleibt dein Platz blockiert und fehlt der Gruppe.
 
 <div class="note">
 <strong>Der Link ist ein Schlüssel.</strong>
-Jeder, der ihn hat, kann für diesen Termin buchen. Er gilt immer nur für
-einen einzigen Termin — gib ihn nur an Leute weiter, die auch wirklich
-mitspielen sollen.
+Jeder, der ihn hat, kann buchen — ein Termin-Link für seinen Termin, ein
+Abo-Link die ganze Saison lang. Gib ihn nur an Leute weiter, die auch wirklich
+mitspielen sollen. Der Admin kann den Abo-Link notfalls neu erzeugen.
 </div>
 
 <h2 id="mails">6. Welche E-Mails du bekommst</h2>
 
-<p>Der SportAbo Manager verschickt sieben verschiedene E-Mails. Alle kommen
+<p>Der SportAbo Manager verschickt zehn verschiedene E-Mails. Alle kommen
 vom selben Absender und nennen im Betreff das Abo und das Datum.</p>
 
 <table>
@@ -694,6 +747,24 @@ vom selben Absender und nennen im Betreff das Abo und das Datum.</p>
   <td>Wenn sich jemand nach Ablauf der freien Frist abmelden will.</td>
   <td>Super-Mitglieder</td>
   <td>Im Verwaltungsbereich freigeben oder ablehnen.</td>
+</tr>
+<tr>
+  <td class="nowrap"><strong>Gast-Anfrage</strong></td>
+  <td>Wenn ein Gast über den Link bucht, nachdem die Mindestzahl erreicht ist.</td>
+  <td>Super-Mitglieder</td>
+  <td>Im Verwaltungsbereich bestätigen oder ablehnen.</td>
+</tr>
+<tr>
+  <td class="nowrap"><strong>Gastbuchung bestätigt</strong></td>
+  <td>Sobald ein Super-Mitglied die Anfrage bestätigt hat.</td>
+  <td>Gast</td>
+  <td>Nichts — du bist dabei. Enthält Maximalpreis und Zahlungsziel.</td>
+</tr>
+<tr>
+  <td class="nowrap"><strong>Gastanfrage abgelehnt</strong></td>
+  <td>Wenn die Anfrage abgelehnt wurde.</td>
+  <td>Gast</td>
+  <td>Nichts — die Buchung ist hinfällig, es entstehen keine Kosten.</td>
 </tr>
 <tr>
   <td class="nowrap"><strong>Abrechnung</strong></td>
@@ -735,6 +806,8 @@ bekannt ist.
 <tr><td>eine erhaltene Zahlung bestätigen</td><td>💶 Konto → <em>Zahlungseingang bestätigen</em></td></tr>
 <tr><td>einen Termin abrechnen <span class="role-badge">⭐</span></td><td>⚙️ Verwaltung → <em>Abrechnen</em></td></tr>
 <tr><td>eine Abmelde-Anfrage bearbeiten <span class="role-badge">⭐</span></td><td>⚙️ Verwaltung → <em>Freigeben</em> / <em>Ablehnen</em></td></tr>
+<tr><td>eine Gast-Anfrage bearbeiten <span class="role-badge">⭐</span></td><td>⚙️ Verwaltung → <em>Bestätigen</em> / <em>Ablehnen</em></td></tr>
+<tr><td>den Gast-Link fürs ganze Abo teilen <span class="role-badge">⭐</span></td><td>⚙️ Verwaltung → Gast-Link → <em>Kopieren</em></td></tr>
 <tr><td>einen Zusatztermin anlegen <span class="role-badge">⭐</span></td><td>⚙️ Verwaltung → <em>Zusatztermin anlegen</em></td></tr>
 <tr><td>eine Gastzahlung abhaken <span class="role-badge">⭐</span></td><td>Terminkarte antippen → Gästeliste → <em>Bezahlt</em></td></tr>
 </tbody>

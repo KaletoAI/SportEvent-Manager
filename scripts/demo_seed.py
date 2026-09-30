@@ -235,6 +235,19 @@ def main() -> None:
         )
     )
     db.commit()
+    # Offene Gast-Anfrage: über den Link gebucht, als die Mindestzahl schon
+    # erreicht war — wartet auf Bestätigung durch ein Super-Mitglied.
+    # (confirmed_at erst nach dem Flush leeren, der Default greift sonst.)
+    request = GuestBooking(
+        event_id=nxt.id, name="Jana Pohl", email="jana.pohl@example.com", count=1
+    )
+    db.add(request)
+    db.flush()
+    request.confirmed_at = None
+    # Abo-Gastlink: nächster Termin knapp außerhalb des Buchungsfensters,
+    # damit die Seite „buchbar ab …“ zeigt (normalerweise 5 Tage).
+    sub.guest_days_ahead = max(0, min(5, (nxt.date - today).days - 1))
+    db.commit()
 
     # 2) Übernächster Termin: ausgebucht, mit Warteliste.
     full = future[1]
@@ -296,6 +309,7 @@ def main() -> None:
     print(f"Mitglied:     {members[1].email}")
     print(f"Minus-Konto:  {members[7].email} ({members[7].credit} €)")
     print(f"Gast-Link:    /g/{guest_token}")
+    print(f"Abo-Gastlink: /g/abo/{sub.guest_token}")
     db.close()
 
 

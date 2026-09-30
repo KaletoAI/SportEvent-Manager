@@ -38,7 +38,7 @@
     <button type="button" class="tab-btn" data-tab="meine">✅ Meine</button>
     <button type="button" class="tab-btn" data-tab="konto">💶 Konto</button>
     {% if member.is_super %}
-    <button type="button" class="tab-btn" data-tab="verwaltung">⚙️ Verwaltung{% if pending_requests %} ({{ pending_requests|length }}){% endif %}</button>
+    <button type="button" class="tab-btn" data-tab="verwaltung">⚙️ Verwaltung{% set open_count = pending_requests|length + guest_requests|length %}{% if open_count %} ({{ open_count }}){% endif %}</button>
     {% endif %}
 </div>
 
