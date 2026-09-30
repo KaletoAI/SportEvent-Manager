@@ -302,6 +302,51 @@ def main() -> None:
         db.add(Booking(event_id=extra.id, member_id=members[i].id))
     db.commit()
 
+    # ── Zweites Abo: Jonas spielt auch freitags in der Halle ─────────────
+    # Zeigt im Handbuch den Abo-Umschalter und die abo-übergreifende
+    # Liste „Meine Anmeldungen“.
+    hall_first = next_weekday(today - timedelta(days=1), 4)  # heute zählt mit
+    hall = Subscription(
+        name="Hallenvolleyball Freitag",
+        weekday=4,
+        start_time=time(20, 0),
+        duration_minutes=DURATION,
+        start_date=hall_first,
+        end_date=hall_first + timedelta(days=7 * 3),
+        abo_price=Decimal("160.00"),
+        default_price=Decimal("200.00"),
+        min_participants=4,
+        max_participants=12,
+    )
+    db.add(hall)
+    db.flush()
+    hall_members = [
+        Member(subscription_id=hall.id, name=name, email=email, is_super=False)
+        for name, email, _, _ in (PEOPLE[1], PEOPLE[2], PEOPLE[5])
+    ]
+    db.add_all(hall_members)
+    hall_events = []
+    for w in range(4):
+        d = hall_first + timedelta(days=7 * w)
+        end_dt = datetime.combine(d, time(20, 0)) + timedelta(minutes=DURATION)
+        ev = Event(
+            subscription_id=hall.id,
+            date=d,
+            start_time=time(20, 0),
+            end_time=end_dt.time(),
+            max_participants=hall.max_participants,
+            min_participants=hall.min_participants,
+        )
+        db.add(ev)
+        hall_events.append(ev)
+    db.flush()
+    db.refresh(hall)
+    services.recompute_budgets(db, hall)
+    for ev in hall_events[:3]:
+        for m in hall_members:
+            db.add(Booking(event_id=ev.id, member_id=m.id))
+    db.commit()
+
     guest_token = nxt.public_token
     print(f"Demo-DB:      {DB_PATH}")
     print(f"Abo:          {sub.name} ({sub.id})")

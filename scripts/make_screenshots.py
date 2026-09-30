@@ -89,12 +89,21 @@ def demo_context() -> dict:
     from app.models.models import Event, Member, Subscription
 
     db = SessionLocal()
-    sub = db.query(Subscription).first()
+    sub = (
+        db.query(Subscription)
+        .filter(Subscription.name == "Beachvolleyball Dienstag")
+        .first()
+    )
     if sub is None:
         raise SystemExit("Demo-DB ist leer — erst scripts/demo_seed.py laufen lassen.")
 
     def member(email: str) -> Member:
-        return db.query(Member).filter(Member.email == email).first()
+        # Personen mit zwei Abos: immer die Mitgliedschaft im Haupt-Abo
+        return (
+            db.query(Member)
+            .filter(Member.email == email, Member.subscription_id == sub.id)
+            .first()
+        )
 
     superm = member("lena.sommer@example.com")
     normal = member("jonas.berg@example.com")
@@ -371,7 +380,7 @@ def main() -> None:
             def open_transfer():
                 page.get_by_role("button", name="💶 Konto").first.click()
                 time.sleep(0.2)
-                page.locator("details summary").first.click()
+                page.locator("#tab-konto details summary").first.click()
                 time.sleep(0.2)
 
             shot("10-member-zahlungseingang", "/member/dashboard",

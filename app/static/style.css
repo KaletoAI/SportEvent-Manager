@@ -42,6 +42,12 @@
     --info-text: #1e40af;
     --info-border: #bfdbfe;
 
+    /* Tab „Meine“: Anmeldungen dieser / nächster Woche hervorheben */
+    --week-current-bg: #dcfce7;
+    --week-current-border: #16a34a;
+    --week-next-bg: #e0f2fe;
+    --week-next-border: #0284c7;
+
     --focus-ring: 0 0 0 3px rgba(37, 99, 235, 0.35);
     --shadow-card: none;
     --shadow-nav: 0 1px 4px rgba(0, 0, 0, 0.06);
@@ -86,6 +92,11 @@
     --info-bg: #15254a;
     --info-text: #93c5fd;
     --info-border: #1e3a70;
+
+    --week-current-bg: #123326;
+    --week-current-border: #34d399;
+    --week-next-bg: #0f2638;
+    --week-next-border: #38bdf8;
 
     --focus-ring: 0 0 0 3px rgba(79, 140, 255, 0.45);
     --shadow-card: 0 4px 16px rgba(0, 0, 0, 0.35);
@@ -319,6 +330,14 @@ nav > strong {
 .event-item .actions { margin-left: auto; justify-content: flex-end; }
 .event-item .book-form { display: flex; gap: 0.5rem; align-items: center; }
 .event-item .book-form input[type="number"] { width: 4.5rem; }
+
+/* Tab „Meine“: Wochen-Gruppen, diese und nächste Woche farbig hinterlegt */
+.week-heading { font-size: 1rem; margin: 1rem 0 0.5rem; }
+.week-heading:first-of-type { margin-top: 0.5rem; }
+.booking-item.week-current,
+.booking-item.week-next { border-left-width: 4px; }
+.booking-item.week-current { background: var(--week-current-bg); border-color: var(--week-current-border); }
+.booking-item.week-next { background: var(--week-next-bg); border-color: var(--week-next-border); }
 
 /* Antippbare Karten (data-href): ganze Karte öffnet die Detailseite.
    Der Chevron-Button rechts ist rein visuell (Kreis in Primärfarbe,

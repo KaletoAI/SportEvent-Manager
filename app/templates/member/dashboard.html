@@ -131,35 +131,41 @@
 
 {# ── Tab: Meine Anmeldungen + Vergangene Termine ───────────────────── #}
 <section class="tab-panel" id="tab-meine">
-<div class="card">
+{% macro booking_card(b, week, multi_abo) %}
+<div class="event-item booking-item week-{{ week }}">
+    <div>
+        <div class="when">
+            {{ b.event.date|date_de }}, {{ b.event.start_time|time_de }} Uhr{% if b.event.is_extra %} <span class="badge badge-info">Zusatz</span>{% endif %}
+            {% if b.event.is_cancelled %}<span class="badge badge-danger">Abgesagt</span>
+            {% elif b.event.settled_at %}<span class="badge badge-muted">Abgerechnet</span>
+            {% elif b.cancel_requested_at %}<span class="badge badge-warning">Abmeldung angefragt</span>
+            {% else %}<span class="badge badge-success">Angemeldet</span>{% endif %}
+        </div>
+        <div class="meta">
+            {% if multi_abo %}<strong>{{ b.event.subscription.name }}</strong>{% endif %}
+            {% if b.guest_count %}{% if multi_abo %} · {% endif %}+{{ b.guest_count }} Gast{% if b.guest_count > 1 %}e{% endif %}{% endif %}
+        </div>
+    </div>
+</div>
+{% endmacro %}
+<div class="card" id="my-bookings">
     <h2>Meine Anmeldungen</h2>
-    {% if my_bookings %}
-    <div class="table-wrap">
-    <table class="table-stack">
-        <thead>
-            <tr>
-                <th>Termin</th>
-                <th class="num">Gäste</th>
-                <th>Status</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for b in my_bookings %}
-            <tr>
-                <td>{{ b.event.date|date_de }}, {{ b.event.start_time|time_de }} Uhr{% if b.event.is_extra %} <span class="badge badge-info">Zusatz</span>{% endif %}</td>
-                <td class="num" data-label="Gäste">{{ b.guest_count }}</td>
-                <td data-label="Status">
-                    {% if b.event.is_cancelled %}<span class="badge badge-danger">Abgesagt</span>
-                    {% elif b.event.settled_at %}<span class="badge badge-muted">Abgerechnet</span>
-                    {% else %}<span class="badge badge-success">Angemeldet</span>{% endif %}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    {% if multi_abo %}<p class="muted small">Alle deine Abos auf einen Blick.</p>{% endif %}
+    {% for week in booking_weeks %}
+    <h3 class="week-heading">{{ week.label }}{% if week.key != "later" %} <span class="muted small">{{ week.start|date_short }} – {{ week.end|date_short }}</span>{% endif %}</h3>
+    <div class="event-list">
+        {% for b in week.bookings %}{{ booking_card(b, week.key, multi_abo) }}{% endfor %}
     </div>
     {% else %}
-    <p class="muted">Noch keine Anmeldungen.</p>
+    <p class="muted">Keine kommenden Anmeldungen.</p>
+    {% endfor %}
+    {% if past_bookings %}
+    <details class="mt-1">
+        <summary>Frühere Anmeldungen ({{ past_bookings|length }})</summary>
+        <div class="event-list mt-1">
+            {% for b in past_bookings %}{{ booking_card(b, "past", multi_abo) }}{% endfor %}
+        </div>
+    </details>
     {% endif %}
 </div>
 

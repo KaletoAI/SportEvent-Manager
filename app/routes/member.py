@@ -376,6 +376,39 @@ async def dashboard(
         .all()
     )
 
+    # Tab „Meine“: Anmeldungen aller aktiven Mitgliedschaften derselben Person,
+    # damit man abo-übergreifend sieht, wann man wo spielt. Kommende Termine
+    # nach Woche gruppiert (diese / nächste / später), vergangene separat.
+    all_my_bookings = (
+        db.query(Booking)
+        .join(Event)
+        .filter(Booking.member_id.in_([member.id] + [m.id for m in other_memberships]))
+        .order_by(Event.date, Event.start_time)
+        .all()
+    )
+    week_start = today - timedelta(days=today.weekday())
+    booking_weeks = [
+        {
+            "key": key,
+            "label": label,
+            "start": week_start + timedelta(days=7 * i),
+            "end": week_start + timedelta(days=7 * i + 6),
+            "bookings": [],
+        }
+        for i, (key, label) in enumerate(
+            [("current", "Diese Woche"), ("next", "Nächste Woche"), ("later", "Später")]
+        )
+    ]
+    past_bookings = []
+    for b in all_my_bookings:
+        if b.event.date < today:
+            past_bookings.append(b)
+        else:
+            weeks_ahead = min((b.event.date - week_start).days // 7, 2)
+            booking_weeks[weeks_ahead]["bookings"].append(b)
+    past_bookings.reverse()
+    booking_weeks = [w for w in booking_weeks if w["bookings"]]
+
     # Cancellation deadlines per upcoming event (hours before start)
     sub = member.subscription
     now = clock.now(db)
@@ -440,6 +473,9 @@ async def dashboard(
             "past_events": past_events,
             "my_bookings": my_bookings,
             "my_bookings_by_event": my_bookings_by_event,
+            "booking_weeks": booking_weeks,
+            "past_bookings": past_bookings,
+            "multi_abo": bool(other_memberships),
             "booked_event_ids": booked_event_ids,
             "free_by_event": free_by_event,
             "payments": payments,
