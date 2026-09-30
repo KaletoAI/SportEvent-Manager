@@ -16,3 +16,6 @@ data/
 __pycache__/
 *.pyc
 .pytest_cache/
+
+# graphify knowledge graph (lokal)
+graphify-out/
