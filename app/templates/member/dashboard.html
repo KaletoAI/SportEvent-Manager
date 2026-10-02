@@ -132,15 +132,18 @@
 
 {# ── Tab: Meine Anmeldungen + Vergangene Termine ───────────────────── #}
 <section class="tab-panel" id="tab-meine">
-{% macro booking_card(b, week, multi_abo, door_code="") %}
+{% macro booking_card(b, week, multi_abo, door_code="", count=None) %}
 <div class="event-item booking-item week-{{ week }}">
     <div>
         <div class="when">
             {{ b.event.date|date_de }}, {{ b.event.start_time|time_de }} Uhr{% if b.event.is_extra %} <span class="badge badge-info">Zusatz</span>{% endif %}
             {% if b.event.is_cancelled %}<span class="badge badge-danger">Abgesagt</span>
             {% elif b.event.settled_at %}<span class="badge badge-muted">Abgerechnet</span>
-            {% elif b.cancel_requested_at %}<span class="badge badge-warning">Abmeldung angefragt</span>
-            {% else %}<span class="badge badge-success">Angemeldet</span>{% endif %}
+            {% elif count is not none %}
+            {% if count < b.event.min_participants %}<span class="badge badge-warning">Noch {{ b.event.min_participants - count }} bis Mindestzahl</span>
+            {% else %}<span class="badge badge-success">Findet statt ({{ count }})</span>{% endif %}
+            {% if b.cancel_requested_at %}<span class="badge badge-warning">Abmeldung angefragt</span>{% endif %}
+            {% elif b.cancel_requested_at %}<span class="badge badge-warning">Abmeldung angefragt</span>{% endif %}
         </div>
         <div class="meta">
             {% if multi_abo %}<strong>{{ b.event.subscription.name }}</strong>{% endif %}
@@ -156,7 +159,7 @@
     {% for week in booking_weeks %}
     <h3 class="week-heading">{{ week.label }}{% if week.key != "later" %} <span class="muted small">{{ week.start|date_short }} – {{ week.end|date_short }}</span>{% endif %}</h3>
     <div class="event-list">
-        {% for b in week.bookings %}{{ booking_card(b, week.key, multi_abo, door_codes[b.event.id]) }}{% endfor %}
+        {% for b in week.bookings %}{{ booking_card(b, week.key, multi_abo, door_codes[b.event.id], my_booked_count[b.event.id]) }}{% endfor %}
     </div>
     {% else %}
     <p class="muted">Keine kommenden Anmeldungen.</p>

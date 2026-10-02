@@ -89,3 +89,34 @@ def test_my_bookings_ignores_inactive_other_membership(client, db, seed):
     html = client.get("/member/dashboard").text
     assert _items(html) == []
     assert "Keine kommenden Anmeldungen" in html
+
+
+def test_my_bookings_show_status_with_participant_count(client, db, seed):
+    """Statt „Angemeldet“: findet der Termin statt, mit wie vielen (Gäste
+    mitgezählt, auch Buchungen anderer im fremden Abo)?"""
+    anna = seed["member"]
+    anna2 = Member(
+        subscription_id=seed["other_sub"].id,
+        email="anna@example.com",
+        name="Anna",
+        password_hash="",
+    )
+    db.add(anna2)
+    db.flush()
+    short = _event(db, seed["sub"], date.today() + timedelta(days=1))
+    short.min_participants = 3
+    full = _event(db, seed["other_sub"], date.today() + timedelta(days=2))
+    db.add_all(
+        [
+            Booking(member_id=anna.id, event_id=short.id),
+            Booking(member_id=anna2.id, event_id=full.id),
+            Booking(member_id=seed["outsider"].id, event_id=full.id, guest_count=2),
+        ]
+    )
+    db.commit()
+
+    member_login(client)
+    items = _items(client.get("/member/dashboard").text)
+    assert "Noch 2 bis Mindestzahl" in items[0][1]
+    assert "Findet statt (4)" in items[1][1]
+    assert not any("Angemeldet" in text for _, text in items)

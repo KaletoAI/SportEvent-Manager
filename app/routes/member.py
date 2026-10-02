@@ -417,6 +417,11 @@ async def dashboard(
     past_bookings.reverse()
     booking_weeks = [w for w in booking_weeks if w["bookings"]]
 
+    # Teilnehmerzahl je kommendem Termin unter „Meine“ (auch fremde Abos)
+    my_booked_count = services.booked_counts(
+        db, [b.event.id for w in booking_weeks for b in w["bookings"]]
+    )
+
     # Türcodes der kommenden Termine (Termine-Tab + „Meine“, alle Abos)
     door_codes = {e.id: services.door_code(e) for e in upcoming_events}
     for w in booking_weeks:
@@ -495,6 +500,7 @@ async def dashboard(
             "my_bookings": my_bookings,
             "my_bookings_by_event": my_bookings_by_event,
             "booking_weeks": booking_weeks,
+            "my_booked_count": my_booked_count,
             "past_bookings": past_bookings,
             "multi_abo": bool(other_memberships),
             "calendar_url": calendar_url,
