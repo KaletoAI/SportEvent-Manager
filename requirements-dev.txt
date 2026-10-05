@@ -4,5 +4,5 @@ httpx2==2.13.1
 
 # Nur für die Handbuch-Screenshots (scripts/make_screenshots.py,
 # scripts/build_manual.py). Chromium separat holen: playwright install chromium
-playwright==1.62.0
+playwright==1.63.0
 pillow==12.3.0
