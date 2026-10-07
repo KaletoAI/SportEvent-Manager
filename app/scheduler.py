@@ -1,5 +1,5 @@
 """Background jobs: cancellation reminders, automatic settlement and
-housekeeping (expired sessions / login tokens).
+housekeeping (stale persons / expired sessions / login tokens).
 
 Runs as an asyncio task (see app.main lifespan) every
 `settings.scheduler_interval_seconds`. All date logic uses clock.today(db)
@@ -131,6 +131,12 @@ async def run_jobs() -> None:
     try:
         await send_cancel_reminders(db)
         await auto_settle_events(db)
+        # Deleting is irreversible — never on the admin's test date, which
+        # may sit months ahead and would expire real entries early.
+        if clock.get_override(db) is None:
+            deleted = services.purge_stale_persons(db)
+            if deleted:
+                logger.info("Person retention: %d persons deleted", deleted)
         purge_expired(db)
     except Exception:
         logger.exception("Scheduler run failed")

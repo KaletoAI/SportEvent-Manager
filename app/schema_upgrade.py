@@ -197,6 +197,12 @@ def upgrade(engine: Engine) -> None:
                 "ON persons (calendar_token)"
             )
 
+        # persons: retention clock survives deletion of the last Abo
+        if "last_season_end" not in _columns(conn, "persons"):
+            conn.exec_driver_sql(
+                "ALTER TABLE persons ADD COLUMN last_season_end DATE"
+            )
+
         # persons directory: one-time backfill from existing members
         (persons_count,) = conn.exec_driver_sql(
             "SELECT COUNT(*) FROM persons"

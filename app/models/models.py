@@ -161,6 +161,8 @@ class Person(Base):
     calendar_token: Mapped[Optional[str]] = mapped_column(
         String(64), nullable=True, unique=True
     )
+    # Last season end, retained after memberships are deleted.
+    last_season_end: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 

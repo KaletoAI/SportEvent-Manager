@@ -13,6 +13,7 @@ Pricing model (cost sharing with frozen budgets):
   the minimum is refused (cancel the event instead).
 """
 
+from calendar import monthrange
 import re
 import secrets
 from datetime import date, time, timedelta
@@ -606,6 +607,15 @@ def delete_subscription(db: Session, subscription: Subscription) -> None:
     central person directory are kept."""
     from app.models.models import LoginToken, UserSession
 
+    # Preserve the retention clock before removing the memberships.
+    season_ends = _person_season_ends(db)
+    emails = {normalize_email(m.email) for m in subscription.members}
+    persons = db.query(Person).filter(
+        func.lower(func.trim(Person.email)).in_(emails)
+    ).all()
+    for person in persons:
+        person.last_season_end = season_ends[normalize_email(person.email)]
+
     event_ids = [e.id for e in subscription.events]
     member_ids = [m.id for m in subscription.members]
     if event_ids or member_ids:
@@ -643,6 +653,49 @@ def delete_subscription(db: Session, subscription: Subscription) -> None:
 
 
 # ── Central user directory ─────────────────────────────────────────────────
+
+
+def _person_season_ends(db: Session) -> dict[str, date]:
+    """Latest season end per normalised email, including inactive members."""
+    email = func.lower(func.trim(Member.email))
+    return dict(
+        db.query(email, func.max(Subscription.end_date))
+        .join(Subscription, Member.subscription_id == Subscription.id)
+        .group_by(email)
+        .all()
+    )
+
+
+def purge_stale_persons(db: Session) -> int:
+    """Delete orphaned directory entries once the retention period expires."""
+    from app import clock
+    from app.config import settings
+
+    today = clock.today(db)
+    season_ends = _person_season_ends(db)
+    deleted = 0
+    for person in db.query(Person).all():
+        season_end = season_ends.get(normalize_email(person.email))
+        if season_end is not None:
+            person.last_season_end = season_end
+        elif person.last_season_end is None:
+            # Altbestand: ohne bekanntes Saisonende beginnt die Frist jetzt.
+            person.last_season_end = today
+        else:
+            year, month = divmod(
+                person.last_season_end.year * 12
+                + person.last_season_end.month - 1
+                + settings.data_retention_months,
+                12,
+            )
+            month += 1
+            day = min(person.last_season_end.day, monthrange(year, month)[1])
+            deadline = date(year, month, day)
+            if today >= deadline:
+                db.delete(person)
+                deleted += 1
+    db.commit()
+    return deleted
 
 
 def upsert_person(
