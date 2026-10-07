@@ -5,7 +5,7 @@ import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Request
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -17,6 +17,7 @@ from app.models.models import Base
 from app.routes import admin, calendar, guest, member
 from app.routes import help as help_routes
 from app.scheduler import scheduler_loop
+from app.templates import TemplateResponse
 from app.schema_upgrade import upgrade
 
 logging.basicConfig(level=logging.INFO)
@@ -35,6 +36,14 @@ if settings.app_env == "production" and not settings.base_url:
     logger.warning(
         "BASE_URL is not set — login links are built from the client-supplied "
         "Host header. Set BASE_URL in production."
+    )
+
+if settings.app_env == "production" and not (
+    settings.privacy_name and settings.privacy_email
+):
+    logger.warning(
+        "PRIVACY_NAME/PRIVACY_EMAIL are not set — the privacy policy at "
+        "/datenschutz names no controller."
     )
 
 @asynccontextmanager
@@ -111,6 +120,14 @@ app.include_router(
 @app.get("/")
 async def root():
     return RedirectResponse(url="/member/login")
+
+
+@app.get("/datenschutz")
+async def privacy(request: Request):
+    """Datenschutzerklärung — öffentlich, auch für Gäste ohne Konto."""
+    return TemplateResponse(
+        "datenschutz.html", {"request": request, "privacy": settings}
+    )
 
 
 @app.get("/health")

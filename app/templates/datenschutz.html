@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}Datenschutz — SportAbo Manager{% endblock %}
+{% block nav_title %}Datenschutz{% endblock %}
+{% block content %}
+<div class="card prose">
+    <h2>Datenschutzerklärung</h2>
+    <p>Diese Seite ist ein privat betriebenes Werkzeug, mit dem eine Gruppe
+    ihre Sport-Abos organisiert: Termine, An- und Abmeldungen, Gäste und die
+    Aufteilung der Kosten. Es gibt keine Werbung, kein Tracking und keine
+    Weitergabe deiner Daten zu fremden Zwecken.</p>
+
+    <h3>1. Verantwortlich</h3>
+    {% if privacy.privacy_name %}
+    <p>{{ privacy.privacy_name }}{% if privacy.privacy_address %}<br>{{ privacy.privacy_address }}{% endif %}
+    {% if privacy.privacy_email %}<br>E-Mail: <a href="mailto:{{ privacy.privacy_email }}">{{ privacy.privacy_email }}</a>{% endif %}</p>
+    {% else %}
+    <div class="msg msg-warning">Der Betreiber dieser Instanz hat noch keine
+    Kontaktdaten hinterlegt (<code>PRIVACY_NAME</code>,
+    <code>PRIVACY_EMAIL</code>).</div>
+    {% endif %}
+
+    <h3>2. Welche Daten verarbeitet werden</h3>
+    <p><strong>Als Mitglied:</strong> Name, E-Mail-Adresse und, falls du
+    Zahlungen entgegennimmst, deine PayPal-Adresse. Dazu deine An- und
+    Abmeldungen, Wartelistenplätze, die Zahl mitgebrachter Gäste (ohne deren
+    Namen), dein Guthaben mit Einzahlungen und Abrechnungen sowie deine Rolle
+    im Abo.</p>
+    <p><strong>Als Gast über einen Buchungslink:</strong> Name,
+    E-Mail-Adresse, Zahl der Personen, Zeitpunkt von Buchung und Bestätigung
+    und ob bzw. wie viel du bezahlt hast.</p>
+    <p><strong>Bei der Anmeldung:</strong> einmalige Login-Links und Codes
+    sowie deine Sitzung (siehe Cookies).</p>
+    <p><strong>Technisch:</strong> Bei jedem Aufruf protokolliert der Server
+    IP-Adresse, Zeitpunkt, aufgerufene Adresse und Ergebnis. Bei versendeten
+    E-Mails werden Empfängeradresse und Betreff protokolliert. Zur Abwehr von
+    Missbrauch zählt der Server Anmelde- und Buchungsversuche pro IP-Adresse
+    kurzzeitig im Arbeitsspeicher.</p>
+
+    <h3>3. Zwecke und Rechtsgrundlagen</h3>
+    <ul class="hint-list">
+        <li>Organisation der Abos, Abrechnung der Kosten und die dazugehörigen
+        E-Mails (Login-Link, Bestätigungen, Erinnerungen,
+        Zahlungsaufforderungen): Art. 6 Abs. 1 lit. b DSGVO, also die
+        Durchführung der Abo-Vereinbarung bzw. deiner Gastbuchung.</li>
+        <li>Server-Protokolle und Begrenzung von Anmeldeversuchen: Art. 6
+        Abs. 1 lit. f DSGVO. Das berechtigte Interesse ist ein sicherer
+        Betrieb und die Abwehr von Missbrauch.</li>
+    </ul>
+    <p>Ohne E-Mail-Adresse ist keine Anmeldung und keine Gastbuchung
+    möglich, weil darüber Login-Links, Bestätigungen und Abrechnungen laufen.
+    Es gibt keine automatisierte Entscheidungsfindung und kein Profiling.</p>
+
+    <h3>4. Wer die Daten sieht</h3>
+    <ul class="hint-list">
+        <li><strong>Organisatoren</strong> (Super-Mitglieder) sehen in ihrem
+        Abo die Teilnehmerlisten mit Gästen, Gast-Anfragen, Abmelde-Anfragen
+        und Zahlungsvermerke. Der Administrator sieht alle Daten.</li>
+        <li>Wer im Abo Zahlungen entgegennimmt, wird den anderen
+        Teilnehmenden mit Name und PayPal-Adresse in Zahlungsaufforderungen
+        genannt.</li>
+        <li><strong>Hosting:</strong> Server, E-Mail-Versand und verschlüsselte
+        Sicherungen laufen bei
+        {% if privacy.privacy_hosting %}{{ privacy.privacy_hosting }}{% else %}einem Hosting-Dienstleister{% endif %}
+        in der EU, als Auftragsverarbeiter mit Vertrag nach Art. 28
+        DSGVO.</li>
+        <li><strong>PayPal:</strong> Zahlungen laufen direkt zwischen dir und
+        PayPal. Diese Seite übermittelt nichts an PayPal. Für die Zahlung gilt
+        die Datenschutzerklärung von PayPal.</li>
+        <li><strong>Kalender-Abo:</strong> Wenn du deinen persönlichen
+        Kalender-Link in einer Kalender-App abonnierst, ruft deren Anbieter
+        deine Termine regelmäßig ab. Das entscheidest du selbst.</li>
+    </ul>
+    <p>Eine Übermittlung in Länder außerhalb der EU findet nicht statt.</p>
+
+    <h3>5. Cookies und Speicher im Browser</h3>
+    <p>Es werden nur technisch notwendige Cookies gesetzt, deshalb braucht
+    es keine Einwilligung (§ 25 Abs. 2 Nr. 2 TDDDG):</p>
+    <ul class="hint-list">
+        <li><code>session</code> hält dich angemeldet. Die Sitzung endet beim
+        Logout oder {{ privacy.session_max_age_days }} Tage nach der letzten
+        Nutzung.</li>
+        <li><code>csrf_token</code> schützt Formulare vor Fälschung.</li>
+    </ul>
+    <p>Im Browser-Speicher merkt sich die Seite außerdem das gewählte
+    Farbschema (hell/dunkel) und den zuletzt geöffneten Reiter. Schriften,
+    Skripte und Bilder kommen ausschließlich von diesem Server.</p>
+
+    <h3>6. Speicherdauer</h3>
+    <ul class="hint-list">
+        <li>Login-Links und Codes: {{ privacy.login_token_minutes }} Minuten.
+        Sitzungen: bis zum Logout, höchstens
+        {{ privacy.session_max_age_days }} Tage nach der letzten Nutzung.</li>
+        <li>Server-Protokolle: 14 Tage. Zähler gegen Missbrauch:
+        höchstens 24 Stunden.</li>
+        <li>Mitglieds- und Abrechnungsdaten: solange du in einem Abo bist,
+        danach bis {{ privacy.data_retention_months }} Monate nach Ende der
+        Saison (Ende des Abo-Zeitraums). Dann werden sie gelöscht.</li>
+        <li>Gastbuchungen: bis {{ privacy.data_retention_months }} Monate
+        nach Ende der Saison, zu der der gebuchte Termin gehört.</li>
+        <li>Gelöschte Daten verschwinden aus den verschlüsselten Sicherungen,
+        sobald diese turnusmäßig ausgedünnt werden.</li>
+    </ul>
+
+    <h3>7. Datensicherheit</h3>
+    <p>Die Verbindung zu dieser Seite ist per TLS verschlüsselt (https).
+    Die Anmeldung läuft ohne Passwort über einmalige Links bzw. Codes, und
+    die Sicherungen werden verschlüsselt gespeichert.</p>
+
+    <h3>8. Deine Rechte</h3>
+    <p>Du hast das Recht auf Auskunft (Art. 15 DSGVO), Berichtigung
+    (Art. 16), Löschung (Art. 17), Einschränkung der Verarbeitung (Art. 18)
+    und Datenübertragbarkeit (Art. 20). Schreib dafür einfach an die oben
+    genannte Adresse. Außerdem kannst du dich bei einer
+    Datenschutz-Aufsichtsbehörde beschweren (Art. 77 DSGVO), zum Beispiel bei
+    der deines Wohnorts.</p>
+
+    <div class="msg msg-info">
+        <strong>Widerspruchsrecht (Art. 21 DSGVO):</strong> Soweit Daten auf
+        Grundlage berechtigter Interessen verarbeitet werden (Abschnitt 3,
+        Server-Protokolle und Missbrauchsschutz), kannst du aus Gründen, die
+        sich aus deiner besonderen Situation ergeben, jederzeit widersprechen.
+        Eine formlose Nachricht an die oben genannte Adresse genügt.
+    </div>
+
+    <h3>9. Änderungen</h3>
+    <p>Diese Erklärung wird angepasst, wenn sich die Seite oder die
+    Rechtslage ändert. Es gilt die hier jeweils veröffentlichte Fassung.</p>
+
+    <p class="muted small">Stand: Oktober 2026</p>
+</div>
+{% endblock %}

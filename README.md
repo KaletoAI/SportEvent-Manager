@@ -101,6 +101,8 @@ Alle Einstellungen kommen aus der `.env` (Vorlage: `.env.example`):
 | `COOKIE_SECURE` | `true` hinter HTTPS |
 | `SMTP_*`, `EMAIL_FROM` | Mailversand; leer lassen heißt: keine E-Mails |
 | `ENABLE_SCHEDULER` | Hintergrundaufgaben an oder aus |
+| `PRIVACY_NAME`, `PRIVACY_ADDRESS`, `PRIVACY_EMAIL`, `PRIVACY_HOSTING` | Verantwortlicher und Hoster für die Datenschutzerklärung unter `/datenschutz` |
+| `DATA_RETENTION_MONTHS` | Löschfrist nach Saisonende, die die Datenschutzerklärung nennt (Standard 12) |
 
 ## Sicherheit
 

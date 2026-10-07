@@ -52,6 +52,17 @@ class Settings(BaseSettings):
     email_from: str = "noreply@sportabo.example.com"
     email_from_name: str = "SportAbo"
 
+    # Datenschutzerklärung (/datenschutz): Verantwortlicher und Hoster.
+    # Leer geht in Dev; in Produktion warnt der Start, solange Name oder
+    # E-Mail fehlen. privacy_hosting z. B. "Hetzner Online GmbH,
+    # Industriestr. 25, 91710 Gunzenhausen" — leer = generischer Text.
+    privacy_name: str = ""
+    privacy_address: str = ""
+    privacy_email: str = ""
+    privacy_hosting: str = ""
+    # Löschfrist in Monaten nach Saisonende (Ende des Abo-Zeitraums)
+    data_retention_months: int = 12
+
     data_dir: str = str(Path(__file__).resolve().parent.parent / "data")
 
     # extra="ignore": retired variables in an existing .env (e.g. the
