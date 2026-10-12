@@ -1163,10 +1163,7 @@ async def admin_delete_booking(
     back = f"/admin/event/{booking.event_id}"
     if booking.event.settled_at:
         return _redirect("Termin ist bereits abgerechnet", back, mt="error")
-    event = booking.event
-    db.delete(booking)
-    db.commit()
-    promoted = await services.promote_from_waitlist(db, event)
+    promoted = await services.remove_booking(db, booking)
     info = f" – {promoted[0].name} rückt nach" if promoted else ""
     return _redirect(f"Anmeldung entfernt{info}", back)
 
@@ -1191,10 +1188,7 @@ async def admin_delete_guest_booking(
             back,
             mt="error",
         )
-    event = gb.event
-    db.delete(gb)
-    db.commit()
-    promoted = await services.promote_from_waitlist(db, event)
+    promoted = await services.remove_booking(db, gb)
     info = f" – {promoted[0].name} rückt nach" if promoted else ""
     return _redirect(f"Gastbuchung entfernt{info}", back)
 

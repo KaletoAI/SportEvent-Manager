@@ -172,7 +172,8 @@ def _door_code_lines(door_code: str) -> list[str]:
 
 
 def cancel_reminder_email_body(
-    member_name: str, event_date: str, deadline: str, door_code: str = ""
+    member_name: str, event_date: str, deadline: str, door_code: str = "",
+    roster: str = "",
 ) -> str:
     return "\n".join(
         [
@@ -180,7 +181,31 @@ def cancel_reminder_email_body(
             "",
             f"du bist für den Termin am {event_date} angemeldet.",
             f"Bis {deadline} Uhr kannst du dich noch kostenlos abmelden.",
+            *(["", "Mit dabei:", roster] if roster else []),
             *_door_code_lines(door_code),
+            "",
+            "Sportliche Grüße",
+            "SportAbo Manager",
+        ]
+    )
+
+
+def minimum_participants_email_body(
+    recipient_name: str, event_date: str, start_time: str,
+    participants: int, minimum: int,
+) -> str:
+    missing = minimum - participants
+    return "\n".join(
+        [
+            f"Hallo {recipient_name},",
+            "",
+            f"nach einer Abmeldung sind für den Termin am {event_date} "
+            f"um {start_time} Uhr noch {participants} Personen angemeldet.",
+            f"Damit der Termin stattfinden kann, brauchen wir mindestens "
+            f"{minimum} Personen. Es fehlen noch {missing}.",
+            "",
+            "Frag bitte in deinem Bekanntenkreis nach, ob jemand mitspielen "
+            "möchte, damit der Termin stattfinden kann.",
             "",
             "Sportliche Grüße",
             "SportAbo Manager",
@@ -357,7 +382,7 @@ def guest_rejected_email_body(guest_name: str, event_date: str) -> str:
 
 def guest_reminder_email_body(
     guest_name: str, event_date: str, start_time: str, count: int,
-    door_code: str = "",
+    door_code: str = "", roster: str = "",
 ) -> str:
     persons = f" mit {count} Personen" if count > 1 else ""
     return "\n".join(
@@ -368,6 +393,7 @@ def guest_reminder_email_body(
             f"um {start_time} Uhr angemeldet.",
             "Falls du nicht kommen kannst, gib bitte dem Organisator "
             "Bescheid, damit dein Platz frei wird.",
+            *(["", "Mit dabei:", roster] if roster else []),
             *_door_code_lines(door_code),
             "",
             "Sportliche Grüße",

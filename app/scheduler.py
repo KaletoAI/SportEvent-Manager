@@ -50,6 +50,27 @@ async def send_cancel_reminders(db) -> int:
         last_free = start - timedelta(hours=sub.cancel_hours_free)
         if not (timedelta(0) < last_free - now <= timedelta(hours=24)):
             continue
+        guest_bookings = (
+            db.query(GuestBooking)
+            .filter(
+                GuestBooking.event_id == event.id,
+                GuestBooking.confirmed_at.isnot(None),
+            )
+            .all()
+        )
+        players = []
+        for booking in event.bookings:
+            name = services.clean_name(booking.member.name)
+            if booking.guest_count:
+                guests = "Gast" if booking.guest_count == 1 else "Gäste"
+                name += f" (+{booking.guest_count} {guests})"
+            players.append(name)
+        for gb in guest_bookings:
+            persons = "Person" if gb.count == 1 else "Personen"
+            players.append(f"{services.clean_name(gb.name)} ({gb.count} {persons})")
+        roster = "\n".join(
+            f"- {player}" for player in sorted(players, key=lambda name: (name.casefold(), name))
+        )
         mails = [
             Mail(
                 booking.member.email,
@@ -59,20 +80,13 @@ async def send_cancel_reminders(db) -> int:
                     event.date.strftime("%d.%m.%Y"),
                     last_free.strftime("%d.%m.%Y %H:%M"),
                     services.door_code(event),
+                    roster=roster,
                 ),
             )
             for booking in event.bookings
         ]
         # Link-Gäste erinnern (können nicht selbst stornieren → Bitte,
         # dem Organisator abzusagen, damit der Platz frei wird)
-        guest_bookings = (
-            db.query(GuestBooking)
-            .filter(
-                GuestBooking.event_id == event.id,
-                GuestBooking.confirmed_at.isnot(None),
-            )
-            .all()
-        )
         mails += [
             Mail(
                 gb.email,
@@ -83,6 +97,7 @@ async def send_cancel_reminders(db) -> int:
                     event.start_time.strftime("%H:%M"),
                     gb.count,
                     services.door_code(event),
+                    roster=roster,
                 ),
             )
             for gb in guest_bookings

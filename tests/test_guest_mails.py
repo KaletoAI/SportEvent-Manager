@@ -100,3 +100,35 @@ async def test_reminder_mails_guest(db, seed, outbox):
     assert "mit 2 Personen" in guest_mail["body"]
     # Idempotent: zweiter Lauf schickt nichts mehr
     assert await scheduler.send_cancel_reminders(db) == 0
+
+
+@pytest.mark.anyio
+async def test_reminder_lists_confirmed_players_without_contact_details(db, seed, outbox):
+    from app import clock
+
+    sub = seed["sub"]
+    sub.cancel_hours_free = 36
+    event = seed["event"]
+    event.start_time = clock.now(db).time().replace(microsecond=0)
+    clock.set_override(db, event.date - timedelta(days=2))
+    db.add(Booking(event_id=event.id, member_id=seed["member"].id, guest_count=2))
+    db.add(Booking(event_id=event.id, member_id=seed["super_member"].id))
+    db.add(GuestBooking(event_id=event.id, name="Gustav", email="gustav@example.com", count=2))
+    db.add(GuestBooking(event_id=event.id, name="Ohne Mail", email="", count=1))
+    pending = GuestBooking(event_id=event.id, name="Anfrage", email="pending@example.com")
+    db.add(pending)
+    db.flush()
+    pending.confirmed_at = None
+    db.commit()
+
+    await scheduler.send_cancel_reminders(db)
+
+    assert {m["to"] for m in outbox} == {"anna@example.com", "sina@example.com", "gustav@example.com"}
+    for mail in outbox:
+        roster = mail["body"]
+        assert "Anna" in roster and "2 Gäste" in roster
+        assert "Sina" in roster
+        assert "Gustav" in roster and "2 Personen" in roster
+        assert "Ohne Mail" in roster
+        assert "Anfrage" not in roster
+        assert "@example.com" not in roster

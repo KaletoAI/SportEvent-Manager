@@ -607,9 +607,7 @@ async def unbook_event(
 
     sub = member.subscription
     if now <= start - timedelta(hours=sub.cancel_hours_free):
-        db.delete(booking)
-        db.commit()
-        promoted = await services.promote_from_waitlist(db, event)
+        promoted = await services.remove_booking(db, booking)
         info = (
             f" – {promoted[0].name} rückt von der Warteliste nach"
             if promoted
@@ -900,10 +898,7 @@ async def approve_cancel_request(
     if booking.event.settled_at:
         return _redirect("Termin ist bereits abgerechnet", mt="error")
     name = booking.member.name
-    event = booking.event
-    db.delete(booking)
-    db.commit()
-    promoted = await services.promote_from_waitlist(db, event)
+    promoted = await services.remove_booking(db, booking)
     info = (
         f" – {promoted[0].name} rückt von der Warteliste nach" if promoted else ""
     )

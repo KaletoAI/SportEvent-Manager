@@ -16,11 +16,11 @@ Pricing model (cost sharing with frozen budgets):
 from calendar import monthrange
 import re
 import secrets
-from datetime import date, time, timedelta
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Optional
 
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app.emailer import (
@@ -29,6 +29,7 @@ from app.emailer import (
     guest_rejected_email_body,
     guest_request_email_body,
     guest_settlement_email_body,
+    minimum_participants_email_body,
     send_batch,
     settlement_email_body,
     waitlist_promoted_email_body,
@@ -81,6 +82,90 @@ def count_booked(db: Session, event_id: str) -> int:
         .scalar()
     )
     return int(member_spots) + int(guest_spots)
+
+
+async def remove_booking(
+    db: Session, booking: Booking | GuestBooking
+) -> list[Member]:
+    """Remove occupied spots, refill from the waitlist, then recruit if needed.
+
+    Callers enforce their existing permission, settlement and payment guards.
+    Pending guest reservations count here just as they do in count_booked.
+    """
+    event = booking.event
+    previous_participants = count_booked(db, event.id)
+    db.delete(booking)
+    db.commit()
+    promoted = await promote_from_waitlist(db, event)
+    await _notify_minimum_participants(db, event, previous_participants)
+    return promoted
+
+
+async def _notify_minimum_participants(
+    db: Session, event: Event, previous_participants: int
+) -> None:
+    """Send one search request per address only on a new minimum shortfall."""
+    from app import clock
+    from app.templates import format_date
+
+    if (
+        previous_participants < event.min_participants
+        or event.is_cancelled
+        or event.settled_at
+        or clock.now(db) >= datetime.combine(event.date, event.start_time)
+    ):
+        return
+    participants = count_booked(db, event.id)
+    if participants >= event.min_participants:
+        return
+    booked_member_ids = db.query(Booking.member_id).filter(
+        Booking.event_id == event.id
+    )
+    members = (
+        db.query(Member)
+        .filter(
+            Member.subscription_id == event.subscription_id,
+            Member.is_active.is_(True),
+            or_(Member.is_super.is_(True), Member.id.in_(booked_member_ids)),
+        )
+        .all()
+    )
+    guests = (
+        db.query(GuestBooking)
+        .filter(
+            GuestBooking.event_id == event.id,
+            GuestBooking.confirmed_at.isnot(None),
+        )
+        .all()
+    )
+    # Member names take precedence when a confirmed guest shares their address.
+    recipients: dict[str, str] = {}
+    for member in members:
+        email = normalize_email(member.email)
+        if email:
+            recipients.setdefault(email, member.name)
+    for guest in guests:
+        email = normalize_email(guest.email)
+        if email:
+            recipients.setdefault(email, guest.name)
+    await send_batch(
+        event.subscription,
+        [
+            Mail(
+                email,
+                f"Mitspieler gesucht: {format_date(event.date)} – "
+                f"{event.subscription.name}",
+                minimum_participants_email_body(
+                    name,
+                    event.date.strftime("%d.%m.%Y"),
+                    event.start_time.strftime("%H:%M"),
+                    participants,
+                    event.min_participants,
+                ),
+            )
+            for email, name in recipients.items()
+        ],
+    )
 
 
 def free_spots(db: Session, event: Event) -> int:
@@ -338,14 +423,13 @@ async def send_guest_confirmation(db: Session, gb: GuestBooking) -> None:
 
 
 async def reject_guest_booking(db: Session, gb: GuestBooking) -> list[Member]:
-    """Drop a request, tell the guest and refill the freed spots from the
-    waitlist. Returns the members promoted from the waitlist."""
+    """Remove a request through the shared waitlist/recruitment flow and tell
+    the rejected guest. Returns the members promoted from the waitlist."""
     from app.templates import format_date
 
     event = gb.event
     name, email = gb.name, gb.email
-    db.delete(gb)
-    db.commit()
+    promoted = await remove_booking(db, gb)
     if email:
         await send_batch(
             event.subscription,
@@ -358,7 +442,7 @@ async def reject_guest_booking(db: Session, gb: GuestBooking) -> list[Member]:
                 )
             ],
         )
-    return await promote_from_waitlist(db, event)
+    return promoted
 
 
 # ── Waitlist ───────────────────────────────────────────────────────────────

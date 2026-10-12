@@ -48,6 +48,11 @@ innerhalb ihres Abos: Termine absagen, Zusatztermine anlegen, abrechnen,
 Teilnehmerlisten sehen — ohne vollen Administratorzugang.
 
 **Erinnerungen und Auto-Abrechnung** laufen als Hintergrundaufgabe.
+Erinnerungsmails nennen die angemeldeten Mitspieler mit ihren Gästen, aber
+keine Kontaktdaten. Sinkt die Teilnehmerzahl durch eine Abmeldung
+unter das zuvor erreichte Minimum und reicht das Nachrücken von der Warteliste nicht aus,
+bekommen die verbleibenden Mitspieler und aktiven Super-Mitglieder eine
+Mail mit der Bitte, im Bekanntenkreis nach weiteren Spielern zu suchen.
 
 **Handbuch inklusive.** Unter `/hilfe` liegen ein ausführliches Handbuch und
 eine dreiseitige Kurzreferenz, beide mit Screenshots und zum Ausdrucken als
