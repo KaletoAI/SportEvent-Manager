@@ -108,6 +108,18 @@ def upgrade(engine: Engine) -> None:
                 "NOT NULL DEFAULT 5"
             )
 
+        # subscriptions: automatic vs. manually triggered payment mails
+        if "payment_mail_mode" not in sub_cols:
+            conn.exec_driver_sql(
+                "ALTER TABLE subscriptions ADD COLUMN payment_mail_mode "
+                "VARCHAR(10) NOT NULL DEFAULT 'auto'"
+            )
+        if "last_payment_request_at" not in sub_cols:
+            conn.exec_driver_sql(
+                "ALTER TABLE subscriptions ADD COLUMN last_payment_request_at "
+                "DATETIME"
+            )
+
         # members: super-member flag
         member_cols = _columns(conn, "members")
         if "is_super" not in member_cols:

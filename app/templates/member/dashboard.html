@@ -233,6 +233,23 @@
     <div class="stat-card"><div class="value">{{ my_bookings|length }}</div><div class="label">Anmeldungen</div></div>
 </div>
 
+{% if is_payee %}
+<div class="card">
+    <h2>Wer schuldet mir wie viel</h2>
+    <p class="muted small">Du bist aktuell der Zahlungsempfänger. Offene Posten: Zahlungen gleichen immer die ältesten Belastungen zuerst aus. Ist Geld angekommen, bestätige es direkt in der Zeile.</p>
+    {% call(d) ui.debts_table(debts, debt_total) %}
+    <form method="post" action="/member/transfer-received" class="inline"
+          data-confirm="Zahlungseingang von {{ d.member.name }} bestätigen? Dein Guthaben sinkt um den Betrag, das von {{ d.member.name }} steigt.">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="payer_id" value="{{ d.member.id }}">
+        <input type="number" name="amount" value="{{ '%.2f'|format(d.debt) }}" min="0.01" step="0.01" inputmode="decimal" required aria-label="Betrag von {{ d.member.name }}" class="input-amount">
+        <button type="submit" class="btn btn-success btn-sm">Erhalten</button>
+    </form>
+    {% endcall %}
+    {{ ui.payment_mail_controls(subscription, debts, "/member/payment-mails/mode", "/member/payment-mails/send", csrf_token) }}
+</div>
+{% endif %}
+
 {% if fellow_members %}
 <div class="card">
     <details>

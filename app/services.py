@@ -30,6 +30,7 @@ from app.emailer import (
     guest_request_email_body,
     guest_settlement_email_body,
     minimum_participants_email_body,
+    payment_request_email_body,
     send_batch,
     settlement_email_body,
     waitlist_promoted_email_body,
@@ -608,7 +609,10 @@ async def settle_and_notify(db: Session, event: Event) -> tuple[int, Decimal, in
     payee = payee_info(db, event.subscription)
     subject = f"Abrechnung {format_date(event.date)} – {event.subscription.name}"
     mails = []
-    for booking in event.bookings:
+    # Manueller Modus: keine Abrechnungsmail an Mitglieder — der
+    # Zahlungsempfänger verschickt gesammelte Aufforderungen per Knopf.
+    manual = event.subscription.payment_mail_mode == "manual"
+    for booking in [] if manual else event.bookings:
         member = booking.member
         amount = shares["member_share"] + booking.guest_count * shares["guest_share"]
         mails.append(
@@ -925,6 +929,115 @@ def unmark_guest_paid(db: Session, gb: GuestBooking) -> None:
     gb.paid_amount = None
     gb.paid_member_id = None
     db.commit()
+
+
+# ── Offene Beträge & Zahlungsaufforderungen ────────────────────────────────
+
+
+def open_items(db: Session, member: Member) -> list[dict]:
+    """Welche Belastungen das Minus eines Mitglieds ausmachen.
+
+    Das Konto kennt keine Einzelrechnungen: Zahlungen gleichen hier die
+    ältesten Belastungen zuerst aus. Offen sind also die jüngsten
+    Belastungen, die zusammen das Minus ergeben — die älteste davon ggf.
+    nur teilweise ('partial'). Ältester Posten zuerst; leer ohne Minus.
+    """
+    rest = -member.credit
+    if rest <= 0:
+        return []
+    debits = (
+        db.query(Payment)
+        .filter(Payment.member_id == member.id, Payment.amount < 0)
+        .order_by(Payment.created_at.desc(), Payment.id.desc())
+        .all()
+    )
+    items = []
+    for p in debits:
+        if rest <= 0:
+            break
+        amount = min(-p.amount, rest)
+        items.append(
+            {
+                "note": p.note or "Belastung",
+                "amount": amount,
+                "partial": amount < -p.amount,
+            }
+        )
+        rest -= amount
+    if rest > 0:
+        # Minus ohne passende Buchung (Altdaten, direkt gesetztes Guthaben)
+        items.append({"note": "Übertrag", "amount": rest, "partial": False})
+    items.reverse()
+    return items
+
+
+def debtors(db: Session, subscription: Subscription) -> list[dict]:
+    """Wer schuldet wie viel: alle Mitglieder des Abos im Minus außer dem
+    aktuellen Zahlungsempfänger, höchster Betrag zuerst.
+    [{'member', 'debt', 'items'}]"""
+    payee_id = payee_info(db, subscription)["member_id"]
+    members = (
+        db.query(Member)
+        .filter(Member.subscription_id == subscription.id, Member.credit < 0)
+        .all()
+    )
+    result = [
+        {"member": m, "debt": -m.credit, "items": open_items(db, m)}
+        for m in members
+        if m.id != payee_id
+    ]
+    result.sort(key=lambda d: (-d["debt"], d["member"].name))
+    return result
+
+
+async def send_payment_requests(
+    db: Session, subscription: Subscription
+) -> tuple[int, int]:
+    """Gesammelte Zahlungsaufforderung an jedes Mitglied im Minus: offener
+    Betrag, offene Posten, Zahlungsziel. Returns (debtors, mails sent)."""
+    from app.templates import format_euro
+
+    payee = payee_info(db, subscription)
+    open_debts = debtors(db, subscription)
+    mails = [
+        Mail(
+            d["member"].email,
+            f"Zahlungsaufforderung – {subscription.name}",
+            payment_request_email_body(
+                d["member"].name,
+                subscription.name,
+                format_euro(d["debt"]),
+                [
+                    (
+                        item["note"] + (" (Rest)" if item["partial"] else ""),
+                        format_euro(item["amount"]),
+                    )
+                    for item in d["items"]
+                ],
+                payee["paypal"],
+                payee["name"],
+            ),
+        )
+        for d in open_debts
+        if d["member"].email
+    ]
+    sent = await send_batch(subscription, mails)
+    if sent:
+        subscription.last_payment_request_at = utcnow()
+        db.commit()
+    return len(open_debts), sent
+
+
+def payment_request_result(count: int, sent: int) -> tuple[str, str]:
+    """Flash message (text, type) after send_payment_requests."""
+    if not count:
+        return "Niemand ist im Minus – keine Zahlungsaufforderung nötig", "success"
+    if not sent:
+        return "Kein E-Mail-Versand konfiguriert – keine Mails verschickt", "error"
+    return (
+        f"{sent} Zahlungsaufforderung{'en' if sent != 1 else ''} verschickt",
+        "success",
+    )
 
 
 # ── Stats ──────────────────────────────────────────────────────────────────

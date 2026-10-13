@@ -250,6 +250,7 @@ folgenden Angaben. Am besten schickst du sie ihm als komplette Liste.</p>
 <tr><td class="nowrap">Türcode (Saison)</td><td>Ein Code, der die ganze Saison gilt. Mitglieder sehen ihn in der App, Gäste mit bestätigter Buchung in der Mail. Hat jeder Termin einen eigenen Code, bleibt das Feld leer und der Code wird auf der Terminseite eingetragen.</td><td>34512</td></tr>
 <tr><td class="nowrap">Zahlungen gehen an</td><td>Entweder eine zentrale Kasse oder das Mitglied, das das Geld ausgelegt hat („Vorstrecker“, siehe unten).</td><td>Vorstrecker</td></tr>
 <tr><td class="nowrap">PayPal-Adresse</td><td>Die zentrale Adresse. Wird auch als Rückfallebene benutzt, wenn im Vorstrecker-Modus kein Mitglied infrage kommt.</td><td>kasse@example.com</td></tr>
+<tr><td class="nowrap">Zahlungsmails an Mitglieder</td><td><em>Automatisch</em>: Nach jeder Abrechnung bekommt jedes Mitglied eine Mail mit seinem Betrag. <em>Manuell</em>: Bei der Abrechnung geht keine Mail raus; der Zahlungsempfänger verschickt gesammelte Zahlungsaufforderungen per Knopf (siehe „Wer schuldet mir wie viel“). Der Vorstrecker kann das auch selbst im Konto-Tab umstellen.</td><td>Manuell</td></tr>
 </tbody>
 </table>
 
@@ -570,6 +571,23 @@ zum eigenen Nachteil.
   <figcaption>Zahlungseingang bestätigen</figcaption>
 </figure>
 
+<h4>Wer schuldet mir wie viel</h4>
+<p>Bist du gerade der Zahlungsempfänger (Vorstrecker), zeigt dir der
+Konto-Tab alle Mitglieder im Minus: wie viel jeder offen hat und für welche
+Termine. Zahlungen gleichen dabei immer die ältesten Termine zuerst aus — wer
+von 20 € schon 15 € gezahlt hat, hat beim älteren Termin nur noch einen Rest
+offen. Ist Geld angekommen, bestätigst du es direkt in der Zeile mit
+<em>Erhalten</em> (der offene Betrag ist schon eingetragen und lässt sich
+ändern).</p>
+<p>Darunter stellst du ein, ob Zahlungsmails <strong>automatisch</strong> nach
+jeder Abrechnung rausgehen oder ob du sie <strong>manuell</strong> auslöst.
+Im manuellen Modus drückst du z. B. einmal im Monat auf
+<em>Zahlungsaufforderungen senden</em>: Jedes Mitglied im Minus bekommt eine
+Mail mit seinem offenen Betrag, den offenen Terminen und deiner
+PayPal-Adresse. Der Knopf funktioniert auch im automatischen Modus — als
+Sammel-Erinnerung. Der Admin findet dieselbe Übersicht auf der Abo-Seite
+unter „Mitglieder“ → <em>Offene Beträge</em>.</p>
+
 <h4>Teilnehmerliste</h4>
 <p>Tippst du eine Terminkarte an, siehst du, wer sonst noch dabei ist,
 wie viele Plätze belegt sind und — nach der Abrechnung — deinen Anteil.</p>
@@ -881,6 +899,8 @@ bekannt ist.
 <tr><td>mein Guthaben prüfen</td><td>💶 Konto</td></tr>
 <tr><td>die App auf den Startbildschirm legen</td><td>Android: Chrome-Menü ⋮ → <em>App installieren</em> · iPhone: Safari → Teilen-Symbol → <em>Zum Home-Bildschirm</em></td></tr>
 <tr><td>eine erhaltene Zahlung bestätigen</td><td>💶 Konto → <em>Zahlungseingang bestätigen</em></td></tr>
+<tr><td>sehen, wer mir wie viel schuldet (als Vorstrecker)</td><td>💶 Konto → <em>Wer schuldet mir wie viel</em></td></tr>
+<tr><td>Zahlungsaufforderungen verschicken (als Vorstrecker)</td><td>💶 Konto → <em>Zahlungsaufforderungen senden</em></td></tr>
 <tr><td>einen Termin abrechnen <span class="role-badge">⭐</span></td><td>⚙️ Verwaltung → <em>Abrechnen</em></td></tr>
 <tr><td>eine Abmelde-Anfrage bearbeiten <span class="role-badge">⭐</span></td><td>⚙️ Verwaltung → <em>Freigeben</em> / <em>Ablehnen</em></td></tr>
 <tr><td>eine Gast-Anfrage bearbeiten <span class="role-badge">⭐</span></td><td>⚙️ Verwaltung → <em>Bestätigen</em> / <em>Ablehnen</em></td></tr>

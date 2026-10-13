@@ -96,6 +96,16 @@ class Subscription(Base):
     payout_mode: Mapped[str] = mapped_column(
         String(10), nullable=False, default="central"
     )
+    # Zahlungsaufforderungen an Mitglieder: "auto" = Abrechnungsmail mit
+    # Betrag direkt nach jeder Abrechnung, "manual" = keine Mail bei der
+    # Abrechnung; der Zahlungsempfänger verschickt gesammelte Aufforderungen
+    # per Knopf (services.send_payment_requests), z. B. einmal im Monat.
+    payment_mail_mode: Mapped[str] = mapped_column(
+        String(10), nullable=False, default="auto"
+    )
+    last_payment_request_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime, nullable=True
+    )
 
     # Abo-wide guest link (/g/abo/{guest_token}): always shows the next
     # open event, bookable from guest_days_ahead days before its date.

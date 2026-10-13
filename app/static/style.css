@@ -376,6 +376,9 @@ nav > strong {
 .door-code strong { font-variant-numeric: tabular-nums; letter-spacing: 0.08em; }
 .mb-0 { margin-bottom: 0; }
 .inline { display: inline; }
+/* Betragsfeld neben einem Knopf (z. B. „Erhalten“ in Offene Beträge) */
+.input-amount { width: 6.5rem; display: inline-block; }
+.nobreak { white-space: nowrap; }
 .center { text-align: center; }
 .qr-code { background: var(--qr-bg); padding: 0.5rem; border-radius: 8px; max-width: 100%; height: auto; }
 .secret-key { font-family: ui-monospace, monospace; font-size: 1rem; letter-spacing: 0.05em; user-select: all; }

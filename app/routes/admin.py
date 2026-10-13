@@ -220,6 +220,9 @@ def _apply_subscription_form(sub: Subscription, f: dict) -> Optional[str]:
     sub.payout_mode = (
         f["payout_mode"] if f["payout_mode"] in ("central", "member") else "central"
     )
+    sub.payment_mail_mode = (
+        "manual" if f["payment_mail_mode"] == "manual" else "auto"
+    )
     return None
 
 
@@ -243,6 +246,7 @@ async def create_subscription(
     cancel_hours_approval: int = Form(0, ge=0, le=24 * 60),
     paypal_address: str = Form("", max_length=200),
     payout_mode: str = Form("central"),
+    payment_mail_mode: str = Form("auto"),
     guest_days_ahead: int = Form(5, ge=0, le=365),
     door_code: str = Form("", max_length=50),
     db: Session = Depends(get_db),
@@ -297,6 +301,7 @@ async def update_subscription(
     cancel_hours_approval: int = Form(0, ge=0, le=24 * 60),
     paypal_address: str = Form("", max_length=200),
     payout_mode: str = Form("central"),
+    payment_mail_mode: str = Form("auto"),
     guest_days_ahead: int = Form(5, ge=0, le=365),
     door_code: str = Form("", max_length=50),
     db: Session = Depends(get_db),
@@ -488,6 +493,7 @@ async def subscription_detail(
     )
     booked_by_event = services.booked_counts(db, [e.id for e in events])
     today = clock.today(db)
+    debts = services.debtors(db, sub)
     return TemplateResponse(
         "admin/subscription_detail.html",
         {
@@ -495,6 +501,9 @@ async def subscription_detail(
             "subscription": sub,
             "events": events,
             "members": members,
+            "debts": debts,
+            "debt_total": sum((d["debt"] for d in debts), Decimal("0.00")),
+            "payee": services.payee_info(db, sub),
             "booked_by_event": booked_by_event,
             "abo_guest_link": f"{public_base_url(request)}g/abo/{sub.guest_token}",
             "today": today,
@@ -503,6 +512,24 @@ async def subscription_detail(
             "msg_type": mt,
         },
     )
+
+
+@router.post(
+    "/subscription/{sub_id}/payment-mails/send",
+    dependencies=[Depends(require_admin)],
+)
+async def send_payment_mails(
+    request: Request,
+    sub_id: str,
+    db: Session = Depends(get_db),
+):
+    """Gesammelte Zahlungsaufforderungen an alle Mitglieder im Minus."""
+    sub = db.query(Subscription).filter(Subscription.id == sub_id).first()
+    if not sub:
+        return _redirect("Abo nicht gefunden", mt="error")
+    count, sent = await services.send_payment_requests(db, sub)
+    msg, mt = services.payment_request_result(count, sent)
+    return _redirect(msg, f"/admin/subscription/{sub_id}", mt)
 
 
 # ── Member Management ────────────────────────────────────────────────────

@@ -282,6 +282,36 @@ def settlement_email_body(
     return "\n".join(lines)
 
 
+def payment_request_email_body(
+    member_name: str,
+    subscription_name: str,
+    debt: str,
+    items: list[tuple[str, str]],
+    paypal: Optional[str],
+    payee_name: Optional[str] = None,
+) -> str:
+    """Gesammelte Zahlungsaufforderung: offener Betrag + offene Posten
+    (Notiz, Betrag), ältester zuerst."""
+    lines = [
+        f"Hallo {member_name},",
+        "",
+        f"dein Guthaben im Abo „{subscription_name}“ ist im Minus. "
+        f"Offen sind {debt}:",
+        "",
+    ]
+    lines += [f"  – {note}: {amount}" for note, amount in items]
+    if paypal:
+        target = f"an {payee_name} per PayPal" if payee_name else "per PayPal"
+        lines += [
+            "",
+            f"Bitte zahle {debt} {target}:",
+            paypal,
+            "Bitte deinen Namen im Verwendungszweck angeben.",
+        ]
+    lines += ["", "Sportliche Grüße", "SportAbo Manager"]
+    return "\n".join(lines)
+
+
 def guest_settlement_email_body(
     guest_name: str,
     event_date: str,

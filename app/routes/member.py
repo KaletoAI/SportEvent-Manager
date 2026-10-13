@@ -357,13 +357,13 @@ async def dashboard(
         .all()
     )
     spending = services.member_spending(db, member.id)
-    payee = (
-        services.payee_info(db, member.subscription)
-        if member.credit < 0
-        else None
-    )
-    if payee and payee["member_id"] == member.id:
-        payee = None  # der Zahlungsempfänger zahlt nicht an sich selbst
+    payee = services.payee_info(db, member.subscription)
+    is_payee = payee["member_id"] == member.id
+    # Zahlungshinweis nur im Minus — und nie an sich selbst
+    if member.credit >= 0 or is_payee:
+        payee = None
+    # Zahlungsempfänger: Übersicht „Wer schuldet mir wie viel“
+    debts = services.debtors(db, member.subscription) if is_payee else []
     fellow_members = (
         db.query(Member)
         .filter(
@@ -511,6 +511,9 @@ async def dashboard(
             "payments": payments,
             "spending": spending,
             "payee": payee,
+            "is_payee": is_payee,
+            "debts": debts,
+            "debt_total": sum((d["debt"] for d in debts), Decimal("0.00")),
             "fellow_members": fellow_members,
             "other_memberships": other_memberships,
             "booked_count": booked_count,
@@ -715,6 +718,48 @@ async def confirm_transfer_received(
     return _redirect(
         f"Zahlungseingang bestätigt: {payer.name} → du, {format_euro(amount)}"
     )
+
+
+def _is_payee(db: Session, member: Member) -> bool:
+    return services.payee_info(db, member.subscription)["member_id"] == member.id
+
+
+@router.post("/payment-mails/mode")
+async def set_payment_mail_mode(
+    request: Request,
+    mode: str = Form(...),
+    member: Member = Depends(require_member),
+    db: Session = Depends(get_db),
+):
+    """Zahlungsempfänger: Abrechnungsmails automatisch oder per Knopf."""
+    if not _is_payee(db, member):
+        return _redirect("Nur der Zahlungsempfänger kann das einstellen", mt="error")
+    if mode not in ("auto", "manual"):
+        return _redirect("Ungültige Einstellung", mt="error")
+    member.subscription.payment_mail_mode = mode
+    db.commit()
+    return _redirect(
+        "Zahlungsmails gehen direkt nach jeder Abrechnung raus"
+        if mode == "auto"
+        else "Zahlungsmails verschickst du jetzt selbst per Knopf"
+    )
+
+
+@router.post("/payment-mails/send")
+async def send_payment_mails(
+    request: Request,
+    member: Member = Depends(require_member),
+    db: Session = Depends(get_db),
+):
+    """Zahlungsempfänger: gesammelte Zahlungsaufforderungen verschicken."""
+    if not _is_payee(db, member):
+        return _redirect(
+            "Nur der Zahlungsempfänger kann Zahlungsaufforderungen senden",
+            mt="error",
+        )
+    count, sent = await services.send_payment_requests(db, member.subscription)
+    msg, mt = services.payment_request_result(count, sent)
+    return _redirect(msg, mt=mt)
 
 
 # ── Warteliste ─────────────────────────────────────────────────────────────

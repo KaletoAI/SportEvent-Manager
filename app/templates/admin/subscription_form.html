@@ -102,6 +102,15 @@
                 <input type="text" id="paypal_address" name="paypal_address" value="{{ subscription.paypal_address if subscription else '' }}" placeholder="paypal@example.com">
             </div>
         </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="payment_mail_mode">Zahlungsmails an Mitglieder</label>
+                <select id="payment_mail_mode" name="payment_mail_mode">
+                    <option value="auto" {% if not subscription or subscription.payment_mail_mode != 'manual' %}selected{% endif %}>Automatisch nach jeder Abrechnung</option>
+                    <option value="manual" {% if subscription and subscription.payment_mail_mode == 'manual' %}selected{% endif %}>Manuell per Knopf (gesammelt, z. B. monatlich)</option>
+                </select>
+            </div>
+        </div>
         <p class="muted small">„Vorstrecker“-Modus: Zahlungsaufforderungen (Abrechnungsmail, Gastbestätigung) nennen das Mitglied mit dem höchsten Guthaben und dessen PayPal-Adresse. Eingehende Zahlungen erfasst du beim zahlenden Mitglied unter „Zahlung an Mitglied erfassen“ — dabei sinkt das Guthaben des Empfängers entsprechend.</p>
         <button type="submit" class="btn btn-primary btn-block">
             {% if subscription %}Speichern{% else %}Abo anlegen{% endif %}

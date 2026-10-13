@@ -130,6 +130,15 @@
     <p class="muted">Noch keine Mitglieder.</p>
     {% endif %}
 </div>
+
+<div class="card">
+    <h2>Offene Beträge</h2>
+    <p class="muted small">Mitglieder im Minus{% if payee.name %} — Zahlungsempfänger ist aktuell <strong>{{ payee.name }}</strong>{% endif %}. Zahlungen gleichen immer die ältesten Belastungen zuerst aus. Einstellung „Zahlungsmails“ unter „Bearbeiten“.</p>
+    {% call(d) ui.debts_table(debts, debt_total) %}
+    <a href="/admin/member/{{ d.member.id }}/edit" class="btn btn-outline btn-sm">Zahlung buchen</a>
+    {% endcall %}
+    {{ ui.payment_mail_controls(subscription, debts, None, "/admin/subscription/" ~ subscription.id ~ "/payment-mails/send", csrf_token) }}
+</div>
 </section>
 
 <div class="tab-spacer"></div>

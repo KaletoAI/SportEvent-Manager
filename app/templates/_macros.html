@@ -31,6 +31,67 @@
 {% endif %}
 {% endmacro %}
 
+{# „Wer schuldet wie viel“ (Zahlungsempfänger: Konto-Tab, Admin: Abo-Seite).
+   Mit {% call(d) %} lässt sich je Zeile eine Aktion einsetzen. #}
+{% macro debts_table(debts, total) %}
+{% if debts %}
+<div class="table-wrap">
+<table class="table-stack">
+    <thead>
+        <tr><th>Mitglied</th><th>Offene Posten</th><th class="num">Offen</th>{% if caller is defined %}<th></th>{% endif %}</tr>
+    </thead>
+    <tbody>
+        {% for d in debts %}
+        <tr>
+            <td>{{ d.member.name }}{% if not d.member.is_active %} <span class="badge badge-muted">Inaktiv</span>{% endif %}</td>
+            <td class="wrap" data-label="Offene Posten"><div>{% for i in d['items'] %}<div>{{ i.note }}: <span class="nobreak">{{ i.amount|euro }}{% if i.partial %} (Rest){% endif %}</span></div>{% endfor %}</div></td>
+            <td class="num" data-label="Offen"><strong>{{ d.debt|euro }}</strong></td>
+            {% if caller is defined %}<td>{{ caller(d) }}</td>{% endif %}
+        </tr>
+        {% endfor %}
+        <tr class="total">
+            <td>Gesamt</td>
+            <td></td>
+            <td class="num" data-label="Offen"><strong>{{ total|euro }}</strong></td>
+            {% if caller is defined %}<td></td>{% endif %}
+        </tr>
+    </tbody>
+</table>
+</div>
+{% else %}
+<p class="muted">Niemand ist im Minus — alles beglichen.</p>
+{% endif %}
+{% endmacro %}
+
+{# Zahlungsmails automatisch oder per Knopf (Zahlungsempfänger / Admin) #}
+{% macro payment_mail_controls(subscription, debts, mode_action, send_action, csrf_token) %}
+{% if mode_action %}
+<form method="post" action="{{ mode_action }}" class="mt-1">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="form-row">
+        <div class="form-group">
+            <label for="pm_mode">Zahlungsmails an Mitglieder</label>
+            <select id="pm_mode" name="mode">
+                <option value="auto" {% if subscription.payment_mail_mode != 'manual' %}selected{% endif %}>Automatisch nach jeder Abrechnung</option>
+                <option value="manual" {% if subscription.payment_mail_mode == 'manual' %}selected{% endif %}>Manuell per Knopf (gesammelt)</option>
+            </select>
+        </div>
+    </div>
+    <button type="submit" class="btn btn-outline btn-sm">Einstellung speichern</button>
+</form>
+{% endif %}
+<p class="muted small mt-1">
+    {% if subscription.payment_mail_mode == 'manual' %}Bei der Abrechnung bekommen Mitglieder keine Mail. Mit dem Knopf erhält jeder im Minus eine Sammel-Aufforderung mit offenem Betrag und offenen Terminen.
+    {% else %}Mitglieder bekommen nach jeder Abrechnung eine Mail mit ihrem Betrag. Mit dem Knopf kannst du zusätzlich eine Sammel-Erinnerung an alle im Minus schicken.{% endif %}
+    {% if subscription.last_payment_request_at %}Zuletzt verschickt: {{ subscription.last_payment_request_at|date_de }}.{% endif %}
+</p>
+<form method="post" action="{{ send_action }}" class="mt-1"
+      data-confirm="Zahlungsaufforderung an {{ debts|length }} Mitglied{% if debts|length != 1 %}er{% endif %} im Minus senden?">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="btn btn-primary btn-sm" {% if not debts %}disabled{% endif %}>📧 Zahlungsaufforderungen senden ({{ debts|length }})</button>
+</form>
+{% endmacro %}
+
 {# Zusatztermin anlegen (Admin: Abo-Seite, Super: Dashboard) #}
 {% macro extra_event_form(action, subscription, csrf_token) %}
 <form method="post" action="{{ action }}" class="mt-1">

@@ -37,7 +37,10 @@ Termin voll, gibt es eine Warteliste, die automatisch nachrückt.
 **Abrechnung.** Nach einem Termin wird abgerechnet: Jedes Mitglied wird mit
 seinem Anteil belastet, das Guthabenkonto aktualisiert, und alle Beteiligten
 bekommen eine E-Mail mit ihrem Betrag. Gäste erhalten eine Zahlungsauf-
-forderung, deren Eingang sich abhaken lässt.
+forderung, deren Eingang sich abhaken lässt. Wahlweise verschickt der
+Zahlungsempfänger die Mails an Mitglieder gesammelt per Knopf (z. B. einmal
+im Monat) und sieht in einer Übersicht, wer ihm wie viel für welche Termine
+schuldet.
 
 **Absagen mit Fristen.** Zwei Fristen pro Abo regeln, bis wann man sich frei
 abmelden kann, ab wann nur noch auf Anfrage, und ab wann gar nicht mehr.
