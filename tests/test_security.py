@@ -58,7 +58,9 @@ def test_help_documents_get_their_own_csp(client):
 
 
 def test_login_mail_html_escapes_name():
-    html = emailer.login_link_email_html("<b>Eve</b>", "https://x/?a=1&b=2", "123456")
+    html = emailer.login_link_email(
+        "<b>Eve</b>", [("", "https://x/?a=1&b=2")], "123456"
+    ).html
     assert "<b>Eve</b>" not in html
     assert "&lt;b&gt;Eve&lt;/b&gt;" in html
 

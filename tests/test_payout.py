@@ -110,20 +110,21 @@ def test_guest_confirmation_names_fronting_member(client, db, seed):
 
 def test_payee_does_not_pay_himself(db, seed):
     """Mail an den Vorstrecker enthält keinen Zahlungshinweis an sich selbst."""
-    from app.emailer import settlement_email_body
+    from app.emailer import settlement_email
 
-    body = settlement_email_body(
+    body = settlement_email(
         "Axel", "21.10.2026", "60,71 €", "400,71 €",
         "axel@pay.me", "Axel", is_payee=True,
-    )
-    assert "zahle bitte" not in body
+    ).text
+    assert "Bitte zahle" not in body
     assert "Zahlungsempfänger" in body
 
-    body = settlement_email_body(
+    body = settlement_email(
         "Eric", "21.10.2026", "60,71 €", "-60,71 €",
         "axel@pay.me", "Axel", is_payee=False,
-    )
-    assert "an Axel per PayPal" in body
+        open_items=[("Teilnahme 21.10.2026", "60,71 €")], debt="60,71 €",
+    ).text
+    assert "Bitte zahle 60,71 € an Axel per PayPal" in body
 
 
 def test_dashboard_banner_skipped_for_payee(client, db, seed):

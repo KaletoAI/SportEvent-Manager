@@ -17,7 +17,10 @@ def outbox(monkeypatch):
     mails = []
 
     async def fake_send_batch(subscription, batch):
-        mails.extend({"to": m.to, "subject": m.subject, "body": m.body} for m in batch)
+        mails.extend(
+            {"to": m.to, "subject": m.subject, "body": m.body, "html": m.html}
+            for m in batch
+        )
         return len(batch)
 
     monkeypatch.setattr(services, "send_batch", fake_send_batch)
@@ -251,3 +254,43 @@ def test_schema_upgrade_adds_payment_mail_columns(db, seed):
     sub = db.get(Subscription, seed["sub"].id)
     assert sub.payment_mail_mode == "auto"
     assert sub.last_payment_request_at is None
+
+
+def _open_block(body: str) -> str:
+    """Abschnitt „Offene Termine“ … „Offen gesamt“ aus dem Klartext."""
+    start = body.index("Offene Termine")
+    end = body.index("\n", body.index("Offen gesamt"))
+    return body[start:end]
+
+
+def test_settlement_mail_lists_open_items_like_payment_request(
+    client, db, payee_setup, outbox
+):
+    """Im Minus enthält die automatische Abrechnungsmail dieselben offenen
+    Termine und dieselbe Zahlungsbox wie die manuelle Sammelmail."""
+    _settle_with_anna(client, db, payee_setup)
+    settlement = outbox[0]["body"]
+    date = payee_setup["past_event"].date.strftime("%d.%m.%Y")
+    assert "Dein Betrag: 8,00 €" in settlement
+    assert "Teilnahme 01.10.2026 (Rest): 5,00 €" in settlement
+    assert "Teilnahme 08.10.2026: 10,00 €" in settlement
+    assert f"Teilnahme {date}: 8,00 €" in settlement
+    assert "Offen gesamt: 23,00 €" in settlement
+    assert "Bitte zahle 23,00 € an Sina per PayPal" in settlement
+
+    outbox.clear()
+    csrf = member_login(client, email="sina@example.com")
+    client.post("/member/payment-mails/send", data={"csrf_token": csrf})
+    request = outbox[0]["body"]
+    assert _open_block(request) == _open_block(settlement)
+    assert "Bitte zahle 23,00 € an Sina per PayPal" in request
+
+
+def test_settlement_mail_without_debt_needs_no_payment(client, db, payee_setup, outbox):
+    payee_setup["member"].credit = Decimal("50.00")
+    db.commit()
+    _settle_with_anna(client, db, payee_setup)
+    body = outbox[0]["body"]
+    assert "du musst nichts zahlen" in body
+    assert "Offene Termine" not in body
+    assert "Bitte zahle" not in body

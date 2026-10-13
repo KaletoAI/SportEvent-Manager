@@ -17,8 +17,8 @@ from app.config import settings
 from app.database import SessionLocal
 from app.emailer import (
     Mail,
-    cancel_reminder_email_body,
-    guest_reminder_email_body,
+    cancel_reminder_email,
+    guest_reminder_email,
     send_batch,
 )
 from app.templates import format_date
@@ -68,14 +68,12 @@ async def send_cancel_reminders(db) -> int:
         for gb in guest_bookings:
             persons = "Person" if gb.count == 1 else "Personen"
             players.append(f"{services.clean_name(gb.name)} ({gb.count} {persons})")
-        roster = "\n".join(
-            f"- {player}" for player in sorted(players, key=lambda name: (name.casefold(), name))
-        )
+        roster = sorted(players, key=lambda name: (name.casefold(), name))
         mails = [
             Mail(
                 booking.member.email,
                 f"Erinnerung: Abmeldefrist {format_date(event.date)} – {sub.name}",
-                cancel_reminder_email_body(
+                cancel_reminder_email(
                     booking.member.name,
                     event.date.strftime("%d.%m.%Y"),
                     last_free.strftime("%d.%m.%Y %H:%M"),
@@ -91,7 +89,7 @@ async def send_cancel_reminders(db) -> int:
             Mail(
                 gb.email,
                 f"Erinnerung: Termin {format_date(event.date)} – {sub.name}",
-                guest_reminder_email_body(
+                guest_reminder_email(
                     gb.name,
                     event.date.strftime("%d.%m.%Y"),
                     event.start_time.strftime("%H:%M"),

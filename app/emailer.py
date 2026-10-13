@@ -9,15 +9,15 @@ one batch over a single SMTP connection — one TLS handshake instead of
 one per recipient, so e.g. "Abrechnen" doesn't keep the phone waiting.
 """
 
-import html
 import logging
 from dataclasses import dataclass
 from email.message import EmailMessage
-from typing import Optional
+from typing import Optional, Sequence
 
 import aiosmtplib
 
 from app.config import settings
+from app.maildoc import MailContent, MailDoc
 from app.models.models import Subscription
 
 logger = logging.getLogger(__name__)
@@ -29,6 +29,11 @@ class Mail:
     subject: str
     body: str
     html: Optional[str] = None
+
+    def __post_init__(self):
+        # Builder liefern MailContent: Klartext wird body, HTML die Alternative
+        if isinstance(self.body, MailContent):
+            self.body, self.html = self.body.text, self.body.html
 
 
 def smtp_config_for(subscription: Optional[Subscription]) -> Optional[dict]:
@@ -125,131 +130,120 @@ async def send_email(
     return await send_batch(subscription, [Mail(to, subject, body, html)]) == 1
 
 
-def login_link_email_body(member_name: str, link: str, code: str) -> str:
-    return "\n".join(
-        [
-            f"Hallo {member_name},",
-            "",
-            "mit diesem Link kannst du dich anmelden (15 Minuten gültig):",
-            link,
-            "",
-            f"Alternativ gib diesen Code auf der Login-Seite ein: {code}",
-            "",
-            "Wenn du keine Anmeldung angefordert hast, ignoriere diese E-Mail.",
-            "",
-            "Sportliche Grüße",
-            "SportAbo Manager",
-        ]
+# ── Mail-Inhalte ───────────────────────────────────────────────────────────
+# Jeder Builder liefert MailContent (Klartext + HTML im gemeinsamen Layout,
+# siehe app/maildoc.py); Mail() übernimmt beides.
+
+
+def _target(payee_name: Optional[str]) -> str:
+    return f"an {payee_name} per PayPal" if payee_name else "per PayPal"
+
+
+def _door_code(doc: MailDoc, door_code: str) -> None:
+    if door_code:
+        doc.code("Türcode", door_code)
+
+
+def _open_debt(
+    doc: MailDoc,
+    items: list[tuple[str, str]],
+    debt: str,
+    paypal: Optional[str],
+    payee_name: Optional[str],
+) -> None:
+    """Offene Termine + Zahlungsbox — gleich in Abrechnungs- und
+    Sammelmail."""
+    doc.facts(items, title="Offene Termine", total=("Offen gesamt", debt), itemized=True)
+    if paypal:
+        doc.pay(
+            f"Bitte zahle {debt} {_target(payee_name)}:",
+            paypal,
+            "Bitte deinen Namen im Verwendungszweck angeben.",
+        )
+    else:
+        doc.p(f"Bitte gleiche {debt} beim Organisator aus.")
+
+
+def login_link_email(
+    member_name: str, links: list[tuple[str, str]], code: str
+) -> MailContent:
+    """`links`: (Abo-Name, URL); der Name bleibt leer bei nur einem Abo."""
+    doc = MailDoc("Dein Anmelde-Link", member_name)
+    doc.p("mit einem Klick bist du angemeldet:")
+    for label, url in links:
+        doc.button(f"Anmelden: {label}" if label else "Jetzt anmelden", url)
+    doc.code("Oder diesen Code auf der Login-Seite eingeben", code)
+    doc.small(
+        "Link und Code sind 15 Minuten gültig. Wenn du keine Anmeldung "
+        "angefordert hast, ignoriere diese E-Mail."
     )
+    return doc.render()
 
 
-def login_link_email_html(member_name: str, link: str, code: str) -> str:
-    member_name = html.escape(member_name)
-    link = html.escape(link, quote=True)
-    code = html.escape(code)
-    return f"""\
-<div style="font-family:sans-serif; max-width:480px;">
-  <p>Hallo {member_name},</p>
-  <p>
-    <a href="{link}" style="display:inline-block; background:#2563eb; color:#ffffff;
-       padding:10px 20px; border-radius:8px; text-decoration:none; font-weight:bold;">
-      Jetzt anmelden
-    </a>
-  </p>
-  <p>Alternativ gib diesen Code auf der Login-Seite ein:</p>
-  <p style="font-size:28px; font-weight:bold; letter-spacing:6px;">{code}</p>
-  <p style="color:#64748b; font-size:13px;">
-    Link und Code sind 15 Minuten gültig. Wenn du keine Anmeldung angefordert
-    hast, ignoriere diese E-Mail.<br>
-    Falls der Button nicht funktioniert: {link}
-  </p>
-  <p>Sportliche Grüße<br>SportAbo Manager</p>
-</div>"""
-
-
-def _door_code_lines(door_code: str) -> list[str]:
-    return ["", f"Türcode: {door_code}"] if door_code else []
-
-
-def cancel_reminder_email_body(
+def cancel_reminder_email(
     member_name: str, event_date: str, deadline: str, door_code: str = "",
-    roster: str = "",
-) -> str:
-    return "\n".join(
-        [
-            f"Hallo {member_name},",
-            "",
-            f"du bist für den Termin am {event_date} angemeldet.",
-            f"Bis {deadline} Uhr kannst du dich noch kostenlos abmelden.",
-            *(["", "Mit dabei:", roster] if roster else []),
-            *_door_code_lines(door_code),
-            "",
-            "Sportliche Grüße",
-            "SportAbo Manager",
-        ]
-    )
+    roster: Sequence[str] = (),
+) -> MailContent:
+    doc = MailDoc(f"Erinnerung: Termin {event_date}", member_name)
+    doc.p(f"du bist für den Termin am {event_date} angemeldet.")
+    doc.facts([("Kostenlos abmelden bis", f"{deadline} Uhr")])
+    if roster:
+        doc.bullets("Mit dabei:", list(roster))
+    _door_code(doc, door_code)
+    return doc.render()
 
 
-def minimum_participants_email_body(
+def minimum_participants_email(
     recipient_name: str, event_date: str, start_time: str,
     participants: int, minimum: int,
-) -> str:
-    missing = minimum - participants
-    return "\n".join(
-        [
-            f"Hallo {recipient_name},",
-            "",
-            f"nach einer Abmeldung sind für den Termin am {event_date} "
-            f"um {start_time} Uhr noch {participants} Personen angemeldet.",
-            f"Damit der Termin stattfinden kann, brauchen wir mindestens "
-            f"{minimum} Personen. Es fehlen noch {missing}.",
-            "",
-            "Frag bitte in deinem Bekanntenkreis nach, ob jemand mitspielen "
-            "möchte, damit der Termin stattfinden kann.",
-            "",
-            "Sportliche Grüße",
-            "SportAbo Manager",
-        ]
+) -> MailContent:
+    doc = MailDoc("Mitspieler gesucht", recipient_name)
+    doc.p(
+        f"nach einer Abmeldung sind für den Termin am {event_date} "
+        f"um {start_time} Uhr noch {participants} Personen angemeldet."
     )
+    doc.facts(
+        [
+            ("Angemeldet", str(participants)),
+            ("Mindestens nötig", str(minimum)),
+        ],
+        total=("Es fehlen noch", str(minimum - participants)),
+    )
+    doc.p(
+        "Frag bitte in deinem Bekanntenkreis nach, ob jemand mitspielen "
+        "möchte, damit der Termin stattfinden kann."
+    )
+    return doc.render()
 
 
-def waitlist_promoted_email_body(
+def waitlist_promoted_email(
     member_name: str, event_date: str, start_time: str
-) -> str:
-    return "\n".join(
-        [
-            f"Hallo {member_name},",
-            "",
-            f"gute Nachricht: Für den Termin am {event_date} um {start_time} Uhr "
-            "ist ein Platz frei geworden — du bist von der Warteliste "
-            "nachgerückt und jetzt fest angemeldet.",
-            "",
-            "Wenn du nicht kannst, melde dich bitte im Dashboard wieder ab.",
-            "",
-            "Sportliche Grüße",
-            "SportAbo Manager",
-        ]
+) -> MailContent:
+    doc = MailDoc("Du bist nachgerückt", member_name)
+    doc.notice(
+        f"Gute Nachricht: Für den Termin am {event_date} um {start_time} Uhr "
+        "ist ein Platz frei geworden — du bist von der Warteliste "
+        "nachgerückt und jetzt fest angemeldet.",
+        "success",
     )
+    doc.p("Wenn du nicht kannst, melde dich bitte im Dashboard wieder ab.")
+    return doc.render()
 
 
-def cancel_request_email_body(
+def cancel_request_email(
     super_name: str, member_name: str, event_date: str
-) -> str:
-    return "\n".join(
-        [
-            f"Hallo {super_name},",
-            "",
-            f"{member_name} möchte sich vom Termin am {event_date} abmelden.",
-            "Die freie Abmeldefrist ist bereits abgelaufen — bitte gib die Anfrage "
-            "im Dashboard frei oder lehne sie ab.",
-            "",
-            "Sportliche Grüße",
-            "SportAbo Manager",
-        ]
+) -> MailContent:
+    doc = MailDoc("Abmelde-Anfrage", super_name)
+    doc.p(f"{member_name} möchte sich vom Termin am {event_date} abmelden.")
+    doc.notice(
+        "Die freie Abmeldefrist ist bereits abgelaufen — bitte gib die "
+        "Anfrage im Dashboard frei oder lehne sie ab.",
+        "warning",
     )
+    return doc.render()
 
 
-def settlement_email_body(
+def settlement_email(
     member_name: str,
     event_date: str,
     amount: str,
@@ -257,107 +251,78 @@ def settlement_email_body(
     paypal: Optional[str],
     payee_name: Optional[str] = None,
     is_payee: bool = False,
-) -> str:
-    lines = [
-        f"Hallo {member_name},",
-        "",
-        f"für den Termin am {event_date} wurden dir {amount} berechnet.",
-        f"Dein aktuelles Guthaben: {balance}",
-    ]
+    open_items: Sequence[tuple[str, str]] = (),
+    debt: str = "",
+) -> MailContent:
+    """Abrechnungsmail. Im Minus (`open_items`, `debt`) mit denselben
+    offenen Terminen und derselben Zahlungsbox wie die Sammelmail."""
+    doc = MailDoc(f"Abrechnung {event_date}", member_name)
+    doc.p(f"der Termin am {event_date} ist abgerechnet.")
+    doc.facts([("Dein Betrag", amount), ("Dein Guthaben jetzt", balance)])
     if is_payee:
-        lines += [
-            "",
+        doc.notice(
             "Du bist aktuell der Zahlungsempfänger — die anderen zahlen "
-            "ihre Beträge an dich.",
-        ]
-    elif paypal:
-        target = f"an {payee_name} per PayPal" if payee_name else "per PayPal"
-        lines += [
-            "",
-            f"Bei negativem Guthaben zahle bitte {target}:",
-            paypal,
-            "Bitte Name und Termin im Verwendungszweck angeben.",
-        ]
-    lines += ["", "Sportliche Grüße", "SportAbo Manager"]
-    return "\n".join(lines)
+            "ihre Beträge an dich."
+        )
+    elif open_items:
+        _open_debt(doc, list(open_items), debt, paypal, payee_name)
+    else:
+        doc.notice("Dein Guthaben deckt den Betrag — du musst nichts zahlen.", "success")
+    return doc.render()
 
 
-def payment_request_email_body(
+def payment_request_email(
     member_name: str,
     subscription_name: str,
     debt: str,
     items: list[tuple[str, str]],
     paypal: Optional[str],
     payee_name: Optional[str] = None,
-) -> str:
+) -> MailContent:
     """Gesammelte Zahlungsaufforderung: offener Betrag + offene Posten
     (Notiz, Betrag), ältester zuerst."""
-    lines = [
-        f"Hallo {member_name},",
-        "",
-        f"dein Guthaben im Abo „{subscription_name}“ ist im Minus. "
-        f"Offen sind {debt}:",
-        "",
-    ]
-    lines += [f"  – {note}: {amount}" for note, amount in items]
-    if paypal:
-        target = f"an {payee_name} per PayPal" if payee_name else "per PayPal"
-        lines += [
-            "",
-            f"Bitte zahle {debt} {target}:",
-            paypal,
-            "Bitte deinen Namen im Verwendungszweck angeben.",
-        ]
-    lines += ["", "Sportliche Grüße", "SportAbo Manager"]
-    return "\n".join(lines)
+    doc = MailDoc("Zahlungsaufforderung", member_name)
+    doc.p(f"dein Guthaben im Abo „{subscription_name}“ ist im Minus.")
+    _open_debt(doc, items, debt, paypal, payee_name)
+    return doc.render()
 
 
-def guest_settlement_email_body(
+def guest_settlement_email(
     guest_name: str,
     event_date: str,
     count: int,
     amount: str,
     paypal: Optional[str],
     payee_name: Optional[str] = None,
-) -> str:
+) -> MailContent:
     persons = f" ({count} Personen)" if count > 1 else ""
-    lines = [
-        f"Hallo {guest_name},",
-        "",
-        f"danke für deine Teilnahme als Gast am {event_date}{persons}!",
-        f"Dein Anteil beträgt {amount}.",
-    ]
+    doc = MailDoc(f"Abrechnung {event_date}", guest_name)
+    doc.p(f"danke für deine Teilnahme als Gast am {event_date}{persons}!")
+    doc.facts([("Dein Anteil", amount)])
     if paypal:
-        target = f"an {payee_name} per PayPal" if payee_name else "per PayPal"
-        lines += [
-            "",
-            f"Bitte zahle den Betrag {target}:",
+        doc.pay(
+            f"Bitte zahle {amount} {_target(payee_name)}:",
             paypal,
             "Bitte Name und Termin im Verwendungszweck angeben.",
-        ]
-    lines += ["", "Sportliche Grüße", "SportAbo Manager"]
-    return "\n".join(lines)
+        )
+    return doc.render()
 
 
-def guest_request_email_body(
+def guest_request_email(
     super_name: str, guest_name: str, count: int, event_date: str
-) -> str:
+) -> MailContent:
     persons = f" ({count} Personen)" if count > 1 else ""
-    return "\n".join(
-        [
-            f"Hallo {super_name},",
-            "",
-            f"{guest_name}{persons} möchte als Gast am {event_date} mitspielen.",
-            "Die Mindestteilnehmerzahl ist erreicht — bitte bestätige die "
-            "Anfrage im Dashboard (Tab „Verwaltung“) oder lehne sie ab.",
-            "",
-            "Sportliche Grüße",
-            "SportAbo Manager",
-        ]
+    doc = MailDoc("Neue Gast-Anfrage", super_name)
+    doc.p(f"{guest_name}{persons} möchte als Gast am {event_date} mitspielen.")
+    doc.notice(
+        "Die Mindestteilnehmerzahl ist erreicht — bitte bestätige die "
+        "Anfrage im Dashboard (Tab „Verwaltung“) oder lehne sie ab.",
+        "warning",
     )
+    return doc.render()
 
 
-def guest_confirmed_email_body(
+def guest_confirmed_email(
     guest_name: str,
     event_date: str,
     start_time: str,
@@ -366,67 +331,54 @@ def guest_confirmed_email_body(
     paypal: Optional[str],
     payee_name: Optional[str] = None,
     door_code: str = "",
-) -> str:
+) -> MailContent:
     persons = f" für {count} Personen" if count > 1 else ""
-    lines = [
-        f"Hallo {guest_name},",
-        "",
-        f"deine Gastbuchung{persons} für den Termin am {event_date} um "
-        f"{start_time} Uhr ist bestätigt — bis dann!",
-        *_door_code_lines(door_code),
-        "",
-        f"Maximal zahlst du {max_amount}; der endgültige Betrag steht nach "
-        "dem Termin fest (Terminkosten ÷ Teilnehmerzahl).",
-    ]
+    doc = MailDoc("Gastbuchung bestätigt", guest_name)
+    doc.p(f"deine Gastbuchung{persons} ist bestätigt — bis dann!")
+    doc.facts(
+        [("Termin", f"{event_date}, {start_time} Uhr")]
+        + ([("Personen", str(count))] if count > 1 else [])
+        + [("Maximal zu zahlen", max_amount)]
+    )
+    _door_code(doc, door_code)
+    doc.small(
+        "Der endgültige Betrag steht nach dem Termin fest "
+        "(Terminkosten ÷ Teilnehmerzahl)."
+    )
     if paypal:
-        target = f"an {payee_name} per PayPal" if payee_name else "per PayPal"
-        lines += [
-            f"Bitte zahle nach dem Termin {target}:",
-            paypal,
-        ]
-    lines += [
-        "",
+        doc.pay(f"Bitte zahle nach dem Termin {_target(payee_name)}:", paypal)
+    doc.p(
         "Falls du nicht kommen kannst, gib bitte dem Organisator Bescheid, "
-        "damit dein Platz frei wird.",
-        "",
-        "Sportliche Grüße",
-        "SportAbo Manager",
-    ]
-    return "\n".join(lines)
-
-
-def guest_rejected_email_body(guest_name: str, event_date: str) -> str:
-    return "\n".join(
-        [
-            f"Hallo {guest_name},",
-            "",
-            f"deine Gastanfrage für den Termin am {event_date} konnte leider "
-            "nicht bestätigt werden. Die Buchung ist damit hinfällig, es "
-            "entstehen dir keine Kosten.",
-            "",
-            "Sportliche Grüße",
-            "SportAbo Manager",
-        ]
+        "damit dein Platz frei wird."
     )
+    return doc.render()
 
 
-def guest_reminder_email_body(
+def guest_rejected_email(guest_name: str, event_date: str) -> MailContent:
+    doc = MailDoc("Gastanfrage nicht bestätigt", guest_name)
+    doc.p(
+        f"deine Gastanfrage für den Termin am {event_date} konnte leider "
+        "nicht bestätigt werden. Die Buchung ist damit hinfällig, es "
+        "entstehen dir keine Kosten."
+    )
+    return doc.render()
+
+
+def guest_reminder_email(
     guest_name: str, event_date: str, start_time: str, count: int,
-    door_code: str = "", roster: str = "",
-) -> str:
+    door_code: str = "", roster: Sequence[str] = (),
+) -> MailContent:
     persons = f" mit {count} Personen" if count > 1 else ""
-    return "\n".join(
-        [
-            f"Hallo {guest_name},",
-            "",
-            f"du bist{persons} als Gast für den Termin am {event_date} "
-            f"um {start_time} Uhr angemeldet.",
-            "Falls du nicht kommen kannst, gib bitte dem Organisator "
-            "Bescheid, damit dein Platz frei wird.",
-            *(["", "Mit dabei:", roster] if roster else []),
-            *_door_code_lines(door_code),
-            "",
-            "Sportliche Grüße",
-            "SportAbo Manager",
-        ]
+    doc = MailDoc(f"Erinnerung: Termin {event_date}", guest_name)
+    doc.p(
+        f"du bist{persons} als Gast für den Termin am {event_date} "
+        f"um {start_time} Uhr angemeldet."
     )
+    if roster:
+        doc.bullets("Mit dabei:", list(roster))
+    _door_code(doc, door_code)
+    doc.small(
+        "Falls du nicht kommen kannst, gib bitte dem Organisator "
+        "Bescheid, damit dein Platz frei wird."
+    )
+    return doc.render()

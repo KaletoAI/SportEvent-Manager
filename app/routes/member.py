@@ -30,9 +30,8 @@ from app.config import settings
 from app.database import get_db
 from app.emailer import (
     Mail,
-    cancel_request_email_body,
-    login_link_email_body,
-    login_link_email_html,
+    cancel_request_email,
+    login_link_email,
     send_batch,
     send_with_config,
     smtp_config_for,
@@ -151,16 +150,17 @@ async def request_login_link(
         # Sent after the response: equal response time for known and
         # unknown addresses (no timing oracle)
         member = links[0]["member"]
-        body_links = "\n".join(
-            f"{l['member'].subscription.name}: {l['url']}" if len(links) > 1
-            else l["url"]
-            for l in links
-        )
         mail = Mail(
             email,
             "Dein Anmelde-Link – SportAbo",
-            login_link_email_body(member.name, body_links, code),
-            login_link_email_html(member.name, links[0]["url"], code),
+            login_link_email(
+                member.name,
+                [
+                    (l["member"].subscription.name if len(links) > 1 else "", l["url"])
+                    for l in links
+                ],
+                code,
+            ),
         )
         response.background = BackgroundTask(send_with_config, config, [mail])
     return response
@@ -642,7 +642,7 @@ async def unbook_event(
                 Mail(
                     s.email,
                     f"Abmelde-Anfrage {format_date(event.date)} – {sub.name}",
-                    cancel_request_email_body(
+                    cancel_request_email(
                         s.name, member.name, event.date.strftime("%d.%m.%Y")
                     ),
                 )

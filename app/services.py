@@ -25,15 +25,15 @@ from sqlalchemy.orm import Session
 
 from app.emailer import (
     Mail,
-    guest_confirmed_email_body,
-    guest_rejected_email_body,
-    guest_request_email_body,
-    guest_settlement_email_body,
-    minimum_participants_email_body,
-    payment_request_email_body,
+    guest_confirmed_email,
+    guest_rejected_email,
+    guest_request_email,
+    guest_settlement_email,
+    minimum_participants_email,
+    payment_request_email,
     send_batch,
-    settlement_email_body,
-    waitlist_promoted_email_body,
+    settlement_email,
+    waitlist_promoted_email,
 )
 from app.models.models import (
     Booking,
@@ -156,7 +156,7 @@ async def _notify_minimum_participants(
                 email,
                 f"Mitspieler gesucht: {format_date(event.date)} – "
                 f"{event.subscription.name}",
-                minimum_participants_email_body(
+                minimum_participants_email(
                     name,
                     event.date.strftime("%d.%m.%Y"),
                     event.start_time.strftime("%H:%M"),
@@ -365,7 +365,7 @@ async def notify_guest_request(db: Session, gb: GuestBooking) -> None:
             Mail(
                 s.email,
                 f"Gast-Anfrage {format_date(event.date)} – {sub.name}",
-                guest_request_email_body(
+                guest_request_email(
                     # defensiv auch für ältere Buchungen vor clean_name
                     s.name, clean_name(gb.name), gb.count,
                     event.date.strftime("%d.%m.%Y"),
@@ -408,7 +408,7 @@ async def send_guest_confirmation(db: Session, gb: GuestBooking) -> None:
                 gb.email,
                 f"Gastbuchung bestätigt: {format_date(event.date)} – "
                 f"{event.subscription.name}",
-                guest_confirmed_email_body(
+                guest_confirmed_email(
                     gb.name,
                     event.date.strftime("%d.%m.%Y"),
                     event.start_time.strftime("%H:%M"),
@@ -439,7 +439,7 @@ async def reject_guest_booking(db: Session, gb: GuestBooking) -> list[Member]:
                     email,
                     f"Gastanfrage {format_date(event.date)} – "
                     f"{event.subscription.name}",
-                    guest_rejected_email_body(name, event.date.strftime("%d.%m.%Y")),
+                    guest_rejected_email(name, event.date.strftime("%d.%m.%Y")),
                 )
             ],
         )
@@ -513,7 +513,7 @@ async def promote_from_waitlist(db: Session, event: Event) -> list[Member]:
             Mail(
                 m.email,
                 f"Nachgerückt: {date_str} – {event.subscription.name}",
-                waitlist_promoted_email_body(
+                waitlist_promoted_email(
                     m.name, date_str, event.start_time.strftime("%H:%M")
                 ),
             )
@@ -619,7 +619,7 @@ async def settle_and_notify(db: Session, event: Event) -> tuple[int, Decimal, in
             Mail(
                 member.email,
                 subject,
-                settlement_email_body(
+                settlement_email(
                     member.name,
                     event.date.strftime("%d.%m.%Y"),
                     format_euro(amount),
@@ -627,6 +627,8 @@ async def settle_and_notify(db: Session, event: Event) -> tuple[int, Decimal, in
                     payee["paypal"],
                     payee["name"],
                     is_payee=(payee["member_id"] == member.id),
+                    open_items=open_item_lines(open_items(db, member)),
+                    debt=format_euro(-member.credit),
                 ),
             )
         )
@@ -642,7 +644,7 @@ async def settle_and_notify(db: Session, event: Event) -> tuple[int, Decimal, in
             Mail(
                 gb.email,
                 subject,
-                guest_settlement_email_body(
+                guest_settlement_email(
                     gb.name,
                     event.date.strftime("%d.%m.%Y"),
                     gb.count,
@@ -971,6 +973,19 @@ def open_items(db: Session, member: Member) -> list[dict]:
     return items
 
 
+def open_item_lines(items: list[dict]) -> list[tuple[str, str]]:
+    """Offene Posten für Mails: (Bezeichnung, Betrag)."""
+    from app.templates import format_euro
+
+    return [
+        (
+            item["note"] + (" (Rest)" if item["partial"] else ""),
+            format_euro(item["amount"]),
+        )
+        for item in items
+    ]
+
+
 def debtors(db: Session, subscription: Subscription) -> list[dict]:
     """Wer schuldet wie viel: alle Mitglieder des Abos im Minus außer dem
     aktuellen Zahlungsempfänger, höchster Betrag zuerst.
@@ -1003,17 +1018,11 @@ async def send_payment_requests(
         Mail(
             d["member"].email,
             f"Zahlungsaufforderung – {subscription.name}",
-            payment_request_email_body(
+            payment_request_email(
                 d["member"].name,
                 subscription.name,
                 format_euro(d["debt"]),
-                [
-                    (
-                        item["note"] + (" (Rest)" if item["partial"] else ""),
-                        format_euro(item["amount"]),
-                    )
-                    for item in d["items"]
-                ],
+                open_item_lines(d["items"]),
                 payee["paypal"],
                 payee["name"],
             ),
