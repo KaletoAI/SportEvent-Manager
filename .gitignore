@@ -22,3 +22,7 @@ graphify-out/
 
 # Datenschutz-Unterlagen (AVV usw.) — nur lokal, Repo ist öffentlich
 datenschutz/
+
+# superpowers plans/specs/scratch — local only
+docs/superpowers/
+.superpowers/
