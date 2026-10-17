@@ -26,3 +26,6 @@ datenschutz/
 # superpowers plans/specs/scratch — local only
 docs/superpowers/
 .superpowers/
+
+# runtime/build artifacts
+*.pid
