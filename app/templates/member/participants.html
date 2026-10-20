@@ -153,12 +153,16 @@
                     {% elif g.paid_at %}
                     <div class="paid-form">
                         <span class="badge badge-success">✓ {{ g.paid_amount|euro }}</span>
+                        {% if not g.paid_member_id or g.paid_member_id == member.id %}
                         <form method="post" action="/member/guest-booking/{{ g.id }}/unpaid" class="inline"
                               data-confirm="Bezahlt-Markierung von {{ g.name }} zurücknehmen?{% if g.paid_member_id %} Die Gegenbuchung wird rückgebucht.{% endif %}">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                             <button type="submit" class="btn btn-outline btn-sm">Zurücknehmen</button>
                         </form>
+                        {% endif %}
                     </div>
+                    {% elif payee.member_id and payee.member_id != member.id %}
+                    <span class="muted small">offen – hakt {{ payee.name }} ab</span>
                     {% else %}
                     <form method="post" action="/member/guest-booking/{{ g.id }}/paid" class="paid-form"
                           data-confirm="Zahlung von {{ g.name }} als erhalten verbuchen?">
@@ -176,7 +180,7 @@
     </table>
     </div>
     {% if member.is_super %}
-    <p class="muted small">Anteil per PayPal einsammeln und hier abhaken. Im Vorstreck-Modell sinkt dabei das Guthaben des Zahlungsempfängers um den erhaltenen Betrag (Gegenbuchung).</p>
+    <p class="muted small">Anteil per PayPal einsammeln und hier abhaken. Im Vorstreck-Modell sinkt dabei das Guthaben des Zahlungsempfängers um den erhaltenen Betrag (Gegenbuchung) – deshalb hakt nur er selbst ab.</p>
     {% endif %}
     {% else %}
     <p class="muted">Keine Gastbuchungen.</p>

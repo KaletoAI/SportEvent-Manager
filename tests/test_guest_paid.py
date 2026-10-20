@@ -128,7 +128,7 @@ def test_delete_paid_guest_booking_blocked(client, db, seed):
 
 
 def test_super_member_can_mark_paid(client, db, seed):
-    use_member_payout(db, seed)
+    """Zentrale Kasse: jedes Super-Mitglied darf abhaken (keine Gegenbuchung)."""
     gb = make_guest(db, seed["event"])
     csrf = member_login(client, "sina@example.com")  # Super-Member
     resp = client.post(
@@ -140,7 +140,73 @@ def test_super_member_can_mark_paid(client, db, seed):
     db.expire_all()
     gb = db.get(GuestBooking, gb.id)
     assert gb.paid_amount == Decimal("3.50")
+    assert gb.paid_member_id is None
+
+
+def test_payee_super_can_mark_paid(client, db, seed):
+    """Vorstreck-Modell: der Zahlungsempfänger hakt selbst ab."""
+    use_member_payout(db, seed)
+    seed["member"].is_super = True
+    db.commit()
+    gb = make_guest(db, seed["event"])
+    csrf = member_login(client, "anna@example.com")
+    resp = client.post(
+        f"/member/guest-booking/{gb.id}/paid",
+        data={"amount": "3.50", "csrf_token": csrf},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
+    db.expire_all()
+    gb = db.get(GuestBooking, gb.id)
+    assert gb.paid_amount == Decimal("3.50")
     assert db.get(Member, seed["member"].id).credit == Decimal("16.50")
+
+
+def test_other_super_cannot_mark_paid_for_payee(client, db, seed):
+    """Vorstreck-Modell: ein anderes Super-Mitglied darf nicht das Guthaben
+    des Zahlungsempfängers belasten (Prod-Fall 19.10.2026)."""
+    use_member_payout(db, seed)
+    gb = make_guest(db, seed["event"])
+    csrf = member_login(client, "sina@example.com")
+    resp = client.post(
+        f"/member/guest-booking/{gb.id}/paid",
+        data={"amount": "3.50", "csrf_token": csrf},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
+    assert "mt=error" in resp.headers["location"]
+    db.expire_all()
+    assert db.get(GuestBooking, gb.id).paid_at is None
+    assert db.get(Member, seed["member"].id).credit == Decimal("20.00")
+    assert db.query(Payment).count() == 0
+
+
+def test_other_super_cannot_unmark_payee_mark(client, db, seed):
+    use_member_payout(db, seed)
+    gb = make_guest(db, seed["event"])
+    services.mark_guest_paid(db, gb, Decimal("5.00"))  # Gegenbuchung bei Anna
+    csrf = member_login(client, "sina@example.com")
+    resp = client.post(
+        f"/member/guest-booking/{gb.id}/unpaid",
+        data={"csrf_token": csrf},
+        follow_redirects=False,
+    )
+    assert "mt=error" in resp.headers["location"]
+    db.expire_all()
+    assert db.get(GuestBooking, gb.id).paid_at is not None
+    assert db.get(Member, seed["member"].id).credit == Decimal("15.00")
+
+
+def test_participants_page_hides_paid_buttons_for_non_payee(client, db, seed):
+    use_member_payout(db, seed)
+    gb = make_guest(db, seed["event"])
+    paid = make_guest(db, seed["event"], name="Paula")
+    services.mark_guest_paid(db, paid, Decimal("5.00"))
+    member_login(client, "sina@example.com")
+    resp = client.get(f"/member/event/{seed['event'].id}/participants")
+    assert f"/member/guest-booking/{gb.id}/paid" not in resp.text
+    assert f"/member/guest-booking/{paid.id}/unpaid" not in resp.text
+    assert "hakt Anna ab" in resp.text
 
 
 def test_regular_member_cannot_mark_paid(client, db, seed):

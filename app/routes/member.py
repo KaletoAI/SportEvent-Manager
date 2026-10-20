@@ -862,6 +862,7 @@ async def event_participants(
             "waitlist": services.waitlist_entries(db, event_id),
             "is_past": event.date < clock.today(db),
             "door_code": services.door_code(event),
+            "payee": services.payee_info(db, event.subscription),
             "guest_link": (
                 f"{public_base_url(request)}g/{event.public_token}"
                 if member.is_super
@@ -1073,6 +1074,13 @@ async def super_guest_paid(
     back = f"/member/event/{gb.event_id}/participants"
     if gb.paid_at:
         return _redirect("Bereits als bezahlt markiert", back, mt="error")
+    # Vorstreck-Modell: die Gegenbuchung senkt das Guthaben des
+    # Zahlungsempfängers — abhaken darf deshalb nur er selbst.
+    payee = services.payee_info(db, gb.event.subscription)
+    if payee["member_id"] and payee["member_id"] != member.id:
+        return _redirect(
+            f"Nur {payee['name']} kann die Zahlung als erhalten markieren", back, mt="error"
+        )
     recipient = services.mark_guest_paid(db, gb, Decimal(str(amount)))
     info = f" – Gegenbuchung bei {recipient.name}" if recipient else ""
     return _redirect(
@@ -1093,5 +1101,9 @@ async def super_guest_unpaid(
     back = f"/member/event/{gb.event_id}/participants"
     if not gb.paid_at:
         return _redirect("Nicht als bezahlt markiert", back, mt="error")
+    if gb.paid_member_id and gb.paid_member_id != member.id:
+        return _redirect(
+            "Nur der Zahlungsempfänger kann die Markierung zurücknehmen", back, mt="error"
+        )
     services.unmark_guest_paid(db, gb)
     return _redirect(f"Bezahlt-Markierung von {gb.name} zurückgenommen", back)
