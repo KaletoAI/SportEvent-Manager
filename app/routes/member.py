@@ -466,6 +466,15 @@ async def dashboard(
         reverse=True,
     )
     past_count = services.booked_counts(db, list(past_by_event))
+    # Abgerechnet heißt nicht bezahlt: Supers sehen bei abgerechneten Terminen
+    # ihres Abos, wie viele Gastzahlungen noch nicht abgehakt sind.
+    past_open_payments = (
+        services.open_guest_payments(
+            db, [e.id for e in past_events if e.settled_at]
+        )
+        if member.is_super
+        else {}
+    )
     past_charges = {
         p.event_id: p.amount
         for p in db.query(Payment).filter(
@@ -567,6 +576,7 @@ async def dashboard(
             "past_items": past_items,
             "past_count": past_count,
             "past_charges": past_charges,
+            "past_open_payments": past_open_payments,
             "past_visible": 10,
             "multi_abo": bool(other_memberships),
             "calendar_url": calendar_url,

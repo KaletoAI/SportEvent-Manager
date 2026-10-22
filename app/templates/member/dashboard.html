@@ -177,13 +177,14 @@
     {% endfor %}
 </div>
 
-{% macro past_card(item, multi_abo, count, charge, own_abo) %}
+{% macro past_card(item, multi_abo, count, charge, own_abo, open_payments=0) %}
 {% set e = item.event %}
-<div class="event-item past-item{% if not e.settled_at and not e.is_cancelled %} unsettled{% endif %}"{% if own_abo %} data-href="/member/event/{{ e.id }}/participants" title="Antippen für Teilnehmer & Details"{% endif %}>
+<div class="event-item past-item{% if (not e.settled_at and not e.is_cancelled) or open_payments %} unsettled{% endif %}"{% if own_abo %} data-href="/member/event/{{ e.id }}/participants" title="Antippen für Teilnehmer & Details"{% endif %}>
     <div>
         <div class="when">
             {{ e.date|date_de }}{% if e.is_extra %} <span class="badge badge-info">Zusatz</span>{% endif %}
             {% if e.is_cancelled %}<span class="badge badge-danger">Abgesagt</span>
+            {% elif open_payments %}<span class="badge badge-warning">{{ open_payments }} Zahlung{% if open_payments > 1 %}en{% endif %} offen</span>
             {% elif e.settled_at %}<span class="badge badge-muted">Abgerechnet</span>
             {% else %}<span class="badge badge-warning">Abrechnung offen</span>{% endif %}
         </div>
@@ -199,13 +200,13 @@
     <h2>Vergangene Termine</h2>
     {% if past_items %}
     <div class="event-list">
-        {% for item in past_items[:past_visible] %}{{ past_card(item, multi_abo, past_count[item.event.id], past_charges.get(item.event.id), item.event.subscription_id == subscription.id) }}{% endfor %}
+        {% for item in past_items[:past_visible] %}{{ past_card(item, multi_abo, past_count[item.event.id], past_charges.get(item.event.id), item.event.subscription_id == subscription.id, past_open_payments.get(item.event.id, 0)) }}{% endfor %}
     </div>
     {% if past_items|length > past_visible %}
     <details class="mt-1">
         <summary>Ältere Termine ({{ past_items|length - past_visible }})</summary>
         <div class="event-list mt-1">
-            {% for item in past_items[past_visible:] %}{{ past_card(item, multi_abo, past_count[item.event.id], past_charges.get(item.event.id), item.event.subscription_id == subscription.id) }}{% endfor %}
+            {% for item in past_items[past_visible:] %}{{ past_card(item, multi_abo, past_count[item.event.id], past_charges.get(item.event.id), item.event.subscription_id == subscription.id, past_open_payments.get(item.event.id, 0)) }}{% endfor %}
         </div>
     </details>
     {% endif %}

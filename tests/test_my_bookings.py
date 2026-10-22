@@ -4,7 +4,7 @@ import re
 from datetime import date, time, timedelta
 from decimal import Decimal
 
-from app.models.models import Booking, Event, Member
+from app.models.models import Booking, Event, GuestBooking, Member
 
 from conftest import member_login
 
@@ -161,3 +161,35 @@ def test_past_events_merged_unsettled_framed_calendar_last(client, db, seed):
     settled_card = next(c for c in cards if "Abgerechnet" in c)
     assert not settled_card.startswith(" unsettled")
     assert sum(c.startswith(" unsettled") for c in cards) == 2
+
+
+def test_past_settled_event_shows_open_guest_payments_to_supers(client, db, seed):
+    """Abgerechnet heißt nicht bezahlt: Supers sehen bei vergangenen Terminen
+    ihres Abos offene Gastzahlungen statt „Abgerechnet“, normale Mitglieder nicht."""
+    anna = seed["member"]
+    settled = _event(db, seed["sub"], date.today() - timedelta(days=7))
+    settled.settled_at = settled.created_at
+    paid = GuestBooking(event_id=settled.id, name="Paula", email="p@x.de", count=1)
+    paid.paid_at = settled.created_at
+    pending = GuestBooking(event_id=settled.id, name="Bernd", email="b@x.de", count=2)
+    request = GuestBooking(event_id=settled.id, name="Rita", email="r@x.de", count=1)
+    db.add_all([Booking(member_id=anna.id, event_id=settled.id), paid, pending, request])
+    db.flush()
+    request.confirmed_at = None  # offene Anfrage zählt nicht als Zahlung
+    db.commit()
+
+    def card():
+        html = client.get("/member/dashboard").text
+        past = html.split('id="past-events"', 1)[1].split('id="calendar-card"', 1)[0]
+        # Der Seed-Termin ist noch nicht abgerechnet, gesucht ist der andere
+        return next(c for c in past.split('class="event-item past-item')[1:] if "Abrechnung offen" not in c)
+
+    member_login(client)
+    c = card()
+    assert "Abgerechnet" in c and "Zahlung offen" not in c
+
+    anna.is_super = True
+    db.commit()
+    c = card()
+    assert "1 Zahlung offen" in c and "Abgerechnet" not in c
+    assert c.startswith(" unsettled")

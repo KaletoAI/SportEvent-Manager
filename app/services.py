@@ -242,6 +242,23 @@ def booked_counts(db: Session, event_ids: list[str]) -> dict[str, int]:
     return counts
 
 
+def open_guest_payments(db: Session, event_ids: list[str]) -> dict[str, int]:
+    """Confirmed link-guest bookings not yet marked paid, per event (only
+    events that have any). Settled ≠ paid: guests pay outside the ledger."""
+    if not event_ids:
+        return {}
+    return dict(
+        db.query(GuestBooking.event_id, func.count(GuestBooking.id))
+        .filter(
+            GuestBooking.event_id.in_(event_ids),
+            GuestBooking.confirmed_at.is_not(None),
+            GuestBooking.paid_at.is_(None),
+        )
+        .group_by(GuestBooking.event_id)
+        .all()
+    )
+
+
 # ── Budgets ────────────────────────────────────────────────────────────────
 
 
