@@ -309,6 +309,19 @@ nav > strong {
 .btn-icon .icon { width: 1.15rem; height: 1.15rem; }
 .cell-action { width: 1%; white-space: nowrap; text-align: right; }
 
+/* Kompakte Namensliste (Teilnehmer): Name, Gäste-Badge, Mülleimer in einer Zeile */
+.person-list { list-style: none; margin-bottom: 0.5rem; }
+.person-list li {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 2.75rem;
+    padding: 0.2rem 0;
+    border-bottom: 1px solid var(--border);
+}
+.person-list li:last-child { border-bottom: none; }
+.person-list .person-name { flex: 1; min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
+
 /* ── Stat tiles ────────────────────────────────────────────────────── */
 .stat-grid {
     display: grid;

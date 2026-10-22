@@ -89,27 +89,17 @@
 {% endif %}
 
 <div class="card">
-    <h2>Mitglieder</h2>
+    <h2>Mitglieder{% if bookings %} <span class="muted">({{ bookings|length }})</span>{% endif %}</h2>
     {% if bookings %}
-    <div class="table-wrap">
-    <table{% if can_remove %} class="table-stack"{% endif %}>
-        <thead>
-            <tr><th>Name</th><th class="num">Gäste</th><th class="num">Plätze</th>{% if can_remove %}<th></th>{% endif %}</tr>
-        </thead>
-        <tbody>
-            {% for b in bookings %}
-            <tr>
-                <td>{{ b.member.name }}</td>
-                <td class="num" data-label="Gäste">{{ b.guest_count }}</td>
-                <td class="num" data-label="Plätze">{{ b.guest_count + 1 }}</td>
-                {% if can_remove %}
-                <td class="cell-action">{% if b.member_id != member.id and removable(b.guest_count + 1) %}{{ ui.trash_button("/member/booking/" ~ b.id ~ "/remove", b.member.name ~ " entfernen", b.member.name ~ (" mit " ~ b.guest_count ~ " Gast" ~ ("en" if b.guest_count > 1 else "") if b.guest_count else "") ~ " vom Termin entfernen? Für diesen Termin wird dann nichts berechnet, " ~ b.member.name ~ " bekommt eine E-Mail.", csrf_token) }}{% endif %}</td>
-                {% endif %}
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    </div>
+    <ul class="person-list">
+        {% for b in bookings %}
+        <li>
+            <span class="person-name">{{ b.member.name }}{% if b.member_id == member.id %} <span class="badge badge-info">du</span>{% endif %}</span>
+            {% if b.guest_count %}<span class="badge badge-muted">+{{ b.guest_count }} {{ "Gast" if b.guest_count == 1 else "Gäste" }}</span>{% endif %}
+            {% if can_remove and b.member_id != member.id and removable(b.guest_count + 1) %}{{ ui.trash_button("/member/booking/" ~ b.id ~ "/remove", b.member.name ~ " entfernen", b.member.name ~ (" mit " ~ b.guest_count ~ " Gast" ~ ("en" if b.guest_count > 1 else "") if b.guest_count else "") ~ " vom Termin entfernen? Für diesen Termin wird dann nichts berechnet, " ~ b.member.name ~ " bekommt eine E-Mail.", csrf_token) }}{% endif %}
+        </li>
+        {% endfor %}
+    </ul>
     {% if can_remove %}
     <p class="muted small">Ist jemand nicht gekommen, ohne sich abzumelden? Über den Mülleimer entfernst du die Anmeldung vor der Abrechnung. Die Person wird per E-Mail informiert.{% if is_started %} Nach Terminbeginn geht das nur, solange die Mindestzahl ({{ event.min_participants }}) erreicht bleibt.{% endif %}</p>
     {% endif %}
