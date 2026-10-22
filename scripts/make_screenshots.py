@@ -137,6 +137,8 @@ def demo_context() -> dict:
         "abo_guest_token": sub.guest_token,
         "full_event_id": upcoming[1].id,
         "settled_event_id": past[0].id,
+        # Der jüngste vergangene Termin ist noch offen (demo_seed)
+        "open_event_id": past[-1].id,
     }
     db.close()
     return ctx
@@ -239,10 +241,17 @@ def main() -> None:
                 page.goto(base + url, wait_until="networkidle")
                 if prepare:
                     prepare()
+                # Wie in capture(): Viewport auf Seitenhöhe, sonst rendert die
+                # fixe Kopfzeile bei hohen Elementen mitten ins Bild.
+                height = page.evaluate("document.documentElement.scrollHeight")
+                page.set_viewport_size(
+                    {"width": VIEWPORT["width"], "height": min(height, MAX_HEIGHT)}
+                )
                 time.sleep(0.35)
                 page.locator(selector).nth(index).screenshot(
                     path=str(OUT_DIR / f"{name}.png")
                 )
+                page.set_viewport_size(VIEWPORT)
                 shots += 1
                 print(f"  ✓ {name}.png")
 
@@ -368,6 +377,19 @@ def main() -> None:
             shot_element("08-member-meine", "/member/dashboard", "#my-bookings",
                          prepare=tab("✅ Meine"))
 
+            def past_short():
+                # Vier Karten reichen: der offene (gerahmte) Termin zuerst,
+                # darunter abgerechnete — sonst wird das Bild zu lang.
+                tab("✅ Meine")()
+                page.evaluate(
+                    "document.querySelectorAll('#past-events .past-item')"
+                    ".forEach((el, i) => { if (i >= 4) el.remove(); });"
+                    "document.querySelectorAll('#past-events details')"
+                    ".forEach(el => el.remove());"
+                )
+
+            shot_element("08c-member-vergangene", "/member/dashboard",
+                         "#past-events", prepare=past_short)
             shot_element("08b-member-kalender", "/member/dashboard",
                          "#calendar-card", prepare=tab("✅ Meine"))
             shot("09-member-konto", "/member/dashboard", prepare=tab("💶 Konto"))
@@ -420,6 +442,10 @@ def main() -> None:
                          prepare=verwaltung)
             shot("15-super-teilnehmer",
                  f"/member/event/{ctx['settled_event_id']}/participants")
+            # Offener vergangener Termin: Mülleimer zum Entfernen
+            shot_element("15b-super-entfernen",
+                         f"/member/event/{ctx['open_event_id']}/participants",
+                         "div.card:has(h2:text-is('Mitglieder'))")
 
             # Die Gästekarte mit der Bezahlt-Markierung als eigenes Bild
             page.goto(

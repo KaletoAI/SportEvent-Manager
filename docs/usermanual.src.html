@@ -303,7 +303,8 @@ werden übernommen.
 (abrechnen, absagen, Türcode, Teilnehmergrenzen), der vollständigen Preisstaffel und
 dem Gastlink zum Weitergeben, <strong>Mitglieder</strong> mit allen
 Anmeldungen und der Warteliste sowie <strong>Gäste</strong> mit den
-Gastbuchungen und dem Bezahlt-Haken.</p>
+Gastbuchungen und dem Bezahlt-Haken. Bis zur Abrechnung entfernt der rote
+<strong>Mülleimer</strong> am Zeilenende eine Anmeldung oder Gastbuchung.</p>
 
 <div class="figrow">
   <figure>
@@ -499,9 +500,7 @@ Woche</strong> sind grün hinterlegt, die der <strong>nächsten Woche</strong>
 blau. So siehst du auf einen Blick, wann du wo spielst — und an der Markierung,
 ob der Termin stattfindet („Findet statt (N)“) oder noch Leute fehlen. Bist du in mehreren
 Abos Mitglied, stehen hier die Anmeldungen aus <em>allen</em> Abos, jeweils
-mit dem Namen des Abos. Ältere Anmeldungen klappst du unter „Frühere
-Anmeldungen“ auf. Darunter stehen die vergangenen Termine des aktuellen Abos
-mit deinem jeweiligen Anteil.</p>
+mit dem Namen des Abos.</p>
 
 <figure>
   <img src="screenshots/08-member-meine.png" alt="Tab Meine mit Anmeldungen aus zwei Abos, nach Wochen gruppiert">
@@ -509,8 +508,21 @@ mit deinem jeweiligen Anteil.</p>
   hervorgehoben</figcaption>
 </figure>
 
+<p>Darunter stehen die <strong>vergangenen Termine</strong> in einer Liste:
+die letzten Termine des aktuellen Abos und deine früheren Anmeldungen aus
+allen Abos, neueste zuerst. Ältere klappst du unter „Ältere Termine“ auf.
+Bei abgerechneten Terminen steht dein Anteil dabei. Termine, deren
+<strong>Abrechnung noch offen</strong> ist, sind orange umrahmt. Ein Tipp
+auf die Karte öffnet die Teilnehmerliste.</p>
+
+<figure>
+  <img src="screenshots/08c-member-vergangene.png" alt="Vergangene Termine, der noch nicht abgerechnete orange umrahmt">
+  <figcaption>Oben ein Termin mit offener Abrechnung, darunter abgerechnete
+  mit deinem Anteil</figcaption>
+</figure>
+
 <h4>📆 Kalender-Abo</h4>
-<p>Unter der Liste steht dein persönlicher <strong>Kalender-Link</strong>.
+<p>Ganz unten im Tab steht dein persönlicher <strong>Kalender-Link</strong>.
 Abonnierst du ihn in deiner Kalender-App, stehen deine Anmeldungen aus allen
 Abos automatisch in deinem Kalender. Kommen Termine dazu oder werden welche
 abgesagt, zieht der Kalender nach. Das klappt mit jedem Kalender, der
@@ -601,7 +613,9 @@ wie viele Plätze belegt sind und — nach der Abrechnung — deinen Anteil.</p>
 <p>Bist du mit derselben E-Mail-Adresse in mehreren Abos Mitglied, erscheint
 oben auf dem Dashboard ein Umschalter. Ein Klick wechselt das Abo, ohne dass
 du dich neu anmelden musst. Im Tab „Meine“ siehst du deine Anmeldungen aus
-allen Abos gemeinsam, ohne umschalten zu müssen.</p>
+allen Abos gemeinsam, ohne umschalten zu müssen. Öffnest du einen Link aus
+einer Mail, der zu deinem anderen Abo gehört, bietet dir das Dashboard den
+Wechsel direkt an.</p>
 
 <h2 id="super">4. Besonderheiten für Super-Mitglieder <span class="role-badge">⭐ Super</span></h2>
 
@@ -738,6 +752,30 @@ der Person, die das Geld bekommen hat.</p>
   <figcaption>Eine bezahlte Gastbuchung — die Markierung lässt sich zurücknehmen</figcaption>
 </figure>
 
+<h4>Anmeldungen korrigieren — wer nicht gekommen ist</h4>
+<p>Ist jemand nicht erschienen, ohne sich abzumelden, würde er bei der
+Abrechnung trotzdem mitbezahlen und alle anderen etwas weniger. Bis zur
+Abrechnung entfernst du solche Anmeldungen in der Teilnehmerliste über den
+roten <strong>Mülleimer</strong>. Das geht für Mitglieder (samt ihren
+Gästen) und für bestätigte Link-Gäste. Die betroffene Person bekommt eine
+E-Mail, dass sie für diesen Termin nichts zahlt. Wird dadurch ein Platz frei,
+rückt vor dem Termin die Warteliste nach.</p>
+<ul>
+  <li>Deine <strong>eigene</strong> Anmeldung entfernst du so nicht, dafür
+  gibt es das normale Abmelden.</li>
+  <li>Als <strong>bezahlt</strong> markierte Gäste erst, nachdem du die
+  Markierung zurückgenommen hast. Offene Gast-Anfragen lehnst du ab.</li>
+  <li><strong>Nach Terminbeginn</strong> nur, solange die Mindestzahl erreicht
+  bleibt. Sonst ließe sich der Termin nicht mehr abrechnen; dann hilft der
+  Admin.</li>
+  <li>Nach der Abrechnung geht nichts mehr, die Abrechnung ist endgültig.</li>
+</ul>
+
+<figure>
+  <img src="screenshots/15b-super-entfernen.png" alt="Teilnehmerliste mit Mülleimer-Buttons">
+  <figcaption>Mülleimer neben jeder Anmeldung — außer der eigenen</figcaption>
+</figure>
+
 <h2 id="gast">5. Als Gast buchen — ohne Konto</h2>
 
 <p>Gäste brauchen weder Konto noch Anmeldung. Ein Mitglied schickt dir einen
@@ -800,7 +838,12 @@ mitspielen sollen. Der Admin kann den Abo-Link notfalls neu erzeugen.
 <h2 id="mails">6. Welche E-Mails du bekommst</h2>
 
 <p>Der SportAbo Manager verschickt die folgenden E-Mails. Alle kommen
-vom selben Absender und nennen im Betreff das Abo und das Datum.</p>
+vom selben Absender und nennen im Betreff das Abo und das Datum. Die
+meisten haben einen <strong>Button, der direkt zur passenden Stelle</strong>
+führt, etwa „Anfrage ansehen“ zum Verwaltungsbereich oder
+„Kontoauszug ansehen“. Bist du gerade nicht eingeloggt, landest du nach dem
+Login direkt dort. Die Buttons öffnen nur die Seite; freigeben, abmelden
+oder zahlen musst du dort selbst.</p>
 
 <table>
 <thead>
@@ -835,7 +878,7 @@ vom selben Absender und nennen im Betreff das Abo und das Datum.</p>
   <td class="nowrap"><strong>Mitspieler gesucht</strong></td>
   <td>Wenn eine Abmeldung die erreichte Mindestzahl unterschreitet und die Warteliste sie nicht wieder auffüllt; nur vor Terminbeginn.</td>
   <td>Verbleibende angemeldete Mitglieder, bestätigte Gäste mit E-Mail-Adresse und aktive Super-Mitglieder</td>
-  <td>Im Bekanntenkreis nach weiteren Mitspielern fragen. Die Mail nennt die aktuelle Zahl, das Minimum und die fehlenden Personen.</td>
+  <td>Im Bekanntenkreis nach weiteren Mitspielern fragen. Die Mail nennt die aktuelle Zahl, das Minimum und die fehlenden Personen und enthält den Gastlink zum Weitergeben.</td>
 </tr>
 <tr>
   <td class="nowrap"><strong>Abmelde-Anfrage</strong></td>
@@ -862,10 +905,22 @@ vom selben Absender und nennen im Betreff das Abo und das Datum.</p>
   <td>Nichts — die Buchung ist hinfällig, es entstehen keine Kosten.</td>
 </tr>
 <tr>
+  <td class="nowrap"><strong>Abgemeldet</strong></td>
+  <td>Wenn ein Super-Mitglied deine Anmeldung entfernt hat, z. B. weil du nicht da warst.</td>
+  <td>Mitglied bzw. Gast mit E-Mail</td>
+  <td>Nichts — für diesen Termin zahlst du nichts. War es ein Versehen, sag dem Super-Mitglied Bescheid.</td>
+</tr>
+<tr>
   <td class="nowrap"><strong>Abrechnung</strong></td>
   <td>Wenn ein Termin abgerechnet wurde.</td>
   <td>Angemeldete Mitglieder</td>
   <td>Enthält deinen Anteil und dein neues Guthaben. Bei negativem Guthaben an die genannte Adresse zahlen.</td>
+</tr>
+<tr>
+  <td class="nowrap"><strong>Zahlungsaufforderung</strong></td>
+  <td>Wenn der Zahlungsempfänger oder der Admin sie per Knopf verschickt.</td>
+  <td>Mitglieder im Minus</td>
+  <td>Listet die offenen Termine und den Gesamtbetrag. Den Betrag an die genannte Adresse zahlen.</td>
 </tr>
 <tr>
   <td class="nowrap"><strong>Abrechnung (Gast)</strong></td>
@@ -906,6 +961,7 @@ bekannt ist.
 <tr><td>eine Gast-Anfrage bearbeiten <span class="role-badge">⭐</span></td><td>⚙️ Verwaltung → <em>Bestätigen</em> / <em>Ablehnen</em></td></tr>
 <tr><td>den Gast-Link fürs ganze Abo teilen <span class="role-badge">⭐</span></td><td>⚙️ Verwaltung → Gast-Link → <em>Kopieren</em></td></tr>
 <tr><td>einen Zusatztermin anlegen <span class="role-badge">⭐</span></td><td>⚙️ Verwaltung → <em>Zusatztermin anlegen</em></td></tr>
+<tr><td>eine Anmeldung entfernen (nicht erschienen) <span class="role-badge">⭐</span></td><td>Terminkarte antippen → Mülleimer neben dem Namen</td></tr>
 <tr><td>eine Gastzahlung abhaken <span class="role-badge">⭐</span></td><td>Terminkarte antippen → Gästeliste → <em>Bezahlt</em> (bei vorgestrecktem Geld nur der Zahlungsempfänger selbst)</td></tr>
 </tbody>
 </table>
