@@ -51,6 +51,32 @@ def public_base_url(request: Request) -> str:
     return str(request.base_url)
 
 
+def app_url(path: str) -> str:
+    """Absolute link for mails (scheduler/background tasks have no request):
+    BASE_URL + path, or "" without BASE_URL — mails then skip the button."""
+    if not settings.base_url:
+        return ""
+    return settings.base_url.rstrip("/") + "/" + path.lstrip("/")
+
+
+DEFAULT_MEMBER_PAGE = "/member/dashboard"
+
+
+def safe_next(value: Optional[str]) -> str:
+    """Post-login target from a mail link: only local member pages, never
+    another host (`//evil`, `/\\evil`, schemes) — no open redirect."""
+    if (
+        not value
+        or not value.startswith("/member/")
+        or value.startswith("/member/login")
+        or "\\" in value
+        or any(ord(c) < 32 for c in value)
+        or len(value) > 300
+    ):
+        return DEFAULT_MEMBER_PAGE
+    return value
+
+
 def client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 

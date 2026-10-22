@@ -67,8 +67,10 @@ def test_my_bookings_span_all_abos_with_week_highlight(client, db, seed):
     assert "Beachvolleyball" in items[0][1]
     assert "Fußball" in items[1][1] and "Fußball" in items[2][1]
     assert "Diese Woche" in html and "Nächste Woche" in html
-    # Vergangene Anmeldung landet im eingeklappten Bereich, nicht in der Wochenliste
-    assert "Frühere Anmeldungen (1)" in html
+    # Vergangene Anmeldung landet unter „Vergangene Termine“, nicht in der Wochenliste
+    assert "Frühere Anmeldungen" not in html
+    past = html.split('id="past-events"', 1)[1].split('id="calendar-card"', 1)[0]
+    assert "du warst angemeldet" in past
 
 
 def test_my_bookings_ignores_inactive_other_membership(client, db, seed):
@@ -120,3 +122,42 @@ def test_my_bookings_show_status_with_participant_count(client, db, seed):
     assert "Noch 2 bis Mindestzahl" in items[0][1]
     assert "Findet statt (4)" in items[1][1]
     assert not any("Angemeldet" in text for _, text in items)
+
+
+def test_past_events_merged_unsettled_framed_calendar_last(client, db, seed):
+    """Vergangene Termine: eine Liste aus eigenem Abo + früheren Anmeldungen
+    anderer Abos; offene Abrechnungen gerahmt; Kalender-Abo ganz unten."""
+    anna = seed["member"]
+    anna2 = Member(
+        subscription_id=seed["other_sub"].id,
+        email="anna@example.com",
+        name="Anna",
+        password_hash="",
+    )
+    db.add(anna2)
+    db.flush()
+    other_past = _event(db, seed["other_sub"], date.today() - timedelta(days=3))
+    settled = _event(db, seed["sub"], date.today() - timedelta(days=14))
+    settled.settled_at = settled.created_at
+    db.add_all(
+        [
+            Booking(member_id=anna.id, event_id=seed["past_event"].id),
+            Booking(member_id=anna2.id, event_id=other_past.id),
+        ]
+    )
+    db.commit()
+
+    member_login(client)
+    html = client.get("/member/dashboard").text
+    meine = html.split('id="tab-meine"', 1)[1].split('id="tab-konto"', 1)[0]
+    assert meine.index('id="my-bookings"') < meine.index('id="past-events"') < meine.index('id="calendar-card"')
+    past = meine.split('id="past-events"', 1)[1].split('id="calendar-card"', 1)[0]
+    cards = past.split('class="event-item past-item')[1:]
+    assert len(cards) == 3
+    by_abo = {("Fußball" in c): c for c in cards if "Fußball" in c}
+    assert by_abo[True].startswith(" unsettled")
+    # Termin aus fremdem Abo ist nicht antippbar (Teilnehmerseite nur fürs eigene)
+    assert "data-href" not in by_abo[True].split(">", 1)[0]
+    settled_card = next(c for c in cards if "Abgerechnet" in c)
+    assert not settled_card.startswith(" unsettled")
+    assert sum(c.startswith(" unsettled") for c in cards) == 2

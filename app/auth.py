@@ -6,6 +6,7 @@ import time as time_module
 from collections import deque
 from datetime import timedelta
 from typing import Optional
+from urllib.parse import urlencode
 
 from fastapi import Depends, Form, HTTPException, Request, status
 from fastapi.responses import Response
@@ -14,7 +15,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import get_db
 from app.models.models import LoginToken, Member, UserSession, utcnow
-from app.web import client_ip
+from app.web import DEFAULT_MEMBER_PAGE, client_ip
 
 SESSION_COOKIE = "session"
 CSRF_COOKIE = "csrf_token"
@@ -146,7 +147,14 @@ def require_member(request: Request, db: Session = Depends(get_db)) -> Member:
     """FastAPI dependency: valid member session or redirect to login."""
     member = get_current_member(request, db)
     if not member:
-        raise _login_redirect("/member/login")
+        # Mail-Links (z. B. „Jetzt freigeben“) führen nach dem Login dorthin
+        target = "/member/login"
+        if request.method == "GET":
+            query = request.url.query
+            path = request.url.path + (f"?{query}" if query else "")
+            if path != DEFAULT_MEMBER_PAGE:
+                target += "?" + urlencode({"next": path})
+        raise _login_redirect(target)
     return member
 
 

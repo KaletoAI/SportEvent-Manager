@@ -141,13 +141,7 @@
                 <td class="num" data-label="Plätze">{{ b.guest_count + 1 }}</td>
                 <td class="num" data-label="Anteil">{{ (shares.member_share + b.guest_count * shares.guest_share)|euro }}</td>
                 {% if not event.settled_at %}
-                <td>
-                    <form method="post" action="/admin/booking/{{ b.id }}/delete" class="inline"
-                          data-confirm="Anmeldung von {{ b.member.name }} entfernen?">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                        <button type="submit" class="btn btn-outline-danger btn-sm">Entfernen</button>
-                    </form>
-                </td>
+                <td class="cell-action">{{ ui.trash_button("/admin/booking/" ~ b.id ~ "/delete", "Anmeldung von " ~ b.member.name ~ " entfernen", "Anmeldung von " ~ b.member.name ~ " entfernen?", csrf_token) }}</td>
                 {% endif %}
             </tr>
             {% endfor %}
@@ -262,13 +256,7 @@
                     {% endif %}
                 </td>
                 {% if not event.settled_at %}
-                <td>
-                    <form method="post" action="/admin/guest-booking/{{ g.id }}/delete" class="inline"
-                          data-confirm="Gastbuchung von {{ g.name }} entfernen?">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                        <button type="submit" class="btn btn-outline-danger btn-sm">Entfernen</button>
-                    </form>
-                </td>
+                <td class="cell-action">{{ ui.trash_button("/admin/guest-booking/" ~ g.id ~ "/delete", "Gastbuchung von " ~ g.name ~ " entfernen", "Gastbuchung von " ~ g.name ~ " entfernen?", csrf_token) }}</td>
                 {% endif %}
             </tr>
             {% endfor %}

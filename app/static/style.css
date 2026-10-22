@@ -47,6 +47,8 @@
     --week-current-border: #16a34a;
     --week-next-bg: #e0f2fe;
     --week-next-border: #0284c7;
+    /* Vergangene Termine, deren Abrechnung noch offen ist */
+    --unsettled-border: #d97706;
 
     --focus-ring: 0 0 0 3px rgba(37, 99, 235, 0.35);
     --shadow-card: none;
@@ -97,6 +99,7 @@
     --week-current-border: #34d399;
     --week-next-bg: #0f2638;
     --week-next-border: #38bdf8;
+    --unsettled-border: #fbbf24;
 
     --focus-ring: 0 0 0 3px rgba(79, 140, 255, 0.45);
     --shadow-card: 0 4px 16px rgba(0, 0, 0, 0.35);
@@ -293,6 +296,19 @@ nav > strong {
 .nav-links a:hover, .nav-icon:hover, .nav-logout button:hover { color: var(--primary); border-color: var(--primary); }
 .nav-icon { padding: 0.35rem 0.5rem; font-size: 1rem; }
 
+/* Icon-Buttons (Mülleimer in Listen): quadratisch, Tippfläche ≥ 40px */
+.btn-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.5rem;
+    min-height: 2.5rem;
+    padding: 0.4rem;
+    line-height: 0;
+}
+.btn-icon .icon { width: 1.15rem; height: 1.15rem; }
+.cell-action { width: 1%; white-space: nowrap; text-align: right; }
+
 /* ── Stat tiles ────────────────────────────────────────────────────── */
 .stat-grid {
     display: grid;
@@ -339,6 +355,7 @@ nav > strong {
 .booking-item.week-next { border-left-width: 4px; }
 .booking-item.week-current { background: var(--week-current-bg); border-color: var(--week-current-border); }
 .booking-item.week-next { background: var(--week-next-bg); border-color: var(--week-next-border); }
+.past-item.unsettled { border: 2px solid var(--unsettled-border); background: var(--warning-bg); }
 
 /* Antippbare Karten (data-href): ganze Karte öffnet die Detailseite.
    Der Chevron-Button rechts ist rein visuell (Kreis in Primärfarbe,
@@ -536,4 +553,8 @@ details > summary::marker { color: var(--primary); }
     .table-stack td:empty { display: none; }
     .table-stack tr.total { border-width: 2px; }
     .table-stack tr.total td { border-top: none; }
+    /* Mülleimer oben rechts in der Karte statt eigener Zeile */
+    .table-stack tr { position: relative; }
+    .table-stack td.cell-action { position: absolute; top: 0.35rem; right: 0.5rem; width: auto; padding: 0; }
+    .table-stack tr:has(.cell-action) td:first-child { padding-right: 3rem; min-height: 3rem; }
 }

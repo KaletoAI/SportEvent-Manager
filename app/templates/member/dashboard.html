@@ -17,6 +17,17 @@
 <div class="msg msg-warning">💸 Dein Guthaben ist im Minus ({{ member.credit|euro }}). Bitte zahle per PayPal an{% if payee.name %} <strong>{{ payee.name }}</strong>{% endif %}: <strong>{{ payee.paypal }}</strong> (Name + Termin im Verwendungszweck).</div>
 {% endif %}
 
+{% if switch_offer %}
+<div class="msg msg-info flex-between">
+    <span>Der Link gehört zum Abo <strong>{{ switch_offer.subscription.name }}</strong>, du bist gerade in <strong>{{ subscription.name }}</strong>.</span>
+    <form method="post" action="/member/switch/{{ switch_offer.id }}" class="inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="next" value="{{ switch_next }}">
+        <button type="submit" class="btn btn-primary btn-sm">Zu {{ switch_offer.subscription.name }} wechseln</button>
+    </form>
+</div>
+{% endif %}
+
 {% if other_memberships %}
 <div class="card">
     <div class="flex-between">
@@ -164,13 +175,42 @@
     {% else %}
     <p class="muted">Keine kommenden Anmeldungen.</p>
     {% endfor %}
-    {% if past_bookings %}
+</div>
+
+{% macro past_card(item, multi_abo, count, charge, own_abo) %}
+{% set e = item.event %}
+<div class="event-item past-item{% if not e.settled_at and not e.is_cancelled %} unsettled{% endif %}"{% if own_abo %} data-href="/member/event/{{ e.id }}/participants" title="Antippen für Teilnehmer & Details"{% endif %}>
+    <div>
+        <div class="when">
+            {{ e.date|date_de }}{% if e.is_extra %} <span class="badge badge-info">Zusatz</span>{% endif %}
+            {% if e.is_cancelled %}<span class="badge badge-danger">Abgesagt</span>
+            {% elif e.settled_at %}<span class="badge badge-muted">Abgerechnet</span>
+            {% else %}<span class="badge badge-warning">Abrechnung offen</span>{% endif %}
+        </div>
+        <div class="meta">
+            {% if multi_abo %}<strong>{{ e.subscription.name }}</strong> · {% endif %}
+            {{ count }} Teilnehmer
+            {% if charge is not none %} · dein Anteil: {{ (-charge)|euro }}{% elif item.booking %} · du warst angemeldet{% if item.booking.guest_count %} (+{{ item.booking.guest_count }} Gast{% if item.booking.guest_count > 1 %}e{% endif %}){% endif %}{% endif %}
+        </div>
+    </div>
+</div>
+{% endmacro %}
+<div class="card" id="past-events">
+    <h2>Vergangene Termine</h2>
+    {% if past_items %}
+    <div class="event-list">
+        {% for item in past_items[:past_visible] %}{{ past_card(item, multi_abo, past_count[item.event.id], past_charges.get(item.event.id), item.event.subscription_id == subscription.id) }}{% endfor %}
+    </div>
+    {% if past_items|length > past_visible %}
     <details class="mt-1">
-        <summary>Frühere Anmeldungen ({{ past_bookings|length }})</summary>
+        <summary>Ältere Termine ({{ past_items|length - past_visible }})</summary>
         <div class="event-list mt-1">
-            {% for b in past_bookings %}{{ booking_card(b, "past", multi_abo) }}{% endfor %}
+            {% for item in past_items[past_visible:] %}{{ past_card(item, multi_abo, past_count[item.event.id], past_charges.get(item.event.id), item.event.subscription_id == subscription.id) }}{% endfor %}
         </div>
     </details>
+    {% endif %}
+    {% else %}
+    <p class="muted">Noch keine vergangenen Termine.</p>
     {% endif %}
 </div>
 
@@ -198,30 +238,6 @@
             <button type="submit" class="btn btn-outline-danger btn-sm">Neuen Link erzeugen</button>
         </form>
     </details>
-</div>
-
-<div class="card">
-    <h2>Vergangene Termine</h2>
-    {% if past_events %}
-    <div class="event-list">
-        {% for event in past_events %}
-        <div class="event-item" data-href="/member/event/{{ event.id }}/participants" title="Antippen für Teilnehmer & Details">
-            <div>
-                <div class="when">
-                    {{ event.date|date_de }}{% if event.is_extra %} <span class="badge badge-info">Zusatz</span>{% endif %}
-                    {% if event.settled_at %}<span class="badge badge-muted">Abgerechnet</span>{% else %}<span class="badge badge-warning">Offen</span>{% endif %}
-                </div>
-                <div class="meta">
-                    {{ booked_count[event.id] }} Teilnehmer
-                    {% if event.id in my_charges %} · dein Anteil: {{ (-my_charges[event.id])|euro }}{% elif event.id in booked_event_ids %} · du warst angemeldet{% endif %}
-                </div>
-            </div>
-        </div>
-        {% endfor %}
-    </div>
-    {% else %}
-    <p class="muted">Noch keine vergangenen Termine.</p>
-    {% endif %}
 </div>
 </section>
 

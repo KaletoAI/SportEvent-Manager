@@ -79,6 +79,7 @@ async def send_cancel_reminders(db) -> int:
                     last_free.strftime("%d.%m.%Y %H:%M"),
                     services.door_code(event),
                     roster=roster,
+                    url=services.member_page_url(sub.id, "termine"),
                 ),
             )
             for booking in event.bookings
@@ -96,6 +97,7 @@ async def send_cancel_reminders(db) -> int:
                     gb.count,
                     services.door_code(event),
                     roster=roster,
+                    url=services.guest_booking_url(gb),
                 ),
             )
             for gb in guest_bookings

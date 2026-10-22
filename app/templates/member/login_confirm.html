@@ -8,6 +8,7 @@
     <p class="muted">Abo: <strong>{{ member.subscription.name }}</strong></p>
     <form method="post" action="/member/login/t/{{ token }}" class="mt-1">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        {% if next and next != "/member/dashboard" %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
         <button type="submit" class="btn btn-primary btn-block btn-lg">Jetzt anmelden</button>
     </form>
     <p class="muted small mt-1">Der Link ist nur einmal gültig. Ein Tipp auf den Button meldet dich auf diesem Gerät an.</p>

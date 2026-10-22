@@ -180,5 +180,11 @@
 {% macro logout(url, csrf_token) %}<form method="post" action="{{ url }}" class="nav-logout"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button type="submit">Logout</button></form>{% endmacro %}
 
 {# Nav: Symbol-Links (Zurück / Übersicht) mit Beschriftung für Screenreader #}
+{# Löschen/Entfernen in Listen: roter Mülleimer statt Text. `label` ist
+   Tooltip + Screenreader-Text, `confirm` die Rückfrage (data-confirm). #}
+{% macro trash_button(action, label, confirm, csrf_token) %}<form method="post" action="{{ action }}" class="inline" data-confirm="{{ confirm }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="btn btn-outline-danger btn-sm btn-icon" title="{{ label }}" aria-label="{{ label }}"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+</form>{% endmacro %}
 {% macro nav_back(url, label="Zurück") %}<a href="{{ url }}" class="nav-icon" title="{{ label }}" aria-label="{{ label }}">←</a>{% endmacro %}
 {% macro nav_home(url) %}<a href="{{ url }}" class="nav-icon" title="Übersicht" aria-label="Übersicht">🏠</a>{% endmacro %}

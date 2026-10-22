@@ -139,6 +139,14 @@ def _target(payee_name: Optional[str]) -> str:
     return f"an {payee_name} per PayPal" if payee_name else "per PayPal"
 
 
+def _link(doc: MailDoc, label: str, url: str) -> None:
+    """Direktlink als Button — fehlt ohne BASE_URL (siehe web.app_url).
+    Links öffnen nur Seiten; Aktionen bleiben POST + Bestätigung, weil
+    Mail-Scanner Links automatisch aufrufen."""
+    if url:
+        doc.button(label, url)
+
+
 def _door_code(doc: MailDoc, door_code: str) -> None:
     if door_code:
         doc.code("Türcode", door_code)
@@ -182,11 +190,12 @@ def login_link_email(
 
 def cancel_reminder_email(
     member_name: str, event_date: str, deadline: str, door_code: str = "",
-    roster: Sequence[str] = (),
+    roster: Sequence[str] = (), url: str = "",
 ) -> MailContent:
     doc = MailDoc(f"Erinnerung: Termin {event_date}", member_name)
     doc.p(f"du bist für den Termin am {event_date} angemeldet.")
     doc.facts([("Kostenlos abmelden bis", f"{deadline} Uhr")])
+    _link(doc, "Zum Termin (abmelden)", url)
     if roster:
         doc.bullets("Mit dabei:", list(roster))
     _door_code(doc, door_code)
@@ -195,7 +204,7 @@ def cancel_reminder_email(
 
 def minimum_participants_email(
     recipient_name: str, event_date: str, start_time: str,
-    participants: int, minimum: int,
+    participants: int, minimum: int, guest_url: str = "",
 ) -> MailContent:
     doc = MailDoc("Mitspieler gesucht", recipient_name)
     doc.p(
@@ -213,11 +222,14 @@ def minimum_participants_email(
         "Frag bitte in deinem Bekanntenkreis nach, ob jemand mitspielen "
         "möchte, damit der Termin stattfinden kann."
     )
+    if guest_url:
+        doc.p("Mit diesem Gastlink können sie sich direkt anmelden, ohne Konto:")
+        _link(doc, "Gastlink zum Weitergeben", guest_url)
     return doc.render()
 
 
 def waitlist_promoted_email(
-    member_name: str, event_date: str, start_time: str
+    member_name: str, event_date: str, start_time: str, url: str = ""
 ) -> MailContent:
     doc = MailDoc("Du bist nachgerückt", member_name)
     doc.notice(
@@ -227,11 +239,12 @@ def waitlist_promoted_email(
         "success",
     )
     doc.p("Wenn du nicht kannst, melde dich bitte im Dashboard wieder ab.")
+    _link(doc, "Zum Termin", url)
     return doc.render()
 
 
 def cancel_request_email(
-    super_name: str, member_name: str, event_date: str
+    super_name: str, member_name: str, event_date: str, url: str = ""
 ) -> MailContent:
     doc = MailDoc("Abmelde-Anfrage", super_name)
     doc.p(f"{member_name} möchte sich vom Termin am {event_date} abmelden.")
@@ -240,6 +253,7 @@ def cancel_request_email(
         "Anfrage im Dashboard frei oder lehne sie ab.",
         "warning",
     )
+    _link(doc, "Anfrage ansehen", url)
     return doc.render()
 
 
@@ -253,6 +267,7 @@ def settlement_email(
     is_payee: bool = False,
     open_items: Sequence[tuple[str, str]] = (),
     debt: str = "",
+    url: str = "",
 ) -> MailContent:
     """Abrechnungsmail. Im Minus (`open_items`, `debt`) mit denselben
     offenen Terminen und derselben Zahlungsbox wie die Sammelmail."""
@@ -268,6 +283,7 @@ def settlement_email(
         _open_debt(doc, list(open_items), debt, paypal, payee_name)
     else:
         doc.notice("Dein Guthaben deckt den Betrag — du musst nichts zahlen.", "success")
+    _link(doc, "Kontoauszug ansehen", url)
     return doc.render()
 
 
@@ -278,12 +294,14 @@ def payment_request_email(
     items: list[tuple[str, str]],
     paypal: Optional[str],
     payee_name: Optional[str] = None,
+    url: str = "",
 ) -> MailContent:
     """Gesammelte Zahlungsaufforderung: offener Betrag + offene Posten
     (Notiz, Betrag), ältester zuerst."""
     doc = MailDoc("Zahlungsaufforderung", member_name)
     doc.p(f"dein Guthaben im Abo „{subscription_name}“ ist im Minus.")
     _open_debt(doc, items, debt, paypal, payee_name)
+    _link(doc, "Kontoauszug ansehen", url)
     return doc.render()
 
 
@@ -309,7 +327,8 @@ def guest_settlement_email(
 
 
 def guest_request_email(
-    super_name: str, guest_name: str, count: int, event_date: str
+    super_name: str, guest_name: str, count: int, event_date: str,
+    url: str = "",
 ) -> MailContent:
     persons = f" ({count} Personen)" if count > 1 else ""
     doc = MailDoc("Neue Gast-Anfrage", super_name)
@@ -319,6 +338,7 @@ def guest_request_email(
         "Anfrage im Dashboard (Tab „Verwaltung“) oder lehne sie ab.",
         "warning",
     )
+    _link(doc, "Anfrage ansehen", url)
     return doc.render()
 
 
@@ -331,6 +351,7 @@ def guest_confirmed_email(
     paypal: Optional[str],
     payee_name: Optional[str] = None,
     door_code: str = "",
+    url: str = "",
 ) -> MailContent:
     persons = f" für {count} Personen" if count > 1 else ""
     doc = MailDoc("Gastbuchung bestätigt", guest_name)
@@ -351,6 +372,7 @@ def guest_confirmed_email(
         "Falls du nicht kommen kannst, gib bitte dem Organisator Bescheid, "
         "damit dein Platz frei wird."
     )
+    _link(doc, "Deine Buchung ansehen", url)
     return doc.render()
 
 
@@ -366,7 +388,7 @@ def guest_rejected_email(guest_name: str, event_date: str) -> MailContent:
 
 def guest_reminder_email(
     guest_name: str, event_date: str, start_time: str, count: int,
-    door_code: str = "", roster: Sequence[str] = (),
+    door_code: str = "", roster: Sequence[str] = (), url: str = "",
 ) -> MailContent:
     persons = f" mit {count} Personen" if count > 1 else ""
     doc = MailDoc(f"Erinnerung: Termin {event_date}", guest_name)
@@ -381,4 +403,23 @@ def guest_reminder_email(
         "Falls du nicht kommen kannst, gib bitte dem Organisator "
         "Bescheid, damit dein Platz frei wird."
     )
+    _link(doc, "Deine Buchung ansehen", url)
+    return doc.render()
+
+
+def booking_removed_email(
+    name: str, event_date: str, removed_by: str, url: str = ""
+) -> MailContent:
+    """Ein Super-Mitglied hat die Anmeldung entfernt (z. B. nicht
+    erschienen) — Transparenz für die betroffene Person."""
+    doc = MailDoc(f"Abgemeldet: Termin {event_date}", name)
+    doc.p(
+        f"{removed_by} hat deine Anmeldung für den Termin am {event_date} "
+        "entfernt. Für diesen Termin entsteht dir damit kein Anteil."
+    )
+    doc.small(
+        "Falls das ein Versehen war, melde dich bitte bei "
+        f"{removed_by} oder beim Organisator."
+    )
+    _link(doc, "Zum Dashboard", url)
     return doc.render()

@@ -22,8 +22,17 @@
         btns.forEach(function (b) {
             b.addEventListener('click', function () { activate(b.dataset.tab, true); });
         });
+        function known(name) { return name && btns.some(function (b) { return b.dataset.tab === name; }); }
+        // ?tab=… aus Mail-Links gewinnt einmalig, danach aus der URL entfernen
+        var params = new URLSearchParams(location.search);
+        var wanted = params.get('tab');
         var saved = store(function () { return sessionStorage.getItem(key); });
-        if (saved && btns.some(function (b) { return b.dataset.tab === saved; })) activate(saved, false);
+        if (known(wanted)) {
+            activate(wanted, true);
+            params.delete('tab');
+            var rest = params.toString();
+            store(function () { history.replaceState(null, '', location.pathname + (rest ? '?' + rest : '') + location.hash); });
+        } else if (known(saved)) activate(saved, false);
     });
 
     // ── Theme-Umschalter: Wahl pro Gerät, Icon + theme-color anpassen ──

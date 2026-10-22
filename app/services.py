@@ -25,6 +25,7 @@ from sqlalchemy.orm import Session
 
 from app.emailer import (
     Mail,
+    booking_removed_email,
     guest_confirmed_email,
     guest_rejected_email,
     guest_request_email,
@@ -35,6 +36,7 @@ from app.emailer import (
     settlement_email,
     waitlist_promoted_email,
 )
+from app.web import app_url
 from app.models.models import (
     Booking,
     Event,
@@ -102,6 +104,51 @@ async def remove_booking(
     return promoted
 
 
+def removal_blocker(db: Session, event: Event, spots: int) -> Optional[str]:
+    """Why a super member may not remove `spots` participants (a member
+    booking incl. its guests, or a link guest booking), or None.
+
+    Before the start anything goes (the recruiting mail kicks in below the
+    minimum). Afterwards the event must stay at the minimum, otherwise it
+    could no longer be settled (settle_blocker)."""
+    from app import clock
+
+    if event.settled_at:
+        return "Termin ist bereits abgerechnet"
+    if event.is_cancelled:
+        return "Termin ist abgesagt"
+    started = clock.now(db) >= datetime.combine(event.date, event.start_time)
+    if started and count_booked(db, event.id) - spots < event.min_participants:
+        return (
+            f"Dann wäre der Termin unter der Mindestzahl ({event.min_participants}) "
+            "und nicht mehr abrechenbar – bitte den Admin fragen"
+        )
+    return None
+
+
+async def notify_booking_removed(
+    event: Event, email: str, name: str, removed_by: str, url: str = ""
+) -> None:
+    """Tell the person a super member removed their booking (best effort)."""
+    if not email:
+        return
+    from app.templates import format_date
+
+    await send_batch(
+        event.subscription,
+        [
+            Mail(
+                email,
+                f"Abgemeldet: {format_date(event.date)} – {event.subscription.name}",
+                booking_removed_email(
+                    clean_name(name), event.date.strftime("%d.%m.%Y"),
+                    clean_name(removed_by), url,
+                ),
+            )
+        ],
+    )
+
+
 async def _notify_minimum_participants(
     db: Session, event: Event, previous_participants: int
 ) -> None:
@@ -162,6 +209,7 @@ async def _notify_minimum_participants(
                     event.start_time.strftime("%H:%M"),
                     participants,
                     event.min_participants,
+                    guest_url=guest_event_url(event),
                 ),
             )
             for email, name in recipients.items()
@@ -369,6 +417,7 @@ async def notify_guest_request(db: Session, gb: GuestBooking) -> None:
                     # defensiv auch für ältere Buchungen vor clean_name
                     s.name, clean_name(gb.name), gb.count,
                     event.date.strftime("%d.%m.%Y"),
+                    url=member_page_url(sub.id, "verwaltung"),
                 ),
             )
             for s in supers
@@ -384,6 +433,23 @@ def guest_max_share(event: Event) -> Decimal:
 def door_code(event: Event) -> str:
     """Effective door code: the event's own, else the Abo's season code."""
     return event.door_code or event.subscription.door_code or ""
+
+
+# ── Direktlinks für Mails ("" ohne BASE_URL → kein Button) ──────────────────
+
+
+def member_page_url(subscription_id: str, tab: str) -> str:
+    """Dashboard-Tab eines Abos; `abo` bietet den Wechsel an, falls die
+    Session gerade auf einem anderen Abo derselben Person steht."""
+    return app_url(f"member/dashboard?tab={tab}&abo={subscription_id}")
+
+
+def guest_booking_url(gb: GuestBooking) -> str:
+    return app_url(f"g/{gb.event.public_token}/buchung/{gb.token}")
+
+
+def guest_event_url(event: Event) -> str:
+    return app_url(f"g/{event.public_token}")
 
 
 async def confirm_guest_booking(db: Session, gb: GuestBooking) -> None:
@@ -417,6 +483,7 @@ async def send_guest_confirmation(db: Session, gb: GuestBooking) -> None:
                     payee["paypal"],
                     payee["name"],
                     door_code(event),
+                    url=guest_booking_url(gb),
                 ),
             )
         ],
@@ -514,7 +581,8 @@ async def promote_from_waitlist(db: Session, event: Event) -> list[Member]:
                 m.email,
                 f"Nachgerückt: {date_str} – {event.subscription.name}",
                 waitlist_promoted_email(
-                    m.name, date_str, event.start_time.strftime("%H:%M")
+                    m.name, date_str, event.start_time.strftime("%H:%M"),
+                    url=member_page_url(event.subscription_id, "termine"),
                 ),
             )
             for m in promoted
@@ -629,6 +697,7 @@ async def settle_and_notify(db: Session, event: Event) -> tuple[int, Decimal, in
                     is_payee=(payee["member_id"] == member.id),
                     open_items=open_item_lines(open_items(db, member)),
                     debt=format_euro(-member.credit),
+                    url=member_page_url(event.subscription_id, "konto"),
                 ),
             )
         )
@@ -1025,6 +1094,7 @@ async def send_payment_requests(
                 open_item_lines(d["items"]),
                 payee["paypal"],
                 payee["name"],
+                url=member_page_url(subscription.id, "konto"),
             ),
         )
         for d in open_debts

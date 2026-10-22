@@ -10,6 +10,7 @@
     <p class="muted small">Gib deine E-Mail-Adresse ein — du bekommst einen Login-Link zugeschickt (kein Passwort nötig).</p>
     <form method="post" class="mt-1">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        {% if next and next != "/member/dashboard" %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
         <div class="form-group">
             <label for="email">E-Mail</label>
             <input type="email" id="email" name="email" maxlength="200" autocomplete="email" inputmode="email" enterkeyhint="send" required autofocus>
@@ -24,6 +25,7 @@
     <form method="post" action="/member/login/code" id="code-form" class="mt-1">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="hidden" name="email" value="{{ code_email }}">
+        {% if next and next != "/member/dashboard" %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
         <input type="hidden" name="code" id="otp-code">
         <div class="otp-row" id="otp">
             {% for i in range(6) %}
