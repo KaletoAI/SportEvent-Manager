@@ -136,10 +136,14 @@ class MailDoc:
             f'margin:0 0 16px;">{_e(text)}</div>',
         )
 
-    def pay(self, lead: str, paypal: str, hint: str = "") -> "MailDoc":
-        """Hervorgehobene Zahlungsbox: Aufforderung, PayPal-Ziel, Hinweis."""
-        lines = [lead, paypal] + ([hint] if hint else [])
-        url = _paypal_url(paypal)
+    def pay(
+        self, lead: str, paypal: str, hint: str = "", pay_url: str = ""
+    ) -> "MailDoc":
+        """Hervorgehobene Zahlungsbox: Aufforderung, PayPal-Ziel, Hinweis.
+        `pay_url` (PayPal-Link des Empfängers) wird zum Zahl-Button."""
+        url = pay_url or _paypal_url(paypal)
+        lines = [lead] + ([paypal] if paypal else []) + ([url] if pay_url else [])
+        lines += [hint] if hint else []
         button = (
             f'<div style="margin:12px 0 4px;">{_button_html("Mit PayPal zahlen", url)}</div>'
             if url
@@ -156,9 +160,13 @@ class MailDoc:
             f"border-left:4px solid {_PRIMARY}; border-radius:10px; "
             f'padding:14px 16px; margin:0 0 16px;">'
             f"<div>{_e(lead)}</div>"
-            f'<div style="font-size:17px; font-weight:700; margin-top:6px; '
-            f'word-break:break-all;">{_e(paypal)}</div>'
-            f"{button}{hint_html}</div>",
+            + (
+                f'<div style="font-size:17px; font-weight:700; margin-top:6px; '
+                f'word-break:break-all;">{_e(paypal)}</div>'
+                if paypal
+                else ""
+            )
+            + f"{button}{hint_html}</div>",
         )
 
     def code(self, label: str, value: str) -> "MailDoc":

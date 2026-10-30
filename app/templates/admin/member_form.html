@@ -49,6 +49,12 @@
             <label for="paypal_address">PayPal-Adresse (für „Vorstrecker“-Zahlungsmodus)</label>
             <input type="text" id="paypal_address" name="paypal_address" value="{{ member.paypal_address if member else '' }}" maxlength="200" autocomplete="off" placeholder="paypal@example.com">
         </div>
+        {% if member %}
+        <div class="form-group">
+            <label for="paypal_link">PayPal.me-Link (pflegt das Mitglied auch selbst im Konto-Tab)</label>
+            <input type="text" id="paypal_link" name="paypal_link" value="{{ member.paypal_link }}" maxlength="200" inputmode="url" autocomplete="off" placeholder="https://paypal.me/name">
+        </div>
+        {% endif %}
         <p class="muted small">Kein Passwort nötig — Mitglieder melden sich per Login-Link an ihre E-Mail-Adresse an.</p>
         {% if not member %}
         <div class="form-group">

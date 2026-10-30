@@ -222,7 +222,7 @@
                 <th class="num">Personen</th>
                 <th class="num">Anteil{% if not event.settled_at %} (bei aktueller Belegung){% endif %}</th>
                 <th>Bezahlt</th>
-                {% if not event.settled_at %}<th></th>{% endif %}
+                <th></th>
             </tr>
         </thead>
         <tbody>
@@ -255,9 +255,7 @@
                     </form>
                     {% endif %}
                 </td>
-                {% if not event.settled_at %}
-                <td class="cell-action">{{ ui.trash_button("/admin/guest-booking/" ~ g.id ~ "/delete", "Gastbuchung von " ~ g.name ~ " entfernen", "Gastbuchung von " ~ g.name ~ " entfernen?", csrf_token) }}</td>
-                {% endif %}
+                <td class="cell-action">{% if not g.paid_at %}{{ ui.trash_button("/admin/guest-booking/" ~ g.id ~ "/delete", "Gastbuchung von " ~ g.name ~ " entfernen", "Gastbuchung von " ~ g.name ~ " entfernen?" ~ (" Die Abrechnung der Mitglieder bleibt unverändert, der Gast bekommt keine Zahlungsaufforderung mehr." if event.settled_at else ""), csrf_token) }}{% endif %}</td>
             </tr>
             {% endfor %}
         </tbody>

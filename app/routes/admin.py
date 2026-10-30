@@ -503,6 +503,8 @@ async def subscription_detail(
             "members": members,
             "debts": debts,
             "debt_total": sum((d["debt"] for d in debts), Decimal("0.00")),
+            "guest_debts": services.guest_debts(db, sub),
+            "payment_request_repeat": services.payment_request_is_repeat(db, sub),
             "payee": services.payee_info(db, sub),
             "booked_by_event": booked_by_event,
             "abo_guest_link": f"{public_base_url(request)}g/abo/{sub.guest_token}",
@@ -521,15 +523,19 @@ async def subscription_detail(
 async def send_payment_mails(
     request: Request,
     sub_id: str,
+    last_sent: str = Form("", max_length=40),
     db: Session = Depends(get_db),
 ):
     """Gesammelte Zahlungsaufforderungen an alle Mitglieder im Minus."""
     sub = db.query(Subscription).filter(Subscription.id == sub_id).first()
     if not sub:
         return _redirect("Abo nicht gefunden", mt="error")
+    back = f"/admin/subscription/{sub_id}"
+    if last_sent != services.payment_request_token(sub):
+        return _redirect(services.PAYMENT_REQUEST_STALE, back, mt="error")
     count, sent = await services.send_payment_requests(db, sub)
     msg, mt = services.payment_request_result(count, sent)
-    return _redirect(msg, f"/admin/subscription/{sub_id}", mt)
+    return _redirect(msg, back, mt)
 
 
 # ── Member Management ────────────────────────────────────────────────────
@@ -738,6 +744,7 @@ async def update_member(
     name: str = Form(..., max_length=200),
     email: str = Form(..., max_length=200),
     paypal_address: str = Form("", max_length=200),
+    paypal_link: str = Form("", max_length=200),
     is_active: str | None = Form(None),
     is_super: str | None = Form(None),
     db: Session = Depends(get_db),
@@ -748,6 +755,13 @@ async def update_member(
     name = services.clean_name(name)
     email = services.normalize_email(email)
     paypal_address = paypal_address.strip()
+    link = services.normalize_paypal_link(paypal_link)
+    if link is None:
+        return _redirect(
+            "Ungültiger PayPal-Link – erwartet z. B. https://paypal.me/name",
+            f"/admin/member/{member_id}/edit",
+            mt="error",
+        )
     duplicate = (
         db.query(Member)
         .filter(
@@ -767,6 +781,7 @@ async def update_member(
     member.name = name
     member.email = email
     member.paypal_address = paypal_address
+    member.paypal_link = link
     # Unchecked checkboxes are absent from the form body
     member.is_active = is_active is not None
     member.is_super = is_super is not None
@@ -1207,13 +1222,20 @@ async def admin_delete_guest_booking(
     if not gb:
         return _redirect("Gastbuchung nicht gefunden", mt="error")
     back = f"/admin/event/{gb.event_id}"
-    if gb.event.settled_at:
-        return _redirect("Termin ist bereits abgerechnet", back, mt="error")
     if gb.paid_at:
         return _redirect(
             "Gastbuchung ist als bezahlt markiert – erst die Bezahlt-Markierung zurücknehmen",
             back,
             mt="error",
+        )
+    if gb.event.settled_at:
+        # Fehlbuchung nach der Abrechnung: Anteile sind eingefroren,
+        # Link-Gäste stehen nicht im Ledger — das Ergebnis bleibt.
+        db.delete(gb)
+        db.commit()
+        return _redirect(
+            f"Gastbuchung von {gb.name} entfernt – die Abrechnung bleibt unverändert",
+            back,
         )
     promoted = await services.remove_booking(db, gb)
     info = f" – {promoted[0].name} rückt nach" if promoted else ""

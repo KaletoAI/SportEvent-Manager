@@ -63,8 +63,34 @@
 {% endif %}
 {% endmacro %}
 
-{# Zahlungsmails automatisch oder per Knopf (Zahlungsempfänger / Admin) #}
-{% macro payment_mail_controls(subscription, debts, mode_action, send_action, csrf_token) %}
+{# Offene Gastzahlungen (Link-Gäste abgerechneter Termine, nicht abgehakt) #}
+{% macro guest_debts_table(guest_debts) %}
+{% if guest_debts %}
+<h3 class="mt-1">Offene Gastzahlungen</h3>
+<div class="table-wrap">
+<table class="table-stack">
+    <thead>
+        <tr><th>Gast</th><th>Offene Posten</th><th class="num">Offen</th></tr>
+    </thead>
+    <tbody>
+        {% for g in guest_debts %}
+        <tr>
+            <td>{{ g.name }}{% if not g.email %} <span class="badge badge-muted">ohne E-Mail</span>{% endif %}</td>
+            <td class="wrap" data-label="Offene Posten"><div>{% for i in g['items'] %}<div>{{ i.note }}: <span class="nobreak">{{ i.amount|euro }}</span></div>{% endfor %}</div></td>
+            <td class="num" data-label="Offen"><strong>{{ g.debt|euro }}</strong></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+<p class="muted small">Gäste zahlen außerhalb des Kontos — ist das Geld da, beim Termin unter „Gäste“ mit „Bezahlt ✓“ abhaken.</p>
+{% endif %}
+{% endmacro %}
+
+{# Zahlungsmails automatisch oder per Knopf (Zahlungsempfänger / Admin).
+   `repeat`: seit dem letzten Versand wurde nichts abgerechnet — dann
+   fragt der Knopf ausdrücklich, ob nochmal verschickt werden soll. #}
+{% macro payment_mail_controls(subscription, debts, guest_debts, repeat, mode_action, send_action, csrf_token) %}
 {% if mode_action %}
 <form method="post" action="{{ mode_action }}" class="mt-1">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
@@ -81,14 +107,17 @@
 </form>
 {% endif %}
 <p class="muted small mt-1">
-    {% if subscription.payment_mail_mode == 'manual' %}Bei der Abrechnung bekommen Mitglieder keine Mail. Mit dem Knopf erhält jeder im Minus eine Sammel-Aufforderung mit offenem Betrag und offenen Terminen.
-    {% else %}Mitglieder bekommen nach jeder Abrechnung eine Mail mit ihrem Betrag. Mit dem Knopf kannst du zusätzlich eine Sammel-Erinnerung an alle im Minus schicken.{% endif %}
-    {% if subscription.last_payment_request_at %}Zuletzt verschickt: {{ subscription.last_payment_request_at|date_de }}.{% endif %}
+    {% if subscription.payment_mail_mode == 'manual' %}Bei der Abrechnung bekommen Mitglieder und Gäste keine Mail. Mit dem Knopf erhält jeder im Minus und jeder Gast mit offener Zahlung eine Sammel-Aufforderung mit offenem Betrag und offenen Terminen.
+    {% else %}Mitglieder und Gäste bekommen nach jeder Abrechnung eine Mail mit ihrem Betrag. Mit dem Knopf kannst du zusätzlich eine Sammel-Erinnerung an alle im Minus und alle Gäste mit offener Zahlung schicken.{% endif %}
+    {% if subscription.last_payment_request_at %}Zuletzt verschickt: {{ subscription.last_payment_request_at|datetime_de }}.{% endif %}
 </p>
+{% set n = debts|length + guest_debts|selectattr('email')|list|length %}
 <form method="post" action="{{ send_action }}" class="mt-1"
-      data-confirm="Zahlungsaufforderung an {{ debts|length }} Mitglied{% if debts|length != 1 %}er{% endif %} im Minus senden?">
+      data-confirm="{% if repeat %}Die Zahlungsaufforderungen wurden bereits {{ subscription.last_payment_request_at|datetime_de }} verschickt und seitdem wurde nichts Neues abgerechnet. Wirklich nochmal an {{ n }} Empfänger senden?{% else %}Zahlungsaufforderung an {{ n }} Empfänger senden?{% endif %}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <button type="submit" class="btn btn-primary btn-sm" {% if not debts %}disabled{% endif %}>📧 Zahlungsaufforderungen senden ({{ debts|length }})</button>
+    <input type="hidden" name="last_sent" value="{{ subscription.last_payment_request_at.isoformat() if subscription.last_payment_request_at else '' }}">
+    {% if repeat %}<p class="msg msg-info">Schon verschickt am {{ subscription.last_payment_request_at|datetime_de }} — seitdem wurde nichts Neues abgerechnet.</p>{% endif %}
+    <button type="submit" class="btn btn-primary btn-sm" {% if not n %}disabled{% endif %}>📧 Zahlungsaufforderungen {% if repeat %}erneut {% endif %}senden ({{ n }})</button>
 </form>
 {% endmacro %}
 

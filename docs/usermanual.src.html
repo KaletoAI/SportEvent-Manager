@@ -209,6 +209,10 @@ wird der Termin abgesagt.</p>
 <p>Jedes Mitglied hat ein Guthabenkonto. Einzahlungen erhöhen es, abgerechnete
 Termine belasten es. Rutscht dein Guthaben ins Minus, zeigt die App dir
 oben einen Hinweis mit der PayPal-Adresse, an die du zahlen sollst.</p>
+<p>Bekommst du selbst Geld von den anderen (z. B. als Vorstrecker), trag im
+Konto-Tab unter <em>Dein PayPal-Link</em> deinen PayPal.me-Link ein. Er steht
+dann in allen Zahlungsmails als Knopf <em>Mit PayPal zahlen</em> — mit dem
+Betrag schon eingetragen.</p>
 
 <h2 id="abo">2. Ein Abo anlegen lassen — was der Admin braucht</h2>
 
@@ -250,7 +254,7 @@ folgenden Angaben. Am besten schickst du sie ihm als komplette Liste.</p>
 <tr><td class="nowrap">Türcode (Saison)</td><td>Ein Code, der die ganze Saison gilt. Mitglieder sehen ihn in der App, Gäste mit bestätigter Buchung in der Mail. Hat jeder Termin einen eigenen Code, bleibt das Feld leer und der Code wird auf der Terminseite eingetragen.</td><td>34512</td></tr>
 <tr><td class="nowrap">Zahlungen gehen an</td><td>Entweder eine zentrale Kasse oder das Mitglied, das das Geld ausgelegt hat („Vorstrecker“, siehe unten).</td><td>Vorstrecker</td></tr>
 <tr><td class="nowrap">PayPal-Adresse</td><td>Die zentrale Adresse. Wird auch als Rückfallebene benutzt, wenn im Vorstrecker-Modus kein Mitglied infrage kommt.</td><td>kasse@example.com</td></tr>
-<tr><td class="nowrap">Zahlungsmails an Mitglieder</td><td><em>Automatisch</em>: Nach jeder Abrechnung bekommt jedes Mitglied eine Mail mit seinem Betrag; wer im Minus ist, sieht darin auch alle offenen Termine und das Zahlungsziel — genau wie in der Sammelmail. <em>Manuell</em>: Bei der Abrechnung geht keine Mail raus; der Zahlungsempfänger verschickt gesammelte Zahlungsaufforderungen per Knopf (siehe „Wer schuldet mir wie viel“). Der Vorstrecker kann das auch selbst im Konto-Tab umstellen.</td><td>Manuell</td></tr>
+<tr><td class="nowrap">Zahlungsmails an Mitglieder</td><td><em>Automatisch</em>: Nach jeder Abrechnung bekommt jedes Mitglied und jeder Link-Gast eine Mail mit seinem Betrag; wer im Minus ist, sieht darin auch alle offenen Termine und das Zahlungsziel — genau wie in der Sammelmail. <em>Manuell</em>: Bei der Abrechnung geht keine Mail raus, auch nicht an Gäste; der Zahlungsempfänger verschickt gesammelte Zahlungsaufforderungen per Knopf (siehe „Wer schuldet mir wie viel“). Der Vorstrecker kann das auch selbst im Konto-Tab umstellen.</td><td>Manuell</td></tr>
 </tbody>
 </table>
 
@@ -304,7 +308,11 @@ werden übernommen.
 dem Gastlink zum Weitergeben, <strong>Mitglieder</strong> mit allen
 Anmeldungen und der Warteliste sowie <strong>Gäste</strong> mit den
 Gastbuchungen und dem Bezahlt-Haken. Bis zur Abrechnung entfernt der rote
-<strong>Mülleimer</strong> am Zeilenende eine Anmeldung oder Gastbuchung.</p>
+<strong>Mülleimer</strong> am Zeilenende eine Anmeldung oder Gastbuchung.
+Eine noch nicht bezahlte Gastbuchung lässt sich auch nach der Abrechnung
+entfernen (z. B. eine Fehlbuchung): Die Anteile sind bei der Abrechnung
+eingefroren, an den Beträgen der Mitglieder ändert sich nichts — der Gast
+bekommt nur keine Zahlungsaufforderung mehr.</p>
 
 <div class="figrow">
   <figure>
@@ -596,8 +604,13 @@ jeder Abrechnung rausgehen oder ob du sie <strong>manuell</strong> auslöst.
 Im manuellen Modus drückst du z. B. einmal im Monat auf
 <em>Zahlungsaufforderungen senden</em>: Jedes Mitglied im Minus bekommt eine
 Mail mit seinem offenen Betrag, den offenen Terminen und deiner
-PayPal-Adresse. Der Knopf funktioniert auch im automatischen Modus — als
-Sammel-Erinnerung. Der Admin findet dieselbe Übersicht auf der Abo-Seite
+PayPal-Adresse. Gäste über den Buchungslink werden genauso behandelt: Im
+manuellen Modus bekommen auch sie bei der Abrechnung keine Mail, sondern
+mit dem Knopf eine Sammel-Aufforderung für alle noch nicht abgehakten
+Termine (Liste <em>Offene Gastzahlungen</em>). Der Knopf funktioniert auch im
+automatischen Modus — als Sammel-Erinnerung. Drückst du ihn ein zweites Mal,
+ohne dass seitdem etwas abgerechnet wurde, fragt die App ausdrücklich nach,
+ob die Mails wirklich nochmal raus sollen. Der Admin findet dieselbe Übersicht auf der Abo-Seite
 unter „Mitglieder“ → <em>Offene Beträge</em>.</p>
 
 <h4>Teilnehmerliste</h4>

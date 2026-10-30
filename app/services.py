@@ -27,6 +27,7 @@ from app.emailer import (
     Mail,
     booking_removed_email,
     guest_confirmed_email,
+    guest_payment_request_email,
     guest_rejected_email,
     guest_request_email,
     guest_settlement_email,
@@ -67,6 +68,36 @@ def normalize_email(email: str) -> str:
     """Emails are stored and compared lower-case without surrounding blanks,
     so "Kai@x.de " and "kai@x.de" are the same login."""
     return (email or "").strip().lower()
+
+
+_PAYPAL_LINK = re.compile(
+    r"^(?:https?://)?(?:www\.)?(paypal\.me|paypal\.com)(/[A-Za-z0-9._~%/?=&+-]+)$",
+    re.IGNORECASE,
+)
+
+
+def normalize_paypal_link(value: str) -> Optional[str]:
+    """PayPal-Link eines Mitglieds → 'https://paypal.me/…', '' (leer) oder
+    None (ungültig). Nur PayPal-Domains: der Link landet als Button in
+    Mails an andere — eine beliebige URL wäre ein Phishing-Kanal."""
+    value = (value or "").strip()
+    if not value:
+        return ""
+    match = _PAYPAL_LINK.match(value)
+    if not match:
+        return None
+    host = "paypal.me" if match.group(1).lower() == "paypal.me" else "www.paypal.com"
+    return f"https://{host}{match.group(2)}"
+
+
+def paypal_pay_url(link: str, amount: Optional[Decimal] = None) -> str:
+    """Zahl-Link für Mails: bei 'https://paypal.me/name' wird der Betrag
+    angehängt ('…/name/12.50EUR'), PayPal füllt ihn dann vor."""
+    if not link:
+        return ""
+    if amount and amount > 0 and re.fullmatch(r"https://paypal\.me/[^/?#]+/?", link):
+        return f"{link.rstrip('/')}/{_cents(amount)}EUR"
+    return link
 
 
 # ── Capacity ───────────────────────────────────────────────────────────────
@@ -501,6 +532,7 @@ async def send_guest_confirmation(db: Session, gb: GuestBooking) -> None:
                     payee["name"],
                     door_code(event),
                     url=guest_booking_url(gb),
+                    pay_url=payee["paypal_link"],
                 ),
             )
         ],
@@ -619,8 +651,14 @@ def per_person_share(total: Decimal, participants: int) -> Decimal:
 
 
 def event_shares(db: Session, event: Event) -> dict:
-    """Per-person prices based on the event's current participants.
-    Final at settlement; before that they are estimates."""
+    """Per-person prices based on the event's current participants —
+    estimates until settlement, afterwards the frozen settled values."""
+    if event.settled_at and event.settled_participants is not None:
+        return {
+            "participants": event.settled_participants,
+            "member_share": event.settled_member_share,
+            "guest_share": event.settled_guest_share,
+        }
     participants = count_booked(db, event.id)
     return {
         "participants": participants,
@@ -681,6 +719,9 @@ def settle_event(db: Session, event: Event) -> tuple[int, Decimal, dict]:
         total += amount
         charged += 1
     event.settled_at = utcnow()
+    event.settled_participants = shares["participants"]
+    event.settled_member_share = shares["member_share"]
+    event.settled_guest_share = shares["guest_share"]
     db.commit()
     return charged, total, shares
 
@@ -694,10 +735,11 @@ async def settle_and_notify(db: Session, event: Event) -> tuple[int, Decimal, in
     payee = payee_info(db, event.subscription)
     subject = f"Abrechnung {format_date(event.date)} – {event.subscription.name}"
     mails = []
-    # Manueller Modus: keine Abrechnungsmail an Mitglieder — der
-    # Zahlungsempfänger verschickt gesammelte Aufforderungen per Knopf.
-    manual = event.subscription.payment_mail_mode == "manual"
-    for booking in [] if manual else event.bookings:
+    # Manueller Modus: keine Abrechnungsmail an Mitglieder und Link-Gäste —
+    # der Zahlungsempfänger verschickt gesammelte Aufforderungen per Knopf.
+    if event.subscription.payment_mail_mode == "manual":
+        return charged, total, 0
+    for booking in event.bookings:
         member = booking.member
         amount = shares["member_share"] + booking.guest_count * shares["guest_share"]
         mails.append(
@@ -715,6 +757,7 @@ async def settle_and_notify(db: Session, event: Event) -> tuple[int, Decimal, in
                     open_items=open_item_lines(open_items(db, member)),
                     debt=format_euro(-member.credit),
                     url=member_page_url(event.subscription_id, "konto"),
+                    pay_url=paypal_pay_url(payee["paypal_link"], -member.credit),
                 ),
             )
         )
@@ -726,6 +769,7 @@ async def settle_and_notify(db: Session, event: Event) -> tuple[int, Decimal, in
     for gb in guest_bookings:
         if not gb.email or gb.paid_at:
             continue
+        amount = gb.count * shares["guest_share"]
         mails.append(
             Mail(
                 gb.email,
@@ -734,9 +778,10 @@ async def settle_and_notify(db: Session, event: Event) -> tuple[int, Decimal, in
                     gb.name,
                     event.date.strftime("%d.%m.%Y"),
                     gb.count,
-                    format_euro(gb.count * shares["guest_share"]),
+                    format_euro(amount),
                     payee["paypal"],
                     payee["name"],
+                    pay_url=paypal_pay_url(payee["paypal_link"], amount),
                 ),
             )
         )
@@ -931,11 +976,13 @@ def payee_info(db: Session, subscription: Subscription) -> dict:
         if member:
             return {
                 "paypal": member.paypal_address,
+                "paypal_link": member.paypal_link or "",
                 "name": member.name,
                 "member_id": member.id,
             }
     return {
         "paypal": subscription.paypal_address or "",
+        "paypal_link": "",
         "name": None,
         "member_id": None,
     }
@@ -1091,19 +1138,86 @@ def debtors(db: Session, subscription: Subscription) -> list[dict]:
     return result
 
 
+def guest_debts(db: Session, subscription: Subscription) -> list[dict]:
+    """Offene Gastzahlungen: bestätigte Link-Gäste abgerechneter Termine,
+    die noch nicht als bezahlt markiert sind — je Gast (E-Mail, sonst
+    Name) zusammengefasst, höchster Betrag zuerst.
+    [{'name', 'email', 'debt', 'items': [{'note', 'amount', 'event'}]}]"""
+    rows = (
+        db.query(GuestBooking)
+        .join(Event, GuestBooking.event_id == Event.id)
+        .filter(
+            Event.subscription_id == subscription.id,
+            Event.settled_at.is_not(None),
+            Event.is_cancelled == False,  # noqa: E712
+            GuestBooking.confirmed_at.is_not(None),
+            GuestBooking.paid_at.is_(None),
+        )
+        .order_by(Event.date, GuestBooking.created_at)
+        .all()
+    )
+    by_guest: dict[str, dict] = {}
+    for gb in rows:
+        amount = gb.count * event_shares(db, gb.event)["guest_share"]
+        if amount <= 0:
+            continue
+        email = normalize_email(gb.email)
+        entry = by_guest.setdefault(
+            email or f"name:{gb.name}",
+            {"name": gb.name, "email": email, "debt": Decimal("0.00"), "items": []},
+        )
+        persons = f" ({gb.count} Personen)" if gb.count > 1 else ""
+        entry["items"].append(
+            {
+                "note": f"Gast {gb.event.date.strftime('%d.%m.%Y')}{persons}",
+                "amount": amount,
+                "event": gb.event,
+            }
+        )
+        entry["debt"] += amount
+    result = list(by_guest.values())
+    result.sort(key=lambda g: (-g["debt"], g["name"]))
+    return result
+
+
+def payment_request_is_repeat(db: Session, subscription: Subscription) -> bool:
+    """Wurden Zahlungsaufforderungen schon verschickt und seitdem kein
+    Termin des Abos abgerechnet? Dann wäre ein erneuter Versand dieselbe
+    Mail noch einmal — die Oberfläche fragt deshalb ausdrücklich nach."""
+    last = subscription.last_payment_request_at
+    if not last:
+        return False
+    newer = (
+        db.query(func.count(Event.id))
+        .filter(Event.subscription_id == subscription.id, Event.settled_at > last)
+        .scalar()
+    )
+    return not newer
+
+
+def payment_request_token(subscription: Subscription) -> str:
+    """Stand des letzten Versands — das Formular schickt ihn mit, so
+    erkennt der Server einen zweiten Klick auf eine veraltete Seite."""
+    last = subscription.last_payment_request_at
+    return last.isoformat() if last else ""
+
+
 async def send_payment_requests(
     db: Session, subscription: Subscription
 ) -> tuple[int, int]:
-    """Gesammelte Zahlungsaufforderung an jedes Mitglied im Minus: offener
-    Betrag, offene Posten, Zahlungsziel. Returns (debtors, mails sent)."""
+    """Gesammelte Zahlungsaufforderung an jedes Mitglied im Minus und an
+    jeden Link-Gast mit offener Zahlung: offener Betrag, offene Posten,
+    Zahlungsziel. Returns (Empfänger, mails sent)."""
     from app.templates import format_euro
 
     payee = payee_info(db, subscription)
     open_debts = debtors(db, subscription)
+    open_guests = guest_debts(db, subscription)
+    subject = f"Zahlungsaufforderung – {subscription.name}"
     mails = [
         Mail(
             d["member"].email,
-            f"Zahlungsaufforderung – {subscription.name}",
+            subject,
             payment_request_email(
                 d["member"].name,
                 subscription.name,
@@ -1112,16 +1226,40 @@ async def send_payment_requests(
                 payee["paypal"],
                 payee["name"],
                 url=member_page_url(subscription.id, "konto"),
+                pay_url=paypal_pay_url(payee["paypal_link"], d["debt"]),
             ),
         )
         for d in open_debts
         if d["member"].email
     ]
+    mails += [
+        Mail(
+            g["email"],
+            subject,
+            guest_payment_request_email(
+                g["name"],
+                subscription.name,
+                format_euro(g["debt"]),
+                [(i["note"], format_euro(i["amount"])) for i in g["items"]],
+                payee["paypal"],
+                payee["name"],
+                pay_url=paypal_pay_url(payee["paypal_link"], g["debt"]),
+            ),
+        )
+        for g in open_guests
+        if g["email"]
+    ]
     sent = await send_batch(subscription, mails)
     if sent:
         subscription.last_payment_request_at = utcnow()
         db.commit()
-    return len(open_debts), sent
+    return len(open_debts) + len(open_guests), sent
+
+
+PAYMENT_REQUEST_STALE = (
+    "Die Zahlungsaufforderungen wurden gerade eben schon verschickt – "
+    "nichts erneut gesendet. Zum nochmaligen Versand bitte erneut bestätigen."
+)
 
 
 def payment_request_result(count: int, sent: int) -> tuple[str, str]:

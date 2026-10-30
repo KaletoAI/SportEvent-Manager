@@ -14,7 +14,7 @@
 {% endif %}
 
 {% if payee and payee.paypal %}
-<div class="msg msg-warning">💸 Dein Guthaben ist im Minus ({{ member.credit|euro }}). Bitte zahle per PayPal an{% if payee.name %} <strong>{{ payee.name }}</strong>{% endif %}: <strong>{{ payee.paypal }}</strong> (Name + Termin im Verwendungszweck).</div>
+<div class="msg msg-warning">💸 Dein Guthaben ist im Minus ({{ member.credit|euro }}). Bitte zahle per PayPal an{% if payee.name %} <strong>{{ payee.name }}</strong>{% endif %}: <strong>{{ payee.paypal }}</strong> (Name + Termin im Verwendungszweck).{% if pay_url %} <a href="{{ pay_url }}" class="btn btn-primary btn-sm" target="_blank" rel="noopener">Mit PayPal zahlen</a>{% endif %}</div>
 {% endif %}
 
 {% if switch_offer %}
@@ -263,9 +263,23 @@
         <button type="submit" class="btn btn-success btn-sm">Erhalten</button>
     </form>
     {% endcall %}
-    {{ ui.payment_mail_controls(subscription, debts, "/member/payment-mails/mode", "/member/payment-mails/send", csrf_token) }}
+    {{ ui.guest_debts_table(guest_debts) }}
+    {{ ui.payment_mail_controls(subscription, debts, guest_debts, payment_request_repeat, "/member/payment-mails/mode", "/member/payment-mails/send", csrf_token) }}
 </div>
 {% endif %}
+
+<div class="card">
+    <h2>Dein PayPal-Link</h2>
+    <p class="muted small">Bekommst du Geld von den anderen (z. B. als Vorstrecker), steht dein Link in den Zahlungsmails als Knopf „Mit PayPal zahlen“ — mit dem Betrag schon eingetragen. Leer lassen, wenn du keinen hast.</p>
+    <form method="post" action="/member/paypal-link" class="form-inline mt-1">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="form-group">
+            <label for="paypal_link">PayPal.me-Link</label>
+            <input type="text" id="paypal_link" name="paypal_link" value="{{ member.paypal_link }}" maxlength="200" inputmode="url" autocomplete="off" placeholder="https://paypal.me/deinname">
+        </div>
+        <button type="submit" class="btn btn-outline btn-sm">Speichern</button>
+    </form>
+</div>
 
 {% if fellow_members %}
 <div class="card">

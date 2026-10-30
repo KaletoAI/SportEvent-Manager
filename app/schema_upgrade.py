@@ -6,6 +6,7 @@ Runs at every startup; each step is a no-op if the column already exists.
 """
 
 import secrets
+from decimal import ROUND_HALF_UP, Decimal
 
 from sqlalchemy import Engine
 
@@ -169,6 +170,11 @@ def upgrade(engine: Engine) -> None:
                 "ALTER TABLE members ADD COLUMN paypal_address VARCHAR(200) "
                 "DEFAULT ''"
             )
+        if "paypal_link" not in member_cols:
+            conn.exec_driver_sql(
+                "ALTER TABLE members ADD COLUMN paypal_link VARCHAR(200) "
+                "NOT NULL DEFAULT ''"
+            )
 
         # sessions: admin MFA flag (existing admin sessions = unverified)
         session_cols = _columns(conn, "sessions")
@@ -299,4 +305,49 @@ def upgrade(engine: Engine) -> None:
             "WHERE email != lower(trim(email)) AND NOT EXISTS ("
             "SELECT 1 FROM persons p2 WHERE p2.id != persons.id "
             "AND p2.email = lower(trim(persons.email)))"
+        )
+
+        # events: Anteile bei der Abrechnung einfrieren. Bereits
+        # abgerechnete Termine bekommen die Werte der aktuellen Belegung
+        # (wie services.event_shares sie bisher live berechnet hat).
+        if "settled_participants" not in event_cols:
+            conn.exec_driver_sql(
+                "ALTER TABLE events ADD COLUMN settled_participants INTEGER"
+            )
+            conn.exec_driver_sql(
+                "ALTER TABLE events ADD COLUMN settled_member_share DECIMAL(10, 2)"
+            )
+            conn.exec_driver_sql(
+                "ALTER TABLE events ADD COLUMN settled_guest_share DECIMAL(10, 2)"
+            )
+            _freeze_settled_shares(conn)
+
+
+def _share(budget, participants: int) -> str:
+    """Wie services.per_person_share (ROUND_HALF_UP auf Cent)."""
+    if participants <= 0:
+        return "0.00"
+    value = Decimal(str(budget or 0)) / participants
+    return str(value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+
+
+def _freeze_settled_shares(conn) -> None:
+    rows = conn.exec_driver_sql(
+        "SELECT e.id, e.abo_budget, e.normal_budget, "
+        "(SELECT COALESCE(SUM(b.guest_count + 1), 0) FROM bookings b "
+        " WHERE b.event_id = e.id) + "
+        "(SELECT COALESCE(SUM(g.count), 0) FROM guest_bookings g "
+        " WHERE g.event_id = e.id) "
+        "FROM events e WHERE e.settled_at IS NOT NULL"
+    ).fetchall()
+    for event_id, abo_budget, normal_budget, participants in rows:
+        conn.exec_driver_sql(
+            "UPDATE events SET settled_participants = ?, "
+            "settled_member_share = ?, settled_guest_share = ? WHERE id = ?",
+            (
+                int(participants),
+                _share(abo_budget, int(participants)),
+                _share(normal_budget, int(participants)),
+                event_id,
+            ),
         )

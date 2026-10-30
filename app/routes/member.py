@@ -390,8 +390,12 @@ async def dashboard(
     # Zahlungshinweis nur im Minus — und nie an sich selbst
     if member.credit >= 0 or is_payee:
         payee = None
+    pay_url = (
+        services.paypal_pay_url(payee["paypal_link"], -member.credit) if payee else ""
+    )
     # Zahlungsempfänger: Übersicht „Wer schuldet mir wie viel“
     debts = services.debtors(db, member.subscription) if is_payee else []
+    guest_debts = services.guest_debts(db, member.subscription) if is_payee else []
     fellow_members = (
         db.query(Member)
         .filter(
@@ -587,9 +591,13 @@ async def dashboard(
             "payments": payments,
             "spending": spending,
             "payee": payee,
+            "pay_url": pay_url,
             "is_payee": is_payee,
             "debts": debts,
             "debt_total": sum((d["debt"] for d in debts), Decimal("0.00")),
+            "guest_debts": guest_debts,
+            "payment_request_repeat": is_payee
+            and services.payment_request_is_repeat(db, member.subscription),
             "fellow_members": fellow_members,
             "other_memberships": other_memberships,
             "booked_count": booked_count,
@@ -828,6 +836,7 @@ async def set_payment_mail_mode(
 @router.post("/payment-mails/send")
 async def send_payment_mails(
     request: Request,
+    last_sent: str = Form("", max_length=40),
     member: Member = Depends(require_member),
     db: Session = Depends(get_db),
 ):
@@ -837,9 +846,37 @@ async def send_payment_mails(
             "Nur der Zahlungsempfänger kann Zahlungsaufforderungen senden",
             mt="error",
         )
+    # Zweiter Klick auf eine veraltete Seite (Doppeltipp, zweiter Tab):
+    # inzwischen wurde schon verschickt → nicht noch einmal senden.
+    if last_sent != services.payment_request_token(member.subscription):
+        return _redirect(services.PAYMENT_REQUEST_STALE, mt="error")
     count, sent = await services.send_payment_requests(db, member.subscription)
     msg, mt = services.payment_request_result(count, sent)
     return _redirect(msg, mt=mt)
+
+
+@router.post("/paypal-link")
+async def set_paypal_link(
+    request: Request,
+    paypal_link: str = Form("", max_length=200),
+    member: Member = Depends(require_member),
+    db: Session = Depends(get_db),
+):
+    """Eigener PayPal-Link — gilt für alle Mitgliedschaften derselben Person."""
+    link = services.normalize_paypal_link(paypal_link)
+    if link is None:
+        return _redirect(
+            "Bitte einen PayPal-Link angeben, z. B. https://paypal.me/deinname",
+            "/member/dashboard?tab=konto",
+            mt="error",
+        )
+    for m in db.query(Member).filter(Member.email == member.email):
+        m.paypal_link = link
+    db.commit()
+    return _redirect(
+        "PayPal-Link gespeichert" if link else "PayPal-Link entfernt",
+        "/member/dashboard?tab=konto",
+    )
 
 
 # ── Warteliste ─────────────────────────────────────────────────────────────

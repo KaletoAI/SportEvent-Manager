@@ -158,15 +158,17 @@ def _open_debt(
     debt: str,
     paypal: Optional[str],
     payee_name: Optional[str],
+    pay_url: str = "",
 ) -> None:
     """Offene Termine + Zahlungsbox — gleich in Abrechnungs- und
     Sammelmail."""
     doc.facts(items, title="Offene Termine", total=("Offen gesamt", debt), itemized=True)
-    if paypal:
+    if paypal or pay_url:
         doc.pay(
             f"Bitte zahle {debt} {_target(payee_name)}:",
-            paypal,
+            paypal or "",
             "Bitte deinen Namen im Verwendungszweck angeben.",
+            pay_url,
         )
     else:
         doc.p(f"Bitte gleiche {debt} beim Organisator aus.")
@@ -268,6 +270,7 @@ def settlement_email(
     open_items: Sequence[tuple[str, str]] = (),
     debt: str = "",
     url: str = "",
+    pay_url: str = "",
 ) -> MailContent:
     """Abrechnungsmail. Im Minus (`open_items`, `debt`) mit denselben
     offenen Terminen und derselben Zahlungsbox wie die Sammelmail."""
@@ -280,7 +283,7 @@ def settlement_email(
             "ihre Beträge an dich."
         )
     elif open_items:
-        _open_debt(doc, list(open_items), debt, paypal, payee_name)
+        _open_debt(doc, list(open_items), debt, paypal, payee_name, pay_url)
     else:
         doc.notice("Dein Guthaben deckt den Betrag — du musst nichts zahlen.", "success")
     _link(doc, "Kontoauszug ansehen", url)
@@ -295,13 +298,44 @@ def payment_request_email(
     paypal: Optional[str],
     payee_name: Optional[str] = None,
     url: str = "",
+    pay_url: str = "",
 ) -> MailContent:
     """Gesammelte Zahlungsaufforderung: offener Betrag + offene Posten
     (Notiz, Betrag), ältester zuerst."""
     doc = MailDoc("Zahlungsaufforderung", member_name)
     doc.p(f"dein Guthaben im Abo „{subscription_name}“ ist im Minus.")
-    _open_debt(doc, items, debt, paypal, payee_name)
+    _open_debt(doc, items, debt, paypal, payee_name, pay_url)
     _link(doc, "Kontoauszug ansehen", url)
+    return doc.render()
+
+
+def guest_payment_request_email(
+    guest_name: str,
+    subscription_name: str,
+    debt: str,
+    items: list[tuple[str, str]],
+    paypal: Optional[str],
+    payee_name: Optional[str] = None,
+    pay_url: str = "",
+) -> MailContent:
+    """Gesammelte Zahlungsaufforderung an einen Link-Gast: seine noch
+    offenen Anteile (Termin, Betrag)."""
+    doc = MailDoc("Zahlungsaufforderung", guest_name)
+    doc.p(
+        f"danke, dass du als Gast bei „{subscription_name}“ dabei warst! "
+        "Für diese Termine ist dein Anteil noch offen:"
+    )
+    doc.facts(items, title="Offene Termine", total=("Offen gesamt", debt), itemized=True)
+    if paypal or pay_url:
+        doc.pay(
+            f"Bitte zahle {debt} {_target(payee_name)}:",
+            paypal or "",
+            "Bitte Name und Termin im Verwendungszweck angeben.",
+            pay_url,
+        )
+    else:
+        doc.p(f"Bitte gleiche {debt} beim Organisator aus.")
+    doc.small("Hast du schon gezahlt? Dann ignoriere diese E-Mail.")
     return doc.render()
 
 
@@ -312,16 +346,18 @@ def guest_settlement_email(
     amount: str,
     paypal: Optional[str],
     payee_name: Optional[str] = None,
+    pay_url: str = "",
 ) -> MailContent:
     persons = f" ({count} Personen)" if count > 1 else ""
     doc = MailDoc(f"Abrechnung {event_date}", guest_name)
     doc.p(f"danke für deine Teilnahme als Gast am {event_date}{persons}!")
     doc.facts([("Dein Anteil", amount)])
-    if paypal:
+    if paypal or pay_url:
         doc.pay(
             f"Bitte zahle {amount} {_target(payee_name)}:",
-            paypal,
+            paypal or "",
             "Bitte Name und Termin im Verwendungszweck angeben.",
+            pay_url,
         )
     return doc.render()
 
@@ -352,6 +388,7 @@ def guest_confirmed_email(
     payee_name: Optional[str] = None,
     door_code: str = "",
     url: str = "",
+    pay_url: str = "",
 ) -> MailContent:
     persons = f" für {count} Personen" if count > 1 else ""
     doc = MailDoc("Gastbuchung bestätigt", guest_name)
@@ -366,8 +403,12 @@ def guest_confirmed_email(
         "Der endgültige Betrag steht nach dem Termin fest "
         "(Terminkosten ÷ Teilnehmerzahl)."
     )
-    if paypal:
-        doc.pay(f"Bitte zahle nach dem Termin {_target(payee_name)}:", paypal)
+    if paypal or pay_url:
+        doc.pay(
+            f"Bitte zahle nach dem Termin {_target(payee_name)}:",
+            paypal or "",
+            pay_url=pay_url,
+        )
     doc.p(
         "Falls du nicht kommen kannst, gib bitte dem Organisator Bescheid, "
         "damit dein Platz frei wird."

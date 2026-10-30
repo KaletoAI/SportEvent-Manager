@@ -137,7 +137,8 @@
     {% call(d) ui.debts_table(debts, debt_total) %}
     <a href="/admin/member/{{ d.member.id }}/edit" class="btn btn-outline btn-sm">Zahlung buchen</a>
     {% endcall %}
-    {{ ui.payment_mail_controls(subscription, debts, None, "/admin/subscription/" ~ subscription.id ~ "/payment-mails/send", csrf_token) }}
+    {{ ui.guest_debts_table(guest_debts) }}
+    {{ ui.payment_mail_controls(subscription, debts, guest_debts, payment_request_repeat, None, "/admin/subscription/" ~ subscription.id ~ "/payment-mails/send", csrf_token) }}
 </div>
 </section>
 

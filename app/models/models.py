@@ -205,6 +205,11 @@ class Member(Base):
     paypal_address: Mapped[Optional[str]] = mapped_column(
         String(200), nullable=True, default=""
     )
+    # PayPal.me-Link, pflegt jedes Mitglied selbst (services.normalize_paypal_link);
+    # steht als „Mit PayPal zahlen“-Button in Zahlungsmails, wenn es Empfänger ist.
+    paypal_link: Mapped[str] = mapped_column(
+        String(200), nullable=False, default=""
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
     subscription: Mapped["Subscription"] = relationship(back_populates="members")
@@ -265,6 +270,18 @@ class Event(Base):
     # stay so inserts fill it. Unused (settlement mails are fire-and-forget).
     payment_sent: Mapped[bool] = mapped_column(Boolean, default=False)
     settled_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    # Anteile, eingefroren bei der Abrechnung: spätere Änderungen an den
+    # Buchungen (z. B. Fehlbuchung eines Link-Gasts entfernt) lassen das
+    # Ergebnis unverändert. None bei offenen Terminen.
+    settled_participants: Mapped[Optional[int]] = mapped_column(
+        Integer, nullable=True
+    )
+    settled_member_share: Mapped[Optional[Decimal]] = mapped_column(
+        DECIMAL(10, 2), nullable=True
+    )
+    settled_guest_share: Mapped[Optional[Decimal]] = mapped_column(
+        DECIMAL(10, 2), nullable=True
+    )
     # Scheduler: reminder mail (1 day before last free cancellation) sent
     reminder_sent: Mapped[bool] = mapped_column(
         Boolean, default=False, nullable=False

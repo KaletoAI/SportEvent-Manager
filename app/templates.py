@@ -5,7 +5,7 @@ cookie pattern); the cookie is set on the response when missing.
 """
 
 import secrets
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timezone
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
@@ -21,6 +21,13 @@ _env = Environment(
     loader=FileSystemLoader(str(_templates_dir)),
     autoescape=select_autoescape(["html", "xml"]),
 )
+
+try:
+    from zoneinfo import ZoneInfo
+
+    _BERLIN = ZoneInfo("Europe/Berlin")
+except Exception:  # ohne tz-Datenbank: Systemzeitzone
+    _BERLIN = None
 
 _WEEKDAYS_DE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
 WEEKDAYS_DE_LONG = [
@@ -47,6 +54,15 @@ def format_date_short(value: date | datetime | None) -> str:
     return f"{_WEEKDAYS_DE[value.weekday()]}, {value.strftime('%d.%m.')}"
 
 
+def format_datetime(value: datetime | None) -> str:
+    """Naiver UTC-Zeitstempel (utcnow) → 'Fr, 30.10.2026, 14:03 Uhr'
+    in deutscher Ortszeit."""
+    if value is None:
+        return "—"
+    local = value.replace(tzinfo=timezone.utc).astimezone(_BERLIN)
+    return f"{format_date(local.date())}, {local.strftime('%H:%M')} Uhr"
+
+
 def format_time(value: time | None) -> str:
     if value is None:
         return "—"
@@ -62,6 +78,7 @@ def format_euro(value: Decimal | float | int | None) -> str:
 
 _env.filters["date_de"] = format_date
 _env.filters["date_short"] = format_date_short
+_env.filters["datetime_de"] = format_datetime
 _env.filters["time_de"] = format_time
 _env.filters["euro"] = format_euro
 _env.globals["weekdays_de"] = WEEKDAYS_DE_LONG
