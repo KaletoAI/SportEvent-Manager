@@ -270,3 +270,50 @@ def test_payee_paypal_link_in_payment_mails(client, db, guest_setup, outbox):
     member_login(client)
     page = client.get("/member/dashboard").text
     assert 'href="https://paypal.me/sina/2.67EUR"' in page
+
+
+# ── Skript: versehentliche Bezahlt-Klicks aus dem Kontoauszug entfernen ────
+
+
+def test_script_removes_paid_reversal_pairs(db, guest_setup):
+    """3× Bezahlt ✓, 2× Zurücknehmen → 2 Paare weg, letzte Buchung bleibt,
+    Guthaben und Bezahlt-Status unverändert."""
+    import importlib.util
+    from pathlib import Path
+
+    from app.models.models import Payment
+
+    path = Path(__file__).resolve().parent.parent / "scripts/remove_guest_paid_reversals.py"
+    spec = importlib.util.spec_from_file_location("cleanup", path)
+    cleanup = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cleanup)
+
+    sub, gb = guest_setup["sub"], guest_setup["gb"]
+    sub.payout_mode = "member"
+    sina = guest_setup["super_member"]
+    sina.paypal_address = "sina@pay.me"
+    sina.credit = Decimal("100.00")
+    db.commit()
+    services.settle_event(db, guest_setup["past_event"])
+    for _ in range(2):
+        services.mark_guest_paid(db, gb, Decimal("6.66"))
+        services.unmark_guest_paid(db, gb)
+    services.mark_guest_paid(db, gb, Decimal("6.66"))
+    db.refresh(sina)
+    credit = sina.credit
+    assert credit == Decimal("93.34")
+
+    pairs, rest = cleanup.find_reversal_pairs(db, "Gina")
+    assert len(pairs) == 2
+    assert [p.note for p in rest] == ["Gastzahlung von Gina erhalten"]
+    for received, storno in pairs:
+        db.delete(received)
+        db.delete(storno)
+    db.commit()
+
+    db.expire_all()
+    notes = [p.note for p in db.query(Payment).filter(Payment.member_id == sina.id)]
+    assert notes == ["Gastzahlung von Gina erhalten"]
+    assert db.get(Member, sina.id).credit == credit
+    assert db.get(GuestBooking, gb.id).paid_at is not None
+    assert cleanup.find_reversal_pairs(db, "Gina")[0] == []
