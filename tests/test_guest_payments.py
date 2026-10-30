@@ -295,9 +295,21 @@ def test_script_removes_paid_reversal_pairs(db, guest_setup):
     sina.credit = Decimal("100.00")
     db.commit()
     services.settle_event(db, guest_setup["past_event"])
+    # Altbestand: früher schrieb „Zurücknehmen“ eine Storno-Buchung
     for _ in range(2):
-        services.mark_guest_paid(db, gb, Decimal("6.66"))
-        services.unmark_guest_paid(db, gb)
+        for amount, note in (
+            ("-6.66", "Gastzahlung von Gina erhalten"),
+            ("6.66", "Storno Gastzahlung von Gina"),
+        ):
+            db.add(
+                Payment(
+                    member_id=sina.id,
+                    amount=Decimal(amount),
+                    event_id=gb.event_id,
+                    note=note,
+                )
+            )
+    db.commit()
     services.mark_guest_paid(db, gb, Decimal("6.66"))
     db.refresh(sina)
     credit = sina.credit

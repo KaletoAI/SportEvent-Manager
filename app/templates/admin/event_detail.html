@@ -240,7 +240,7 @@
                     <div class="paid-form">
                         <span class="badge badge-success">✓ {{ g.paid_amount|euro }}</span>
                         <form method="post" action="/admin/guest-booking/{{ g.id }}/unpaid" class="inline"
-                              data-confirm="Bezahlt-Markierung von {{ g.name }} zurücknehmen?{% if g.paid_member_id %} Die Gegenbuchung wird rückgebucht.{% endif %}">
+                              data-confirm="Bezahlt-Markierung von {{ g.name }} zurücknehmen?{% if g.paid_member_id %} Die Buchung im Kontoauszug wird wieder entfernt.{% endif %}">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                             <button type="submit" class="btn btn-outline btn-sm">Zurücknehmen</button>
                         </form>

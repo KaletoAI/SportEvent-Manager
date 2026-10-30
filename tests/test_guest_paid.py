@@ -86,10 +86,23 @@ def test_unmark_reverses_counterbooking(client, db, seed):
     assert gb.paid_amount is None
     assert gb.paid_member_id is None
     assert db.get(Member, seed["member"].id).credit == Decimal("20.00")
-    # Ledger bleibt nachvollziehbar: Buchung + Storno-Gegenbuchung
+    # Fehlklick hinterlässt keine Spur: die Gegenbuchung ist wieder weg
+    assert db.query(Payment).count() == 0
+
+
+def test_unmark_without_original_books_storno(db, seed):
+    """Altdaten: fehlt die ursprüngliche Gegenbuchung, wird storniert."""
+    from app import services
+
+    use_member_payout(db, seed)
+    gb = make_guest(db, seed["event"])
+    services.mark_guest_paid(db, gb, Decimal("5.00"))
+    db.query(Payment).delete()
+    db.commit()
+    services.unmark_guest_paid(db, gb)
     notes = [p.note for p in db.query(Payment).all()]
-    assert any("Gastzahlung von Gustav erhalten" in n for n in notes)
-    assert any("Storno Gastzahlung von Gustav" in n for n in notes)
+    assert notes == ["Storno Gastzahlung von Gustav"]
+    assert db.get(Member, seed["member"].id).credit == Decimal("20.00")
 
 
 def test_double_mark_rejected(client, db, seed):

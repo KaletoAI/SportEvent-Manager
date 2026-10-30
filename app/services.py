@@ -1046,19 +1046,36 @@ def mark_guest_paid(
 
 
 def unmark_guest_paid(db: Session, gb: GuestBooking) -> None:
-    """Bezahlt-Markierung zurücknehmen; eine Gegenbuchung wird rückgebucht."""
+    """Bezahlt-Markierung zurücknehmen. Die Gegenbuchung wird gelöscht statt
+    storniert — ein Fehlklick hinterlässt so keine Spur im Kontoauszug des
+    Empfängers. Nur wenn sie nicht mehr zu finden ist, gibt es eine
+    Storno-Buchung."""
     if gb.paid_member_id and gb.paid_amount:
         recipient = db.get(Member, gb.paid_member_id)
         if recipient:
-            db.add(
-                Payment(
-                    member_id=recipient.id,
-                    amount=gb.paid_amount,
-                    type=Payment.TYPE_DEPOSIT,
-                    event_id=gb.event_id,
-                    note=f"Storno Gastzahlung von {gb.name}",
+            original = (
+                db.query(Payment)
+                .filter(
+                    Payment.member_id == recipient.id,
+                    Payment.event_id == gb.event_id,
+                    Payment.amount == -gb.paid_amount,
+                    Payment.note == f"Gastzahlung von {gb.name} erhalten",
                 )
+                .order_by(Payment.created_at.desc(), Payment.id.desc())
+                .first()
             )
+            if original:
+                db.delete(original)
+            else:
+                db.add(
+                    Payment(
+                        member_id=recipient.id,
+                        amount=gb.paid_amount,
+                        type=Payment.TYPE_DEPOSIT,
+                        event_id=gb.event_id,
+                        note=f"Storno Gastzahlung von {gb.name}",
+                    )
+                )
             recipient.credit += gb.paid_amount
     gb.paid_at = None
     gb.paid_amount = None
