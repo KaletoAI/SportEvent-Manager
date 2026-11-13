@@ -14,7 +14,7 @@
 {% endif %}
 
 {% if payee and payee.paypal %}
-<div class="msg msg-warning">💸 Dein Guthaben ist im Minus ({{ member.credit|euro }}). Bitte zahle per PayPal an{% if payee.name %} <strong>{{ payee.name }}</strong>{% endif %}: <strong>{{ payee.paypal }}</strong> (Name + Termin im Verwendungszweck).{% if pay_url %} <a href="{{ pay_url }}" class="btn btn-primary btn-sm" target="_blank" rel="noopener">Mit PayPal zahlen</a>{% endif %}</div>
+<div class="msg msg-warning">💸 Dein Guthaben ist im Minus — offen sind <strong>{{ pay_amount|euro }}</strong>. Bitte zahle per PayPal an{% if payee.name %} <strong>{{ payee.name }}</strong>{% endif %}: <strong>{{ payee.paypal }}</strong> (Name + Termin im Verwendungszweck).{% if pay_url %} <a href="{{ pay_url }}" class="btn btn-primary btn-sm" target="_blank" rel="noopener">Mit PayPal zahlen</a>{% endif %}</div>
 {% endif %}
 
 {% if switch_offer %}

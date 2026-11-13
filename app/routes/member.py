@@ -387,12 +387,12 @@ async def dashboard(
     spending = services.member_spending(db, member.id)
     payee = services.payee_info(db, member.subscription)
     is_payee = payee["member_id"] == member.id
-    # Zahlungshinweis nur im Minus — und nie an sich selbst
-    if member.credit >= 0 or is_payee:
+    # Zahlungshinweis nur im Minus — bei manuellen Zahlungsmails erst nach
+    # der Zahlungsaufforderung — und nie an sich selbst
+    pay_amount = services.requested_debt(db, member)
+    if pay_amount <= 0 or is_payee:
         payee = None
-    pay_url = (
-        services.paypal_pay_url(payee["paypal_link"], -member.credit) if payee else ""
-    )
+    pay_url = services.paypal_pay_url(payee["paypal_link"], pay_amount) if payee else ""
     # Zahlungsempfänger: Übersicht „Wer schuldet mir wie viel“
     debts = services.debtors(db, member.subscription) if is_payee else []
     guest_debts = services.guest_debts(db, member.subscription) if is_payee else []
@@ -592,6 +592,7 @@ async def dashboard(
             "spending": spending,
             "payee": payee,
             "pay_url": pay_url,
+            "pay_amount": pay_amount,
             "is_payee": is_payee,
             "debts": debts,
             "debt_total": sum((d["debt"] for d in debts), Decimal("0.00")),

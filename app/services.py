@@ -1123,6 +1123,32 @@ def open_items(db: Session, member: Member) -> list[dict]:
     return items
 
 
+def requested_debt(db: Session, member: Member) -> Decimal:
+    """Betrag für den Minus-Hinweis im Dashboard (0 = kein Hinweis).
+
+    Automatische Zahlungsmails: das ganze Minus. Manuell per Knopf: nur was
+    mit der letzten Zahlungsaufforderung angefordert wurde — Belastungen
+    danach kommen erst mit der nächsten Aufforderung dazu, Zahlungen danach
+    zählen sofort. Ohne bisherigen Versand gibt es noch nichts zu zahlen."""
+    zero = Decimal("0.00")
+    subscription = member.subscription
+    if subscription.payment_mail_mode != "manual":
+        return max(-member.credit, zero)
+    last = subscription.last_payment_request_at
+    if not last:
+        return zero
+    later_charges = (
+        db.query(func.coalesce(func.sum(Payment.amount), 0))
+        .filter(
+            Payment.member_id == member.id,
+            Payment.type == Payment.TYPE_CHARGE,
+            Payment.created_at > last,
+        )
+        .scalar()
+    )
+    return max(-(member.credit - Decimal(later_charges)), zero)
+
+
 def open_item_lines(items: list[dict]) -> list[tuple[str, str]]:
     """Offene Posten für Mails: (Bezeichnung, Betrag)."""
     from app.templates import format_euro

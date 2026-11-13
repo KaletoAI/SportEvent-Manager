@@ -294,3 +294,81 @@ def test_settlement_mail_without_debt_needs_no_payment(client, db, payee_setup, 
     assert "du musst nichts zahlen" in body
     assert "Offene Termine" not in body
     assert "Bitte zahle" not in body
+
+
+# ── Minus-Hinweis im Dashboard bei manuellen Zahlungsmails ─────────────────
+
+
+def _charge(db, member, amount, note, created_at):
+    db.add(
+        Payment(
+            member_id=member.id,
+            amount=Decimal(amount),
+            type=Payment.TYPE_CHARGE if amount.startswith("-") else Payment.TYPE_DEPOSIT,
+            note=note,
+            created_at=created_at,
+        )
+    )
+    member.credit += Decimal(amount)
+
+
+def test_auto_mode_banner_shows_full_debt(client, db, payee_setup):
+    member_login(client)  # Anna, −15
+    resp = client.get("/member/dashboard")
+    assert "zahle per PayPal" in resp.text
+    assert "15,00 €" in resp.text
+
+
+def test_manual_mode_no_banner_before_payment_request(client, db, payee_setup):
+    """Manuell: Termine sind abgerechnet, aber der Empfänger hat noch keine
+    Zahlungsaufforderung verschickt → noch kein Zahlungshinweis."""
+    payee_setup["sub"].payment_mail_mode = "manual"
+    db.commit()
+    member_login(client)  # Anna, −15
+    resp = client.get("/member/dashboard")
+    assert "zahle per PayPal" not in resp.text
+    assert services.requested_debt(db, payee_setup["member"]) == Decimal("0.00")
+
+
+def test_manual_mode_banner_after_payment_request(client, db, payee_setup):
+    sub, anna = payee_setup["sub"], payee_setup["member"]
+    sub.payment_mail_mode = "manual"
+    sub.last_payment_request_at = utcnow() - timedelta(days=1)
+    db.commit()
+    member_login(client)
+    resp = client.get("/member/dashboard")
+    assert "zahle per PayPal" in resp.text
+    assert "15,00 €" in resp.text
+    assert services.requested_debt(db, anna) == Decimal("15.00")
+
+
+def test_manual_mode_banner_ignores_charges_after_request(client, db, payee_setup):
+    """Nach dem Versand abgerechnete Termine kommen erst mit der nächsten
+    Zahlungsaufforderung in den Hinweis."""
+    sub, anna = payee_setup["sub"], payee_setup["member"]
+    sub.payment_mail_mode = "manual"
+    sub.last_payment_request_at = utcnow() - timedelta(days=2)
+    _charge(db, anna, "-10.00", "Teilnahme 15.10.2026", utcnow() - timedelta(days=1))
+    db.commit()
+    assert anna.credit == Decimal("-25.00")
+    assert services.requested_debt(db, anna) == Decimal("15.00")
+    member_login(client)
+    resp = client.get("/member/dashboard")
+    assert "zahle per PayPal" in resp.text
+    assert "15,00 €" in resp.text
+
+
+def test_manual_mode_payment_after_request_clears_banner(client, db, payee_setup):
+    """Zahlung nach dem Versand begleicht den angeforderten Betrag, auch
+    wenn inzwischen ein neuer, noch nicht angeforderter Termin dazukam."""
+    sub, anna = payee_setup["sub"], payee_setup["member"]
+    sub.payment_mail_mode = "manual"
+    sub.last_payment_request_at = utcnow() - timedelta(days=3)
+    _charge(db, anna, "15.00", "Zahlung an Sina", utcnow() - timedelta(days=2))
+    _charge(db, anna, "-10.00", "Teilnahme 15.10.2026", utcnow() - timedelta(days=1))
+    db.commit()
+    assert anna.credit == Decimal("-10.00")
+    assert services.requested_debt(db, anna) == Decimal("0.00")
+    member_login(client)
+    resp = client.get("/member/dashboard")
+    assert "zahle per PayPal" not in resp.text
